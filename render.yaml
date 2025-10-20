@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: investment-backend
+    env: docker
+    rootDir: investment-backend
+    branch: main
+    autoDeploy: true
+    plan: free
+
+  - type: web
+    name: investment-dashboard
+    env: docker
+    rootDir: investment-dashboard
+    branch: main
+    autoDeploy: true
+    plan: free
