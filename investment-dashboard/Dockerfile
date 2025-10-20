@@ -12,7 +12,7 @@ RUN apk add --no-cache libc6-compat
 
 # Install deps with cache
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source and build
 COPY . .
