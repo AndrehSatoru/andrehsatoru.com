@@ -48,10 +48,10 @@ ENV PATH="/app/venv/bin:$PATH" \
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/status')"
+    CMD ["python","-c","import os, urllib.request; urllib.request.urlopen('http://localhost:%s/status' % os.environ.get('PORT','8000'))"]
 
 # Expor porta
 EXPOSE 8000
 
 # Comando de inicialização
-CMD ["uvicorn", "src.backend_projeto.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["sh","-c","uvicorn src.backend_projeto.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 4"]
