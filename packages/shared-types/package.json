@@ -1,0 +1,14 @@
+{
+  "name": "shared-types",
+  "version": "1.0.0",
+  "scripts": {
+    "generate-zod": "openapi-zod-client ../backend/openapi.json src/schemas.ts"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "openapi-typescript": "6.2.0",
+    "openapi-zod-client": "^1.18.3"
+  }
+}

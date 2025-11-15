@@ -1,0 +1,8 @@
+.env
+venv/
+__pycache__/
+*.pyc
+portfolio_analysis_output/
+.pytest_cache/
+generated_dashboards/
+openapi.json

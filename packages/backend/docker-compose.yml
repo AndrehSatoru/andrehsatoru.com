@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./investment-frontend
+      dockerfile: Dockerfile
+    container_name: investment_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: investment_api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENABLE_CACHE=true
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      - MAX_ASSETS_PER_REQUEST=100
+      - CACHE_TTL_SECONDS=3600
+      - YFINANCE_MAX_RETRIES=3
+    volumes:
+      - ./src/backend_projeto/cache:/app/src/backend_projeto/cache
+      - ./src/backend_projeto/outputs:/app/src/backend_projeto/outputs
+    depends_on:
+      - redis
+    restart: unless-stopped
+    entrypoint: ["tail", "-f", "/dev/null"]
+    healthcheck:
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: "redis:7-alpine"
+    container_name: portfolio_cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    command: redis-server --appendonly yes
+
+volumes:
+  redis_data:

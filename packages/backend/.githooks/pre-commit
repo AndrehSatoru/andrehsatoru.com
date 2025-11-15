@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Pre-commit hook to prevent accidental commits of sensitive information
+
+# Exit on any error
+set -e
+
+# Check for sensitive patterns
+PATTERNS=(
+  "[0-9a-f]{32}"  # API keys (32 hex chars)
+  "[0-9A-Z]{16}"  # Shorter API keys (16 alphanumeric, uppercase)
+  "[0-9a-zA-Z]{20,}"  # Long random strings
+  "(?i)password\s*=\s*[^\s]"  # Passwords in config
+  "(?i)api[_-]?key\s*=\s*[^\s]"  # API keys in config
+  "(?i)secret\s*=\s*[^\s]"  # Secrets in config
+  "(?i)token\s*=\s*[^\s]"  # Tokens in config
+)
+
+# Check for sensitive information in staged files
+for pattern in "${PATTERNS[@]}"; do
+  # Check for the pattern in staged files
+  if git diff --cached --name-only | xargs grep -E "$pattern" --color=always; then
+    echo "\n🚨 WARNING: Potential sensitive information detected in staged files!"
+    echo "Please review the above matches before committing.\n"
+    echo "If this is a false positive, you can bypass this check with:\n"
+    echo "  git commit --no-verify -m 'message'\n"
+    echo "Otherwise, please remove or move the sensitive information to .env"
+    exit 1
+  fi
+done
+
+echo "✅ No sensitive information detected in staged files"
+exit 0

@@ -1,0 +1,27 @@
+{
+  "portfolio": {
+    "start_date": "2021-01-01",
+    "end_date": "2025-08-01",
+    "initial_cash": 100000000.00,
+    "transactions": [
+      {"date": "2021-01-01", "ticker": "EQTL3.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "CPFE3.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "EMBR3.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "DIRR3.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "LAVV3.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "AZZA3.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "PRIO3.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "TFCO4.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "VAL", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "SBSP3.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "EQIX", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "GE", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "BA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "MC.PA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "ITX.MC", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "NEE", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "VALE3.SA", "type": "buy", "amount": 5000000.00},
+      {"date": "2021-01-01", "ticker": "AURA33.SA", "type": "buy", "amount": 5000000.00}
+    ]
+  }
+}
