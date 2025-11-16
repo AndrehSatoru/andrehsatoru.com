@@ -4,7 +4,18 @@ import { useState } from 'react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { useRouter } from 'next/navigation';
 import { useApi } from '../../hooks/use-api';
-import { api } from '../../lib/backend-api';
+import { apiClient } from '../../lib/backend-api';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -14,7 +25,7 @@ export default function LoginPage() {
 
   const { execute: loginUser, loading, error } = useApi(
     async () => {
-      const response = await api.login_for_access_token_api_v1_auth_token_post({
+      const response = await apiClient.login_for_access_token_api_v1_auth_token_post({
         body: {
           username,
           password,
@@ -32,32 +43,52 @@ export default function LoginPage() {
   };
 
   return (
-    <div>
-      <h1>Login</h1>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="username">Username</label>
-          <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        <button type="submit" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-        {error && <p style={{ color: 'red' }}>{error.message}</p>}
-      </form>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardDescription>
+            Enter your username and password to access your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="testuser"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="testpass"
+                required
+              />
+            </div>
+            {error && <p className="text-sm text-red-500">{error.message}</p>}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter>
+          <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+            For development, you can use:
+            <br />
+            <strong>Username:</strong> testuser | <strong>Password:</strong> testpass
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

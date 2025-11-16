@@ -644,7 +644,7 @@ export const schemas = {
   Body,
 };
 
-const endpoints = makeApi([
+export const endpoints = makeApi([
   {
     method: "post",
     path: "/api/v1/analysis/run",

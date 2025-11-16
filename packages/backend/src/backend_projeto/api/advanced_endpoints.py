@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict, Any
 import io
 
-from src.backend_projeto.core.exceptions import DataProviderError
+from backend_projeto.core.exceptions import DataProviderError
 
 from .models import (
     PricesRequest, RiskResponse,
