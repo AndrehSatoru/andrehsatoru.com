@@ -4,11 +4,37 @@ Este projeto é uma plataforma completa para análise de investimentos, projetad
 
 ## ✨ Funcionalidades Principais
 
--   **Análise de Portfólio:** Métricas completas de risco e retorno.
--   **Otimização de Fronteira Eficiente:** Encontre a alocação ótima de ativos.
--   **Visualizações Avançadas:** Matriz de correlação, contribuição de risco, rolling returns e mais.
--   **Simulação de Monte Carlo:** Projete possíveis resultados futuros do portfólio.
--   **Autenticação Segura:** Acesso protegido à plataforma.
+### Análise de Desempenho e Risco
+Esta é a base para qualquer análise de investimento, permitindo uma avaliação completa da performance histórica de um portfólio. A plataforma vai além de simplesmente mostrar o retorno, oferecendo um conjunto rico de métricas para uma compreensão profunda da estratégia de investimento.
+
+-   **Métricas de Desempenho:** Visualize o **Retorno Acumulado** para ver o crescimento total do seu investimento. Analise a **Volatilidade Anualizada** para entender o grau de oscilação dos seus ativos.
+-   **Índices Ajustados ao Risco:** A plataforma calcula índices padrão da indústria, como o **Índice de Sharpe**, que mede o retorno que você obtém para cada unidade de risco assumida (volatilidade). O **Índice de Sortino** é similar, mas foca apenas na volatilidade negativa (o "risco ruim"), oferecendo uma perspectiva diferente sobre a eficiência do seu portfólio.
+-   **Análise de Risco de Cauda (Tail Risk):** Para entender os riscos em cenários mais extremos, a ferramenta calcula o **Value at Risk (VaR)**, que estima a perda máxima esperada para um determinado nível de confiança (ex: "há 95% de chance de que as perdas não excedam X em um dia"). Indo um passo além, o **Conditional Value at Risk (CVaR)** calcula a média das perdas que ocorrem *além* do VaR, dando uma imagem mais clara do prejuízo potencial durante os piores cenários de mercado.
+
+### Otimização de Portfólio com Fronteira Eficiente
+Esta ferramenta poderosa, baseada no trabalho do prêmio Nobel Harry Markowitz, resolve um dos problemas centrais do investimento: como construir a carteira "perfeita". Em vez de tentar adivinhar a melhor alocação, a Fronteira Eficiente usa a matemática para encontrar as combinações ideais de ativos.
+
+-   **Conceito:** A ferramenta calcula e desenha uma curva em um gráfico de risco vs. retorno. Cada ponto nesta curva representa um portfólio "ótimo", ou seja, uma carteira que oferece o maior retorno possível para um determinado nível de risco.
+-   **Tomada de Decisão:** Com essa visualização, o investidor pode tomar decisões informadas. Ele pode, por exemplo, identificar o **Portfólio de Variância Mínima** (o ponto de menor risco na curva) ou o **Portfólio de Máximo Sharpe** (a melhor combinação de risco e retorno). Isso permite ajustar a carteira de acordo com o seu perfil de risco pessoal, seja para minimizar o risco para um retorno desejado, ou para maximizar o retorno para um risco que você está disposto a correr.
+
+### Visualizações Avançadas e Interativas
+Para realmente entender a dinâmica interna de um portfólio, é preciso ir além dos números e observar o comportamento dos ativos. Esta plataforma oferece um conjunto de gráficos interativos para fornecer insights profundos.
+
+-   **Matriz de Correlação:** Essencial para a diversificação. Este gráfico mostra visualmente como cada ativo se move em relação aos outros. O objetivo é construir uma carteira com ativos de baixa correlação, pois isso significa que quando um ativo cai, o outro pode subir ou permanecer estável, suavizando as oscilações do portfólio.
+-   **Contribuição de Risco por Ativo:** Nem todo ativo contribui igualmente para o risco total da carteira. Este gráfico decompõe a volatilidade do portfólio e mostra exatamente qual porcentagem do risco vem de cada ativo. Isso é crucial para identificar se um único ativo está dominando o risco da carteira, permitindo um rebalanceamento mais inteligente.
+-   **Rolling Returns e Drawdown:** O desempenho passado não é uma linha reta. **Rolling Returns** (retornos móveis) mostram a performance do portfólio em diferentes janelas de tempo (ex: o retorno anualizado em cada um dos últimos 5 anos), revelando a consistência da estratégia. **Drawdown** mostra os períodos de queda, destacando a magnitude e a duração das piores perdas que o portfólio sofreu, um teste de estresse essencial para entender a resiliência do investimento.
+
+### Simulação de Monte Carlo
+Enquanto as outras ferramentas analisam o passado, a Simulação de Monte Carlo olha para o futuro. É uma técnica estatística que ajuda a responder à pergunta: "Dado o comportamento histórico dos meus ativos, qual é a gama de resultados possíveis para o meu portfólio no futuro?"
+
+-   **Processo:** A ferramenta executa milhares (ou dezenas de milhares) de simulações, gerando caminhos aleatórios para os preços dos ativos com base em suas volatilidades e retornos históricos.
+-   **Resultado:** O resultado não é uma única previsão, mas uma distribuição de probabilidade de todos os resultados possíveis. Isso permite ao investidor visualizar, por exemplo, a probabilidade de atingir uma meta financeira em 10 anos, ou as chances de o portfólio cair abaixo de um certo valor, oferecendo uma maneira quantitativa de avaliar o risco futuro.
+
+### Autenticação Segura
+A segurança e a privacidade dos dados financeiros são primordiais. A plataforma garante que todas as informações do usuário sejam protegidas por um sistema de autenticação robusto.
+
+-   **Tecnologia:** Utiliza o padrão de mercado **JSON Web Tokens (JWT)**. Após um login bem-sucedido com nome de usuário e senha, o backend gera um token digital assinado e o envia ao frontend.
+-   **Proteção:** O frontend anexa este token a cada requisição subsequente à API. O backend então verifica a assinatura do token para garantir que a requisição é autêntica e vem de um usuário logado. Isso impede o acesso não autorizado aos dados e funcionalidades da plataforma, garantindo que a análise de cada usuário permaneça confidencial.
 
 ## 🛠️ Tecnologias Utilizadas
 
