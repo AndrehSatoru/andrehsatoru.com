@@ -16,7 +16,7 @@ def test_data_loading():
     print("🔍 Testando carregamento de dados...")
 
     try:
-        from src.backend_projeto.core.data_handling import YFinanceProvider
+        from backend_projeto.infrastructure.data_handling import YFinanceProvider
         from src.backend_projeto.utils.config import Config
 
         config = Config()
@@ -93,7 +93,7 @@ def test_chart_generation():
     try:
         from src.backend_projeto.core.visualizations.ta_visualization import plot_price_with_ma, plot_macd
         from src.backend_projeto.core.visualizations.comprehensive_visualization import ComprehensiveVisualizer
-        from src.backend_projeto.core.data_handling import YFinanceProvider
+        from backend_projeto.infrastructure.data_handling import YFinanceProvider
 
         asset = prices.columns[0]
         output_dir = "test_graficos"

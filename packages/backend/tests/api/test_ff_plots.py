@@ -46,22 +46,22 @@ def _dummy_rf_monthly_selic():
 def monkeypatch_ff_plots(monkeypatch):
     def _patch():
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_ff3_us_monthly",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_ff3_us_monthly",
             lambda self, start_date, end_date: _dummy_ff3_monthly(),
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_ff5_us_monthly",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_ff5_us_monthly",
             lambda self, start_date, end_date: _dummy_ff5_monthly(),
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
             lambda self, assets, start_date, end_date: _dummy_prices_single(),
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.compute_monthly_rf_from_cdi",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.compute_monthly_rf_from_cdi",
             lambda self, start_date, end_date: _dummy_rf_monthly_selic(),
             raising=True,
         )

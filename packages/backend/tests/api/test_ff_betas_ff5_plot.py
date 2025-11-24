@@ -30,12 +30,12 @@ def _dummy_prices_single():
 def monkeypatch_ff5_plot(monkeypatch):
     def _patch():
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_ff5_us_monthly",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_ff5_us_monthly",
             lambda self, start_date, end_date: _dummy_ff5_monthly(),
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
             lambda self, assets, start_date, end_date: _dummy_prices_single(),
             raising=True,
         )

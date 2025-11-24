@@ -44,17 +44,17 @@ def _ff5_monthly_n(n=5):
 def monkeypatch_min_obs(monkeypatch):
     def _patch():
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
             lambda self, assets, start_date, end_date: _daily_prices_for_months(5),
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_ff3_us_monthly",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_ff3_us_monthly",
             lambda self, start_date, end_date: _ff3_monthly_n(5),
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_ff5_us_monthly",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_ff5_us_monthly",
             lambda self, start_date, end_date: _ff5_monthly_n(5),
             raising=True,
         )

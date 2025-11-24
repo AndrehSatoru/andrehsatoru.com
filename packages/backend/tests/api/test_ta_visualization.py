@@ -22,7 +22,7 @@ def monkeypatch_prices(monkeypatch):
             df = _dummy_prices()
             cols = [a for a in assets if a in df.columns]
             return df[cols] if cols else df
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
     return _patch
 
 

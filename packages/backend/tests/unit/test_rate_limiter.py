@@ -9,6 +9,7 @@ class MockRequest:
     def __init__(self, client_host: str = "127.0.0.1", headers: dict = None):
         self.client = type('obj', (object,), {'host': client_host})
         self.headers = headers or {}
+        self.state = type('obj', (object,), {})()
 
 
 class TestInMemoryRateLimiter:

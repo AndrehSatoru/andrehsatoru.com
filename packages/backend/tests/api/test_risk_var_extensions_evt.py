@@ -36,8 +36,8 @@ def monkeypatch_data(monkeypatch):
         def fake_var_evt(series, alpha):
             # Simula retorno do var_evt (valor, detalhes)
             return (evt_value, {"mocked": True, "alpha": alpha})
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_benchmark_data", fake_bench, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_benchmark_data", fake_bench, raising=True)
         monkeypatch.setattr("src.backend_projeto.core.analysis.var_evt", fake_var_evt, raising=True)
     return _patch
 

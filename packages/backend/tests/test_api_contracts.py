@@ -5,9 +5,9 @@ from starlette.testclient import TestClient
 from pathlib import Path
 import os
 
-# Assuming your FastAPI app is in src.backend_projeto.main
+# Assuming your FastAPI app is in backend_projeto.main
 # You might need to adjust the import path based on your project structure
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 # Path to your OpenAPI schema file
 # It's generated in packages/backend/openapi.json

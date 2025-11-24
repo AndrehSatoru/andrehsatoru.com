@@ -25,7 +25,7 @@ def monkeypatch_aliases(monkeypatch):
     def _patch():
         # wallet prices
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
             lambda self, assets, start_date, end_date: _dummy_prices_two_assets(),
             raising=True,
         )
@@ -34,7 +34,7 @@ def monkeypatch_aliases(monkeypatch):
             calls["ticker"] = ticker
             return _dummy_benchmark_series()
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_benchmark_data",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_benchmark_data",
             _fetch_bench,
             raising=True,
         )

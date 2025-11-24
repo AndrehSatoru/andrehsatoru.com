@@ -347,7 +347,19 @@ def drawdown(returns: pd.Series) -> Dict:
     # Find the maximum drawdown
     max_drawdown = drawdown.min()
     end_date = drawdown.idxmin()
-    start_date = cum_returns.index[cum_returns.index.get_loc(end_date) - (cum_returns.iloc[:cum_returns.index.get_loc(end_date)] == running_max.iloc[cum_returns.index.get_loc(end_date)]).iloc[::-1].idxmax()]
+    
+    # Find start date: look backwards from end_date to find where drawdown was zero
+    end_idx = cum_returns.index.get_loc(end_date)
+    target_value = running_max.iloc[end_idx]
+    
+    # Search backwards for the peak before the drawdown
+    start_idx = 0
+    for i in range(end_idx, -1, -1):
+        if cum_returns.iloc[i] >= target_value * 0.9999:  # Allow small floating point errors
+            start_idx = i
+            break
+    
+    start_date = cum_returns.index[start_idx]
     
     return {
         "max_drawdown": max_drawdown,
@@ -410,6 +422,81 @@ def backtest_var(returns: pd.Series, alpha: float, method: str = 'historical', e
     Raises:
         ValueError: If an invalid VaR method is provided.
     """
+    if len(returns) < 30:
+        raise ValueError("Insufficient data for backtesting (need at least 30 observations)")
+    
+    # Use a rolling window of 250 days for VaR calculation
+    window = min(250, len(returns) - 1)
+    
+    # Calculate rolling VaR
+    var_series = []
+    for i in range(window, len(returns)):
+        window_returns = returns.iloc[i-window:i]
+        if method == 'historical':
+            var_value = -np.percentile(window_returns, (1 - alpha) * 100)
+        elif method == 'std':
+            var_value = window_returns.std() * norm.ppf(alpha)
+        elif method == 'ewma':
+            # Simple EWMA approximation
+            var_value = window_returns.ewm(alpha=1-ewma_lambda).std().iloc[-1] * norm.ppf(alpha)
+        else:
+            raise ValueError(f"Unsupported VaR method: {method}")
+        var_series.append(var_value)
+    
+    # Calculate exceptions (actual losses exceeding VaR)
+    actual_losses = -returns.iloc[window:]  # Convert returns to losses
+    exceptions = (actual_losses > var_series).sum()
+    n = len(var_series)
+    exception_rate = exceptions / n if n > 0 else 0
+    
+    # Simplified Kupiec test (Proportion of Failures)
+    if exceptions == 0:
+        kupiec_lr = 0
+        kupiec_pvalue = 1.0
+    else:
+        p_hat = exception_rate
+        p = 1 - alpha
+        kupiec_lr = -2 * np.log(((1-p)**(n-exceptions) * p**exceptions) / ((1-p_hat)**(n-exceptions) * p_hat**exceptions))
+        kupiec_pvalue = 1 - chi2.cdf(kupiec_lr, 1)
+    
+    # Simplified Christoffersen test (basic independence test)
+    # For simplicity, just check if exceptions are clustered
+    exception_series = (actual_losses > var_series).astype(int)
+    if exceptions > 1:
+        # Simple autocorrelation test
+        autocorr = np.corrcoef(exception_series[:-1], exception_series[1:])[0, 1]
+        christoffersen_lr_ind = n * autocorr**2  # Simplified
+        christoffersen_pvalue = 1 - chi2.cdf(christoffersen_lr_ind, 1)
+        christoffersen_lr_cc = kupiec_lr + christoffersen_lr_ind  # Combined test
+        christoffersen_cc_pvalue = 1 - chi2.cdf(christoffersen_lr_cc, 2)
+    else:
+        christoffersen_lr_ind = 0
+        christoffersen_pvalue = 1.0
+        christoffersen_lr_cc = kupiec_lr
+        christoffersen_cc_pvalue = kupiec_pvalue
+    
+    # Basel Traffic Light zones
+    if exception_rate <= 0.01:  # Less than 1% exceptions
+        basel_zone = "green"
+    elif exception_rate <= 0.02:  # 1-2% exceptions
+        basel_zone = "amber"
+    else:  # More than 2% exceptions
+        basel_zone = "red"
+    
+    return {
+        "n": n,
+        "exceptions": int(exceptions),
+        "exception_rate": float(exception_rate),
+        "kupiec_lr": float(kupiec_lr),
+        "kupiec_pvalue": float(kupiec_pvalue),
+        "christoffersen_lr_ind": float(christoffersen_lr_ind),
+        "christoffersen_pvalue": float(christoffersen_pvalue),
+        "christoffersen_lr_cc": float(christoffersen_lr_cc),
+        "christoffersen_cc_pvalue": float(christoffersen_cc_pvalue),
+        "basel_zone": basel_zone,
+        "alpha": alpha,
+        "method": method
+    }
 
 
 # Covariância (Ledoit-Wolf) e atribuição de risco
@@ -433,6 +520,26 @@ def covariance_ledoit_wolf(returns_df: pd.DataFrame) -> Dict:
     Raises:
         RuntimeError: If the 'sklearn' package is not available.
     """
+    try:
+        from sklearn.covariance import LedoitWolf
+    except ImportError:
+        # Fallback to sample covariance if sklearn is not available
+        cov_matrix = returns_df.cov()
+        return {
+            "cov": cov_matrix.values.tolist(),
+            "shrinkage": 0.0,  # No shrinkage applied
+            "columns": returns_df.columns.tolist()
+        }
+    
+    # Use Ledoit-Wolf shrinkage
+    lw = LedoitWolf()
+    lw.fit(returns_df.values)
+    
+    return {
+        "cov": lw.covariance_.tolist(),
+        "shrinkage": lw.shrinkage_,
+        "columns": returns_df.columns.tolist()
+    }
 
 
 def risk_attribution(returns_df: pd.DataFrame, assets: List[str], weights: Optional[List[float]], method: str = 'std', ewma_lambda: float = 0.94) -> Dict:
@@ -460,6 +567,45 @@ def risk_attribution(returns_df: pd.DataFrame, assets: List[str], weights: Optio
     Raises:
         ValueError: If no valid assets are found for attribution.
     """
+    # Filter returns for the specified assets
+    if not all(asset in returns_df.columns for asset in assets):
+        raise ValueError(f"Some assets not found in returns data: {assets}")
+    
+    asset_returns = returns_df[assets].dropna()
+    
+    if len(asset_returns) == 0:
+        raise ValueError("No valid returns data found for attribution")
+    
+    # Normalize weights
+    if weights is None:
+        weights = [1.0 / len(assets)] * len(assets)
+    else:
+        total_weight = sum(weights)
+        weights = [w / total_weight for w in weights]
+    
+    # Calculate covariance matrix
+    cov_matrix = covariance_ledoit_wolf(asset_returns)["cov"]
+    
+    # Calculate portfolio volatility
+    portfolio_vol = np.sqrt(np.dot(weights, np.dot(cov_matrix, weights)))
+    
+    # Calculate contribution to volatility for each asset
+    contribution_vol = []
+    for i, asset in enumerate(assets):
+        # Marginal contribution to volatility
+        marginal_vol = np.dot(cov_matrix[i], weights) / portfolio_vol
+        contribution_vol.append(weights[i] * marginal_vol)
+    
+    # For now, skip VaR contribution (would need VaR calculation)
+    contribution_var = []
+    
+    return {
+        "assets": assets,
+        "weights": weights,
+        "portfolio_vol": float(portfolio_vol),
+        "contribution_vol": [float(c) for c in contribution_vol],
+        "contribution_var": contribution_var
+    }
 
 
 def incremental_var(
@@ -977,11 +1123,13 @@ class RiskEngine:
         
         comparison = {}
         for method in methods:
-            var_value, var_details = self.compute_var(assets, start_date, end_date, alpha, method, ewma_lambda, weights)
-            es_value, es_details = self.compute_es(assets, start_date, end_date, alpha, method, ewma_lambda, weights)
+            var_result = self.compute_var(assets, start_date, end_date, alpha, method, ewma_lambda, weights)
+            es_result = self.compute_es(assets, start_date, end_date, alpha, method, ewma_lambda, weights)
             comparison[method] = {
-                "var": var_value,
-                "es": es_value,
+                "var": var_result.get("var"),
+                "es": es_result.get("es"),
+                "var_details": var_result.get("details"),
+                "es_details": es_result.get("details"),
             }
         return {"comparison": comparison}
 

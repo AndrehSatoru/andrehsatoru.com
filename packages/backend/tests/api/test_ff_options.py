@@ -37,7 +37,7 @@ def monkeypatch_ff_options(monkeypatch):
     def _patch():
         # FF3 monthly
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_ff3_us_monthly",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_ff3_us_monthly",
             lambda self, start_date, end_date: _dummy_ff3_monthly(),
             raising=True,
         )
@@ -47,25 +47,25 @@ def monkeypatch_ff_options(monkeypatch):
             df = df.assign(RMW=0.0, CMA=0.0)
             return df
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_ff5_us_monthly",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_ff5_us_monthly",
             lambda self, start_date, end_date: _dummy_ff5_monthly(),
             raising=True,
         )
         # Prices daily (BRL asset)
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
             lambda self, assets, start_date, end_date: _dummy_prices_brl(),
             raising=True,
         )
         # FX USDBRL
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_exchange_rates",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_exchange_rates",
             lambda self, currencies, start_date, end_date: _dummy_fx_usdbrl(start_date, end_date),
             raising=True,
         )
         # Asset currency info -> BRL for .SA
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_asset_info",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_asset_info",
             lambda self, assets: {a: ("BRL" if a.upper().endswith(".SA") else "USD") for a in assets},
             raising=True,
         )

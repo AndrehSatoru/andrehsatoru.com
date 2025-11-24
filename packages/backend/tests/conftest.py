@@ -18,6 +18,13 @@ def _dummy_prices_two_assets():
     prices_b = 50 + np.cumsum(np.random.normal(0, 0.5, len(idx)))
     return pd.DataFrame({"AAA.SA": prices_a, "BBB.SA": prices_b}, index=idx)
 
+def _dummy_benchmark_series():
+    """Generate dummy benchmark series for testing."""
+    idx = pd.date_range(start="2023-01-01", periods=500, freq="B")
+    np.random.seed(42)
+    benchmark = 1000 + np.cumsum(np.random.normal(0.0005, 0.01, len(idx)))
+    return pd.Series(benchmark, index=idx, name="Benchmark")
+
 @pytest.fixture(autouse=True)
 def stub_fetch_prices(monkeypatch):
     # Mock the YFinanceProvider constructor

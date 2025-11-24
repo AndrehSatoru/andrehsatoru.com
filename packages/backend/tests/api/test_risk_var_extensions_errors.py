@@ -27,7 +27,7 @@ def monkeypatch_prices(monkeypatch):
     def _patch():
         def fake_prices(self, assets, start_date, end_date):
             return _dummy_prices()
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
     return _patch
 
 
@@ -36,7 +36,7 @@ def monkeypatch_benchmark(monkeypatch):
     def _patch(shifted=False):
         def fake_bench(self, ticker, start_date, end_date):
             return _dummy_benchmark_shifted() if shifted else None
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_benchmark_data", fake_bench, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_benchmark_data", fake_bench, raising=True)
     return _patch
 
 

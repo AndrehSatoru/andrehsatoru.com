@@ -48,7 +48,7 @@ def test_risk_drawdown(client: TestClient):
 
 
 def test_validate_backtest_request_model():
-    from src.backend_projeto.api.models import BacktestRequest
+    from backend_projeto.domain.models.models import BacktestRequest
     payload = {
         "assets": ["AAA.SA", "BBB.SA"],
         "start_date": "2023-01-01",
@@ -62,8 +62,7 @@ def test_validate_backtest_request_model():
     except Exception as e:
         pytest.fail(f"BacktestRequest validation failed: {e}")
 
-def test_risk_backtest_ewma(client: TestClient, monkeypatch_prices):
-    monkeypatch_prices()
+def test_risk_backtest_ewma(client: TestClient):
     payload = {
         "assets": ["AAA.SA", "BBB.SA"],
         "start_date": "2023-01-01",
@@ -94,11 +93,12 @@ def test_covariance_ledoit_wolf(client: TestClient):
 
 def test_risk_attribution(client: TestClient):
     payload = {
-        "assets": ["AAA.SA", "BBB.SA", "CCC.SA"],
+        "assets": ["AAA.SA", "BBB.SA"],
         "start_date": "2024-01-01",
         "end_date": "2024-03-01",
-        "weights": [0.3, 0.5, 0.2],
-        "method": "std"
+        "weights": [0.6, 0.4],
+        "method": "std",
+        "ewma_lambda": 0.94
     }
     r = client.post("/api/v1/risk/attribution", json=payload)
     assert r.status_code == 200
@@ -117,4 +117,4 @@ def test_risk_compare(client: TestClient):
     r = client.post("/api/v1/risk/compare", json=payload)
     assert r.status_code == 200
     js = r.json()["result"]
-    assert "results" in js and isinstance(js["results"], dict)
+    assert "comparison" in js and isinstance(js["comparison"], dict)

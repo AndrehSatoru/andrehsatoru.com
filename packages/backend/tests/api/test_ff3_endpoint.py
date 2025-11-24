@@ -47,9 +47,9 @@ def monkeypatch_ff3(monkeypatch):
             return _dummy_ff3_monthly()
         def fake_rf(self, start_date, end_date):
             return _dummy_rf_monthly_selic()
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_ff3_us_monthly", fake_ff3, raising=True)
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.compute_monthly_rf_from_cdi", fake_rf, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_ff3_us_monthly", fake_ff3, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.compute_monthly_rf_from_cdi", fake_rf, raising=True)
     return _patch
 
 
@@ -85,7 +85,7 @@ def test_ff3_endpoint_us10y(monkeypatch_ff3, monkeypatch):
         idx = pd.date_range(start="2022-01-31", periods=24, freq="M")
         return pd.Series(np.linspace(4.0, 4.5, 24), index=idx, name="US10Y")
 
-    monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_us10y_monthly_yield", fake_us10y, raising=True)
+    monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_us10y_monthly_yield", fake_us10y, raising=True)
 
     payload = {
         "assets": ["AAA"],

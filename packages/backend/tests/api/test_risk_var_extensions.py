@@ -32,8 +32,8 @@ def monkeypatch_data(monkeypatch):
             return df[cols] if cols else df
         def fake_bench(self, ticker, start_date, end_date):
             return _dummy_benchmark()
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
-        monkeypatch.setattr("src.backend_projeto.core.data_handling.YFinanceProvider.fetch_benchmark_data", fake_bench, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
+        monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_benchmark_data", fake_bench, raising=True)
     return _patch
 
 
