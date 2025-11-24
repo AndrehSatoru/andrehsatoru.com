@@ -44,6 +44,7 @@ portfolio_analysis_inputs/
 
 # Gemini temporary files
 *.gemini
+gemini.md
 
 # macOS files
 .DS_Store
