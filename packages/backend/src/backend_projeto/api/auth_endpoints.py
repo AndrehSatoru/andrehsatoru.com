@@ -10,7 +10,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 from typing import Annotated
 
-from backend_projeto.core.auth import (
+from backend_projeto.application.auth import (
     authenticate_user,
     create_access_token,
     create_refresh_token,
@@ -20,7 +20,7 @@ from backend_projeto.core.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS
 )
-from backend_projeto.api.models.models import ApiErrorResponse
+from backend_projeto.domain.models.models import ApiErrorResponse
 
 router = APIRouter(
     prefix="/auth",

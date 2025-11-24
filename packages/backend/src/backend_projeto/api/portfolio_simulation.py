@@ -12,9 +12,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.core.analysis import compute_returns, portfolio_returns, drawdown
-from .models.portfolio_simulation import (
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.analysis import compute_returns, portfolio_returns, drawdown
+from backend_projeto.domain.models.portfolio_simulation import (
     PortfolioSimulationRequest,
     PortfolioSimulationResponse,
     PortfolioValue,

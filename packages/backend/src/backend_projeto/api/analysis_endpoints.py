@@ -8,7 +8,7 @@ from fastapi import APIRouter, File, UploadFile, HTTPException
 from typing import Optional
 import pandas as pd
 from io import BytesIO
-from src.backend_projeto.core.analysis import PortfolioAnalyzer
+from backend_projeto.domain.analysis import PortfolioAnalyzer
 
 router = APIRouter()
 

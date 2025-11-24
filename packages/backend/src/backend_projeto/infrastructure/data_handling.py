@@ -14,7 +14,7 @@ import pandas as pd
 from pandas_datareader import data as pdr
 import yfinance as yf
 from bcb import sgs
-from backend_projeto.utils.retry import retry_with_backoff
+from backend_projeto.infrastructure.utils.retry import retry_with_backoff
 import numpy as np
 import time
 import logging
@@ -22,9 +22,9 @@ import requests
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from abc import ABC, abstractmethod
-from backend_projeto.utils.cache import CacheManager
-from backend_projeto.utils.config import Settings, settings
-from backend_projeto.core.exceptions import (
+from backend_projeto.infrastructure.utils.cache import CacheManager
+from backend_projeto.infrastructure.utils.config import Settings, settings
+from backend_projeto.domain.exceptions import (
     DataProviderError,
     InvalidTransactionFileError,
     DataValidationError,
@@ -32,9 +32,9 @@ from backend_projeto.core.exceptions import (
 import concurrent.futures
 import functools
 import pandas as pd
-from .trading_calendar import trading_calendar
+from backend_projeto.domain.trading_calendar import trading_calendar
 
-from backend_projeto.utils.cache_cleaner import CacheCleaner
+from backend_projeto.infrastructure.utils.cache_cleaner import CacheCleaner
 
 __all__ = ["DataProvider", "YFinanceProvider", "FinnhubProvider", "AlphaVantageProvider"]
 
@@ -224,8 +224,6 @@ class DataProvider(ABC):
                 logging.warning(f"Could not fetch market cap for {asset} from YFinance: {e}")
                 market_caps[asset] = 0.0
         return market_caps
-
-from backend_projeto.utils.cache_cleaner import CacheCleaner
 
 class YFinanceProvider(DataProvider):
     """Provider for YFinance data with retry, circuit breaker, and flexible fallbacks."""

@@ -4,7 +4,7 @@ import pytest
 from datetime import datetime
 from fastapi.testclient import TestClient
 
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 @pytest.fixture(scope="session")
 def client():
@@ -34,36 +34,36 @@ def stub_fetch_prices(monkeypatch):
         self.calendar = MagicMock() # Mock trading calendar
 
     monkeypatch.setattr(
-        "src.backend_projeto.core.data_handling.YFinanceProvider.__init__",
+        "backend_projeto.infrastructure.data_handling.YFinanceProvider.__init__",
         mock_yfinance_provider_init,
     )
     monkeypatch.setattr(
-        "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+        "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
         lambda self, assets, start_date, end_date: _dummy_prices_two_assets(),
         raising=True,
     )
     monkeypatch.setattr(
-        "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_asset_info",
+        "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_asset_info",
         lambda self, assets: {asset: "USD" for asset in assets},
         raising=True,
     )
     monkeypatch.setattr(
-        "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_benchmark_data",
+        "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_benchmark_data",
         lambda self, ticker, start_date, end_date: _dummy_benchmark_series(),
         raising=True,
     )
     monkeypatch.setattr(
-        "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_dividends",
+        "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_dividends",
         lambda self, assets, start_date, end_date: pd.DataFrame(),
         raising=True,
     )
     monkeypatch.setattr(
-        "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_exchange_rates",
+        "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_exchange_rates",
         lambda self, currencies, start_date, end_date: pd.DataFrame(),
         raising=True,
     )
     monkeypatch.setattr(
-        "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_market_caps",
+        "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_market_caps",
         lambda self, assets: {asset: 1e9 for asset in assets},
         raising=True,
     )

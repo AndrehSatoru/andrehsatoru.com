@@ -8,9 +8,9 @@ from unittest.mock import patch, MagicMock
 import pandas as pd
 import numpy as np
 
-from src.backend_projeto.main import app
-from src.backend_projeto.core.data_handling import YFinanceProvider
-from src.backend_projeto.utils.config import Settings
+from backend_projeto.main import app
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.infrastructure.utils.config import Settings
 
 # Configuração do cliente de teste
 client = TestClient(app)
@@ -41,7 +41,7 @@ class TestPricesEndpoints:
         }, index=pd.date_range(start=START_DATE, periods=3))
 
         # Fazer requisição
-        with patch('src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices', return_value=mock_data):
+        with patch('backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices', return_value=mock_data):
             response = client.post(
                 "/api/v1/prices",
                 json={
@@ -83,7 +83,7 @@ class TestOptimizationEndpoints:
 
         # Fazer requisição
         with (
-            patch('src.backend_projeto.core.optimization.OptimizationEngine.load_prices', return_value=mock_prices),
+            patch('backend_projeto.domain.optimization.OptimizationEngine.load_prices', return_value=mock_prices),
             patch('src.backend_projeto.api.deps.get_config', return_value=mock_config)
         ):
             response = client.post(
@@ -130,7 +130,7 @@ class TestRiskEndpoints:
         }, index=pd.date_range(start=START_DATE, periods=5))
 
         # Fazer requisição
-        with patch('src.backend_projeto.core.analysis.RiskEngine._load_prices', return_value=mock_prices):
+        with patch('backend_projeto.domain.analysis.RiskEngine._load_prices', return_value=mock_prices):
             response = client.post(
                 "/api/v1/risk/var",
                 json={
@@ -157,7 +157,7 @@ class TestRiskEndpoints:
         }, index=pd.date_range(start=START_DATE, periods=5))
 
         # Fazer requisição
-        with patch('src.backend_projeto.core.analysis.RiskEngine._load_prices', return_value=mock_prices):
+        with patch('backend_projeto.domain.analysis.RiskEngine._load_prices', return_value=mock_prices):
             response = client.post(
                 "/api/v1/risk/es",
                 json={
@@ -186,7 +186,7 @@ class TestEfficientFrontierEndpoints:
 
         # Fazer requisição
         with (
-            patch('src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices', return_value=mock_prices),
+            patch('backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices', return_value=mock_prices),
             patch('src.backend_projeto.api.deps.get_config', return_value=mock_config)
         ):
             response = client.post(
@@ -215,7 +215,7 @@ class TestEfficientFrontierEndpoints:
 class TestErrorHandling:
     def test_nonexistent_asset(self):
         # Configurar mock para retornar DataFrame vazio para ativo inexistente
-        with patch('src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices', return_value=pd.DataFrame()):
+        with patch('backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices', return_value=pd.DataFrame()):
             response = client.post(
                 "/api/v1/prices",
                 json={

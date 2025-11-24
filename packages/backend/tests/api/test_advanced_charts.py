@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 import pandas as pd
 import numpy as np
 
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 client = TestClient(app)
 
@@ -19,7 +19,7 @@ def monkeypatch_rolling_beta(monkeypatch):
             return pd.DataFrame(data, index=idx)
         
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
             fake_prices,
             raising=True,
         )
@@ -72,12 +72,12 @@ def monkeypatch_sector_analysis(monkeypatch):
             return {asset: info[asset] for asset in assets}
 
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
             fake_prices,
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_asset_info",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_asset_info",
             fake_asset_info,
             raising=True,
         )
@@ -114,12 +114,12 @@ def monkeypatch_monte_carlo_dashboard(monkeypatch):
             return pd.DataFrame(data, index=idx)
         
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
             fake_prices,
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.core.simulation.MonteCarloEngine.simulate_gbm",
+            "backend_projeto.domain.simulation.MonteCarloEngine.simulate_gbm",
             lambda self, assets, start_date, end_date, weights, n_paths, n_days, vol_method, ewma_lambda, seed: {
                 "params": {"mu": 0.001, "sigma": 0.02, "vol_method": vol_method},
                 "var": 0.05,
@@ -133,7 +133,7 @@ def monkeypatch_monte_carlo_dashboard(monkeypatch):
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.api.advanced_endpoints.get_config",
+            "backend_projeto.api.deps.get_config",
             fake_get_config,
             raising=True,
         )
@@ -169,12 +169,12 @@ def monkeypatch_efficient_frontier(monkeypatch):
             return pd.DataFrame(data, index=idx)
         
         monkeypatch.setattr(
-            "src.backend_projeto.core.data_handling.YFinanceProvider.fetch_stock_prices",
+            "backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices",
             fake_prices,
             raising=True,
         )
         monkeypatch.setattr(
-            "src.backend_projeto.api.endpoints.get_config", # Mock the get_config dependency
+            "backend_projeto.api.deps.get_config", # Mock the get_config dependency
             lambda: MockConfig(), # get_config is a function that returns a Config object
             raising=True,
         )

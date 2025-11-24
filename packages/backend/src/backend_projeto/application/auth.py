@@ -12,7 +12,7 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import redis # Import redis
-from ..utils.config import settings
+from backend_projeto.infrastructure.utils.config import settings
 
 # Initialize Redis client for refresh token storage
 redis_client = redis.Redis(

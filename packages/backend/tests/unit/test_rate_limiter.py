@@ -1,7 +1,7 @@
 import pytest
 import time
 from fastapi import Request, HTTPException
-from backend_projeto.utils.rate_limiter import InMemoryRateLimiter
+from backend_projeto.infrastructure.utils.rate_limiter import InMemoryRateLimiter
 
 
 class MockRequest:

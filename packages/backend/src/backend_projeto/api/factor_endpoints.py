@@ -9,13 +9,13 @@ It provides routes for calculating metrics based on:
 """
 # src/backend_projeto/api/factor_endpoints.py
 from fastapi import APIRouter, Depends, HTTPException
-from .models import (
+from backend_projeto.domain.models import (
     FF3Request, FF5Request, CAPMRequest, APTRequest, RiskResponse
 )
 from .deps import get_loader, get_optimization_engine
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.core.optimization import OptimizationEngine
-from backend_projeto.core.analysis import ff3_metrics, ff5_metrics
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.optimization import OptimizationEngine
+from backend_projeto.domain.analysis import ff3_metrics, ff5_metrics
 from .helpers import _normalize_benchmark_alias
 
 router = APIRouter(

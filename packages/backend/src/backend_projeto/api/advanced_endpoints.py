@@ -13,9 +13,9 @@ from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict, Any
 import io
 
-from backend_projeto.core.exceptions import DataProviderError
+from backend_projeto.domain.exceptions import DataProviderError
 
-from .models import (
+from backend_projeto.domain.models import (
     PricesRequest, RiskResponse,
     AdvancedChartRequest, DashboardRequest, InteractiveChartRequest, RollingBetaRequest, UnderwaterPlotRequest, SectorAnalysisRequest, MonteCarloDashboardRequest,
     AssetAllocationRequest, # Existing import
@@ -23,11 +23,11 @@ from .models import (
     RiskContributionRequest # New import
 )
 from .deps import get_loader, get_config, get_risk_engine
-from src.backend_projeto.core.analysis import calculate_rolling_beta, RiskEngine, compute_returns
-from src.backend_projeto.core.simulation import MonteCarloEngine
-from src.backend_projeto.core.visualizations.advanced_visualization import AdvancedVisualizer
-from src.backend_projeto.core.visualizations.interactive_visualization import InteractiveVisualizer
-from src.backend_projeto.core.dashboard_generator import DashboardGenerator
+from backend_projeto.domain.analysis import calculate_rolling_beta, RiskEngine, compute_returns
+from backend_projeto.domain.simulation import MonteCarloEngine
+from backend_projeto.infrastructure.visualization.advanced_visualization import AdvancedVisualizer
+from backend_projeto.infrastructure.visualization.interactive_visualization import InteractiveVisualizer
+from backend_projeto.application.dashboard_generator import DashboardGenerator
 
 router = APIRouter(
     tags=["Advanced Visualization"],

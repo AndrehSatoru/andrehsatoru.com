@@ -3,18 +3,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 import io
 from datetime import datetime
-from .models import (
+from backend_projeto.domain.models import (
     FrontierRequest, TAPlotRequest, FFFactorsPlotRequest, FFBetaPlotRequest, ComprehensiveChartsRequest, ComprehensiveChartsResponse
 )
 from .deps import get_loader, get_config
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.core.visualizations.visualization import efficient_frontier_image
-from backend_projeto.core.visualizations.ta_visualization import plot_price_with_ma, plot_macd, plot_combined_ta
-from backend_projeto.core.visualizations.factor_visualization import plot_ff_factors, plot_ff_betas
-from backend_projeto.core.visualizations.comprehensive_visualization import ComprehensiveVisualizer
-from backend_projeto.utils.config import Settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.infrastructure.visualization.visualization import efficient_frontier_image
+from backend_projeto.infrastructure.visualization.ta_visualization import plot_price_with_ma, plot_macd, plot_combined_ta
+from backend_projeto.infrastructure.visualization.factor_visualization import plot_ff_factors, plot_ff_betas
+from backend_projeto.infrastructure.visualization.comprehensive_visualization import ComprehensiveVisualizer
+from backend_projeto.infrastructure.utils.config import Settings
 from backend_projeto.api.helpers import _convert_prices_to_usd, _normalize_benchmark_alias
-from backend_projeto.core.exceptions import DataProviderError
+from backend_projeto.domain.exceptions import DataProviderError
 import logging
 
 router = APIRouter(
@@ -88,11 +88,11 @@ def plot_ff_betas_endpoint(
         rf_m.name = 'RF'
     # Calcular métricas
     if model == 'FF3':
-        from backend_projeto.core.analysis import ff3_metrics
+        from backend_projeto.domain.analysis import ff3_metrics
         res = ff3_metrics(prices, factors, rf_m, [req.asset])
         betas = res['results'].get(req.asset, {})
     else:
-        from backend_projeto.core.analysis import ff5_metrics
+        from backend_projeto.domain.analysis import ff5_metrics
         res = ff5_metrics(prices, factors, rf_m, [req.asset])
         betas = res['results'].get(req.asset, {})
     img_bytes = plot_ff_betas(betas, model=model, title=f"{req.asset} - {model} Betas")

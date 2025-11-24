@@ -14,13 +14,13 @@ import numpy as np
 import logging
 from typing import Dict, Tuple, List, Optional
 from dataclasses import dataclass
-from backend_projeto.utils.config import Settings, settings
-from backend_projeto.core.data_handling import YFinanceProvider
+from backend_projeto.infrastructure.utils.config import Settings, settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
 from numpy.linalg import lstsq
 from scipy.optimize import minimize
 
 
-from backend_projeto.core.utils import _returns_from_prices, _annualize_mean_cov
+from backend_projeto.domain.financial_math import _returns_from_prices, _annualize_mean_cov
 
 @dataclass
 class OptimizationEngine:

@@ -11,9 +11,9 @@ from typing import List, Dict, Optional, Tuple
 import pandas as pd
 import numpy as np
 from datetime import datetime, date
-from backend_projeto.utils.config import Settings
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.core.analysis import compute_returns, portfolio_returns, drawdown
+from backend_projeto.infrastructure.utils.config import Settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.analysis import compute_returns, portfolio_returns, drawdown
 
 @dataclass
 class PortfolioSimulator:

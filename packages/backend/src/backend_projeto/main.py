@@ -34,7 +34,7 @@ from .api import (
 )
 from fastapi.security import OAuth2PasswordBearer
 from typing import Annotated
-from .core.auth import verify_token
+from .application.auth import verify_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
@@ -49,8 +49,8 @@ async def get_current_username(token: Annotated[str, Depends(oauth2_scheme)]) ->
     return username
 
 # Inicializar logging
-from .utils.config import settings as config
-from .utils.logging_setup import setup_logging
+from .infrastructure.utils.config import settings as config
+from .infrastructure.utils.logging_setup import setup_logging
 log_level = getattr(logging, config.LOG_LEVEL.upper(), logging.INFO)
 setup_logging(level=log_level, log_format=config.LOG_FORMAT)
 
@@ -78,6 +78,7 @@ logging.info(f"CORS habilitado para: {origins}")
 app.add_middleware(GZipMiddleware, minimum_size=config.GZIP_MINIMUM_SIZE)
 
 # Rate limiter (condicional)
+from .infrastructure.utils.rate_limiter import InMemoryRateLimiter, add_rate_limit_headers
 if config.RATE_LIMIT_ENABLED:
     app.state.rate_limiter = InMemoryRateLimiter(
         max_requests=config.RATE_LIMIT_REQUESTS,
@@ -151,7 +152,7 @@ app.include_router(auth_endpoints.router, prefix="/api/v1")
 
 
 # Exception Handlers padronizados
-from .core.exceptions import ( # Moved this import here
+from .domain.exceptions import ( # Moved this import here
     AppError,
     DataProviderError,
     InvalidTransactionFileError,

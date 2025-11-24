@@ -13,8 +13,8 @@ import pandas as pd
 import logging
 from typing import List, Dict, Optional
 from dataclasses import dataclass
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.utils.config import Settings, settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.infrastructure.utils.config import Settings, settings
 
 try:
     from arch import arch_model
@@ -53,6 +53,10 @@ class MonteCarloEngine:
         Returns:
             pd.Series: A Series containing the portfolio returns.
         """
+        returns = prices[assets].pct_change().dropna()
+        if weights is None:
+            weights = [1/len(assets)] * len(assets)
+        return (returns * weights).sum(axis=1)
 
     def _estimate_params(self, r: pd.Series, vol_method: str = 'std', ewma_lambda: float = 0.94) -> Dict:
         """
@@ -70,6 +74,20 @@ class MonteCarloEngine:
             RuntimeError: If 'arch' package is not available for 'garch' method.
             ValueError: If an invalid volatility method is specified.
         """
+        mu = r.mean()
+        if vol_method == 'std':
+            sigma = r.std()
+        elif vol_method == 'ewma':
+            sigma = r.ewm(alpha=ewma_lambda).std().iloc[-1]
+        elif vol_method == 'garch':
+            if arch_model is None:
+                raise RuntimeError("Pacote 'arch' não disponível para método garch")
+            am = arch_model(r * 100, vol='GARCH', p=1, q=1, dist='normal')
+            res = am.fit(disp='off')
+            sigma = res.conditional_volatility.iloc[-1] / 100.0
+        else:
+            raise ValueError(f"Método de volatilidade desconhecido: {vol_method}")
+        return {'mu': mu, 'sigma': sigma}
 
     def simulate_gbm(self, assets: List[str], start_date: str, end_date: str, weights: Optional[List[float]], n_paths: int, n_days: int, vol_method: str = 'std', ewma_lambda: float = 0.94, seed: Optional[int] = None) -> Dict:
         """

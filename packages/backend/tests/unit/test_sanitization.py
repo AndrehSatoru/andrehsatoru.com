@@ -1,5 +1,5 @@
 import pytest
-from backend_projeto.utils.sanitization import (
+from backend_projeto.infrastructure.utils.sanitization import (
     sanitize_ticker,
     sanitize_tickers,
     validate_date_format,

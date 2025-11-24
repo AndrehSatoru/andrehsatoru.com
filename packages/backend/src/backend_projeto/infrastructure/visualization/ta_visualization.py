@@ -1,9 +1,3 @@
-"""
-This module provides functions for visualizing technical analysis indicators.
-
-It uses `matplotlib` to generate plots of asset prices with moving averages,
-MACD (Moving Average Convergence Divergence), and combined technical analysis charts.
-"""
 # core/ta_visualization.py
 # Visualização de análise técnica
 
@@ -13,10 +7,10 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from datetime import datetime
 
-from .technical_analysis import moving_averages, macd_series
+from backend_projeto.domain.technical_analysis import moving_averages, macd_series
 
 
 def plot_price_with_ma(
@@ -24,23 +18,19 @@ def plot_price_with_ma(
     asset: str,
     windows: List[int] = [5, 21],
     method: str = "sma",
-    figsize: Tuple[int, int] = (12, 6),
+    figsize: tuple = (12, 6),
 ) -> bytes:
-    """
-    Generates a PNG plot of asset prices with moving averages.
-
-    Args:
-        prices (pd.DataFrame): DataFrame containing asset prices (index = dates, columns = assets).
-        asset (str): Ticker of the asset to plot.
-        windows (List[int]): List of window sizes for the moving averages. Defaults to [5, 21].
-        method (str): Method for calculating moving averages ('sma' or 'ema'). Defaults to "sma".
-        figsize (Tuple[int, int]): Size of the figure (width, height). Defaults to (12, 6).
-
-    Returns:
-        bytes: PNG image of the generated plot in bytes format.
-
-    Raises:
-        ValueError: If the specified asset is not found in the prices DataFrame.
+    """Gera gráfico PNG de preços com médias móveis.
+    
+    Parâmetros:
+        prices: DataFrame com preços (índice = datas, colunas = ativos).
+        asset: Ticker do ativo a plotar.
+        windows: Janelas das médias móveis.
+        method: 'sma' ou 'ema'.
+        figsize: Tamanho da figura (largura, altura).
+    
+    Retorna:
+        Bytes do PNG gerado.
     """
     if asset not in prices.columns:
         raise ValueError(f"Ativo '{asset}' não encontrado nos dados")
@@ -81,27 +71,18 @@ def plot_macd(
     fast: int = 12,
     slow: int = 26,
     signal: int = 9,
-    figsize: Tuple[int, int] = (12, 8),
+    figsize: tuple = (12, 8),
 ) -> bytes:
-    """
-    Generates a PNG plot of asset prices with MACD (Moving Average Convergence Divergence).
-
-    The plot includes two subplots: one for the asset's price and another for the MACD line,
-    signal line, and histogram.
-
-    Args:
-        prices (pd.DataFrame): DataFrame containing asset prices.
-        asset (str): Ticker of the asset to plot.
-        fast (int): The fast period for MACD calculation. Defaults to 12.
-        slow (int): The slow period for MACD calculation. Defaults to 26.
-        signal (int): The signal period for MACD calculation. Defaults to 9.
-        figsize (Tuple[int, int]): Size of the figure (width, height). Defaults to (12, 8).
-
-    Returns:
-        bytes: PNG image of the generated plot in bytes format.
-
-    Raises:
-        ValueError: If the specified asset is not found in the prices DataFrame.
+    """Gera gráfico PNG de preços com MACD.
+    
+    Parâmetros:
+        prices: DataFrame com preços.
+        asset: Ticker do ativo.
+        fast, slow, signal: Parâmetros do MACD.
+        figsize: Tamanho da figura.
+    
+    Retorna:
+        Bytes do PNG gerado.
     """
     if asset not in prices.columns:
         raise ValueError(f"Ativo '{asset}' não encontrado nos dados")
@@ -147,31 +128,20 @@ def plot_combined_ta(
     macd_fast: int = 12,
     macd_slow: int = 26,
     macd_signal: int = 9,
-    figsize: Tuple[int, int] = (14, 10),
+    figsize: tuple = (14, 10),
 ) -> bytes:
-    """
-    Generates a combined PNG plot showing asset prices, moving averages, and MACD.
-
-    The plot consists of three subplots:
-    1. Asset prices with overlaid moving averages.
-    2. A placeholder for volume (currently not implemented).
-    3. MACD lines and histogram.
-
-    Args:
-        prices (pd.DataFrame): DataFrame containing asset prices.
-        asset (str): Ticker of the asset to plot.
-        ma_windows (List[int]): List of window sizes for the moving averages. Defaults to [5, 21].
-        ma_method (str): Method for calculating moving averages ('sma' or 'ema'). Defaults to "sma".
-        macd_fast (int): The fast period for MACD calculation. Defaults to 12.
-        macd_slow (int): The slow period for MACD calculation. Defaults to 26.
-        macd_signal (int): The signal period for MACD calculation. Defaults to 9.
-        figsize (Tuple[int, int]): Size of the figure (width, height). Defaults to (14, 10).
-
-    Returns:
-        bytes: PNG image of the generated combined technical analysis plot in bytes format.
-
-    Raises:
-        ValueError: If the specified asset is not found in the prices DataFrame.
+    """Gera gráfico combinado: preços + MAs + MACD.
+    
+    Parâmetros:
+        prices: DataFrame com preços.
+        asset: Ticker do ativo.
+        ma_windows: Janelas das médias móveis.
+        ma_method: 'sma' ou 'ema'.
+        macd_fast, macd_slow, macd_signal: Parâmetros do MACD.
+        figsize: Tamanho da figura.
+    
+    Retorna:
+        Bytes do PNG gerado.
     """
     if asset not in prices.columns:
         raise ValueError(f"Ativo '{asset}' não encontrado nos dados")

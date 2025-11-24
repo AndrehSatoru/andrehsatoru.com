@@ -8,18 +8,9 @@ matplotlib.use("Agg")  # backend não interativo para geração de imagens
 import matplotlib.pyplot as plt
 from typing import List, Optional
 
-from backend_projeto.utils.config import Settings
-from backend_projeto.core.data_handling import YFinanceProvider
-
-
-def _returns_from_prices(prices: pd.DataFrame) -> pd.DataFrame:
-    return prices.sort_index().pct_change().dropna(how="all")
-
-
-def _annualize_mean_cov(rets: pd.DataFrame, dias_uteis: int):
-    mu = rets.mean().values * dias_uteis
-    cov = rets.cov().values * dias_uteis
-    return mu, cov
+from backend_projeto.infrastructure.utils.config import Settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.financial_math import _returns_from_prices, _annualize_mean_cov
 
 
 def efficient_frontier_image(

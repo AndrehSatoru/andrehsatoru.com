@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock
-from backend_projeto.utils.cache import CacheManager
+from backend_projeto.infrastructure.utils.cache import CacheManager
 
 def test_cache_manager_generate_key():
     """
@@ -27,7 +27,7 @@ def test_cache_manager_get_dataframe_hit(mocker):
     """
     # Arrange
     mock_redis_client = MagicMock()
-    mock_pickle = mocker.patch('backend_projeto.utils.cache.pickle')
+    mock_pickle = mocker.patch('backend_projeto.infrastructure.utils.cache.pickle')
     mock_df = MagicMock()
     mock_pickle.loads.return_value = mock_df
     

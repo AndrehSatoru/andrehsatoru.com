@@ -6,10 +6,8 @@ def generate_openapi_spec():
     """
     Gera a especificação OpenAPI da aplicação FastAPI e a salva em um arquivo.
     """
-    # Correctly determine the output path relative to the project root
-    # The script is in packages/backend/scripts, so we go up two levels
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    output_path = os.path.join(project_root, "packages", "backend", "openapi.json")
+    # The script is executed from packages/backend, so output to current directory.
+    output_path = "openapi.json"
     
     openapi_schema = app.openapi()
     

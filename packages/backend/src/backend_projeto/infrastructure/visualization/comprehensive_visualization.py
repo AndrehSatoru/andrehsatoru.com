@@ -11,12 +11,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from backend_projeto.core.technical_analysis import moving_averages, macd_series
-from backend_projeto.core.visualizations.ta_visualization import plot_price_with_ma, plot_macd, plot_combined_ta
-from backend_projeto.core.visualizations.visualization import efficient_frontier_image
-from backend_projeto.core.visualizations.factor_visualization import plot_ff_factors, plot_ff_betas
-from backend_projeto.utils.config import Settings
-from backend_projeto.core.data_handling import YFinanceProvider
+from backend_projeto.domain.technical_analysis import moving_averages, macd_series
+from backend_projeto.infrastructure.visualization.ta_visualization import plot_price_with_ma, plot_macd, plot_combined_ta
+from backend_projeto.infrastructure.visualization.visualization import efficient_frontier_image
+from backend_projeto.infrastructure.visualization.factor_visualization import plot_ff_factors, plot_ff_betas
+from backend_projeto.infrastructure.utils.config import Settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
 
 
 class ComprehensiveVisualizer:
@@ -187,7 +187,7 @@ class ComprehensiveVisualizer:
         # Esta é uma implementação simplificada
         # Na prática, usaria as funções existentes do RiskEngine
         try:
-            from backend_projeto.core.analysis import ff3_metrics, ff5_metrics
+            from backend_projeto.domain.analysis import ff3_metrics, ff5_metrics
 
             # RF mensal
             if rf_source == 'ff':

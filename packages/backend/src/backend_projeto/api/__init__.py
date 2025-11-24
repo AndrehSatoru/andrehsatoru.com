@@ -8,7 +8,6 @@ from . import deps
 from . import endpoints
 from . import factor_endpoints
 from . import helpers
-from . import models
 from . import optimization_endpoints
 from . import portfolio_endpoints
 from . import portfolio_simulation

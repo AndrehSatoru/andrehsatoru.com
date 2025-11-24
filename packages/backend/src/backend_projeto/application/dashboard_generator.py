@@ -15,10 +15,10 @@ from typing import List, Dict, Any, Optional
 import json # Import json for decoding Plotly figures
 import numpy as np # Import numpy
 
-from ..utils.config import Settings # Import Settings
+from backend_projeto.infrastructure.utils.config import Settings # Import Settings
 
 # Import the InteractiveVisualizer
-from .visualizations.interactive_visualization import InteractiveVisualizer
+from backend_projeto.infrastructure.visualization.interactive_visualization import InteractiveVisualizer
 
 # Set default Plotly template
 pio.templates.default = "plotly_white"

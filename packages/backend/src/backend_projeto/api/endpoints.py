@@ -28,11 +28,10 @@ import io
 from typing import Dict, Any, List, Optional
 import pandas as pd
 
-from src.backend_projeto.core.exceptions import DataProviderError
+from backend_projeto.domain.exceptions import DataProviderError
+from backend_projeto.infrastructure.visualization.factor_visualization import plot_ff_factors, plot_ff_betas # Moved to top
 
-from src.backend_projeto.core.visualizations.factor_visualization import plot_ff_factors, plot_ff_betas # Moved to top
-
-from .models import (
+from backend_projeto.domain.models import (
     PricesRequest, PricesResponse,
     VarRequest, EsRequest, DrawdownRequest, StressRequest, BacktestRequest,
     MonteCarloRequest, MonteCarloSamplesRequest, RiskResponse, AttributionRequest, CompareRequest, # Added MonteCarloSamplesRequest
@@ -50,15 +49,15 @@ from .models import (
     ComprehensiveChartsRequest, ComprehensiveChartsResponse,
 )
 from .deps import get_loader, get_risk_engine, get_optimization_engine, get_montecarlo_engine, get_config
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.core.analysis import RiskEngine, incremental_var, marginal_var, relative_var, compute_returns, portfolio_returns, ff3_metrics, ff5_metrics
-from backend_projeto.core.optimization import OptimizationEngine
-from backend_projeto.core.simulation import MonteCarloEngine
-from backend_projeto.core.visualizations.visualization import efficient_frontier_image
-from backend_projeto.core.technical_analysis import moving_averages, macd
-from backend_projeto.core.visualizations.ta_visualization import plot_price_with_ma, plot_macd, plot_combined_ta
-from backend_projeto.core.visualizations.comprehensive_visualization import ComprehensiveVisualizer
-from backend_projeto.utils.config import Settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.analysis import RiskEngine, incremental_var, marginal_var, relative_var, compute_returns, portfolio_returns, ff3_metrics, ff5_metrics
+from backend_projeto.domain.optimization import OptimizationEngine
+from backend_projeto.domain.simulation import MonteCarloEngine
+from backend_projeto.infrastructure.visualization.visualization import efficient_frontier_image
+from backend_projeto.domain.technical_analysis import moving_averages, macd
+from backend_projeto.infrastructure.visualization.ta_visualization import plot_price_with_ma, plot_macd, plot_combined_ta
+from backend_projeto.infrastructure.visualization.comprehensive_visualization import ComprehensiveVisualizer
+from backend_projeto.infrastructure.utils.config import Settings
 
 router = APIRouter(
     tags=["Investment API"],
@@ -922,11 +921,11 @@ def plot_ff_betas_endpoint(
         rf_m.name = 'RF'
     # Calcular métricas
     if model == 'FF3':
-        from backend_projeto.core.analysis import ff3_metrics
+        from backend_projeto.domain.analysis import ff3_metrics
         res = ff3_metrics(prices, factors, rf_m, [req.asset])
         betas = res['results'].get(req.asset, {})
     else:
-        from backend_projeto.core.analysis import ff5_metrics
+        from backend_projeto.domain.analysis import ff5_metrics
         res = ff5_metrics(prices, factors, rf_m, [req.asset])
         betas = res['results'].get(req.asset, {})
     img_bytes = plot_ff_betas(betas, model=model, title=f"{req.asset} - {model} Betas")

@@ -3,11 +3,11 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: ./investment-frontend
-      dockerfile: Dockerfile
+      context: ../../
+      dockerfile: packages/frontend/Dockerfile
     container_name: investment_frontend
     ports:
-      - "80:80"
+      - "3000:3000"
     depends_on:
       - backend
     restart: unless-stopped

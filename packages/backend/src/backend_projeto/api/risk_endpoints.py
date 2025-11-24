@@ -11,19 +11,19 @@ It provides routes for calculating:
 """
 # src/backend_projeto/api/risk_endpoints.py
 from fastapi import APIRouter, Depends, HTTPException
-from .models import (
+from backend_projeto.domain.models import (
     VarRequest, EsRequest, DrawdownRequest, StressRequest, BacktestRequest,
     MonteCarloRequest, RiskResponse, AttributionRequest, CompareRequest,
     IVaRRequest, MVaRRequest, RelVaRRequest, PricesRequest, TimeSeriesResponse,
     DrawdownSeriesRequest, MonteCarloSamplesRequest
 )
 from .deps import get_loader, get_risk_engine, get_montecarlo_engine, get_config
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.core.analysis import RiskEngine, incremental_var, marginal_var, relative_var, compute_returns, portfolio_returns
-from backend_projeto.core.simulation import MonteCarloEngine
-from backend_projeto.core.exceptions import DataProviderError
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.analysis import RiskEngine, incremental_var, marginal_var, relative_var, compute_returns, portfolio_returns
+from backend_projeto.domain.simulation import MonteCarloEngine
+from backend_projeto.domain.exceptions import DataProviderError
 from .helpers import _normalize_benchmark_alias
-from backend_projeto.utils.config import Settings
+from backend_projeto.infrastructure.utils.config import Settings
 import logging
 
 router = APIRouter(

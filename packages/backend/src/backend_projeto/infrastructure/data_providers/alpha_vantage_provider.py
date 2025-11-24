@@ -4,9 +4,9 @@ import requests
 import time
 from typing import List, Dict, Optional
 from abc import ABC, abstractmethod
-from backend_projeto.utils.cache import CacheManager
-from backend_projeto.utils.config import Settings
-from backend_projeto.core.exceptions import DataProviderError
+from backend_projeto.infrastructure.utils.cache import CacheManager
+from backend_projeto.infrastructure.utils.config import Settings
+from backend_projeto.domain.exceptions import DataProviderError
 
 class DataProvider(ABC):
     @abstractmethod

@@ -8,14 +8,14 @@ It provides routes for:
 """
 # src/backend_projeto/api/optimization_endpoints.py
 from fastapi import APIRouter, Depends, HTTPException
-from .models import (
+from backend_projeto.domain.models import (
     OptimizeRequest, BLRequest, FrontierRequest, BLFrontierRequest, RiskResponse, FrontierDataResponse, FrontierPoint
 )
 from .deps import get_loader, get_optimization_engine, get_config
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.core.optimization import OptimizationEngine
-from backend_projeto.core.analysis import compute_returns
-from backend_projeto.utils.config import Settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.optimization import OptimizationEngine
+from backend_projeto.domain.analysis import compute_returns
+from backend_projeto.infrastructure.utils.config import Settings
 
 router = APIRouter(
     tags=["Optimization"],

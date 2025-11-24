@@ -20,15 +20,15 @@ import statsmodels.api as sm
 import logging
 from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.utils.config import Settings, settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.infrastructure.utils.config import Settings, settings
 
 try:
     from arch import arch_model
 except Exception:
     arch_model = None
 
-from backend_projeto.core.utils import _returns_from_prices, _annualize_mean_cov
+from backend_projeto.domain.financial_math import _returns_from_prices, _annualize_mean_cov
 
 def _as_weights(assets: List[str], weights: Optional[List[float]]) -> np.ndarray:
     """
@@ -252,6 +252,8 @@ def var_historical(returns: pd.Series, alpha: float = 0.99) -> Tuple[float, Dict
         Tuple[float, Dict]: A tuple containing the VaR value and a dictionary of details
                             (e.g., {'quantile': q}).
     """
+    q = returns.quantile(1 - alpha)
+    return float(-q), {"quantile": q}
 
 
 def es_historical(returns: pd.Series, alpha: float = 0.99) -> Tuple[float, Dict]:
@@ -268,6 +270,10 @@ def es_historical(returns: pd.Series, alpha: float = 0.99) -> Tuple[float, Dict]
         Tuple[float, Dict]: A tuple containing the ES value and a dictionary of details
                             (e.g., {'threshold': q, 'n_tail': count}).
     """
+    q = returns.quantile(1 - alpha)
+    tail = returns[returns < q]
+    es = tail.mean()
+    return float(-es), {"threshold": q, "n_tail": len(tail)}
 
 
 # EVT (GPD) na cauda das perdas
@@ -331,6 +337,23 @@ def drawdown(returns: pd.Series) -> Dict:
               - "start" (str): The start date of the maximum drawdown period.
               - "end" (str): The end date of the maximum drawdown period.
     """
+    # Calculate cumulative returns
+    cum_returns = (1 + returns).cumprod()
+    # Calculate the running maximum
+    running_max = cum_returns.cummax()
+    # Calculate the drawdown
+    drawdown = (cum_returns - running_max) / running_max
+    
+    # Find the maximum drawdown
+    max_drawdown = drawdown.min()
+    end_date = drawdown.idxmin()
+    start_date = cum_returns.index[cum_returns.index.get_loc(end_date) - (cum_returns.iloc[:cum_returns.index.get_loc(end_date)] == running_max.iloc[cum_returns.index.get_loc(end_date)]).iloc[::-1].idxmax()]
+    
+    return {
+        "max_drawdown": max_drawdown,
+        "start": start_date.strftime('%Y-%m-%d'),
+        "end": end_date.strftime('%Y-%m-%d')
+    }
 
 
 def stress_test(returns_df: pd.DataFrame, assets: List[str], weights: Optional[List[float]], shocks_pct: float = -0.1) -> Dict:
@@ -671,6 +694,7 @@ def _monthly_returns_from_prices(df_prices: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame containing monthly percentage returns for each asset.
     """
+    return df_prices.sort_index().resample('M').last().pct_change().dropna(how='all')
 
 
 def ff3_metrics(
@@ -948,20 +972,18 @@ class RiskEngine:
             Dict: A dictionary containing the results of the comparison for various risk metrics.
                   The structure of the dictionary depends on the methods compared internally.
         """
-        """Compara diferentes métodos de cálculo de VaR e ES.
-
-        Args:
-            assets: Lista de tickers dos ativos.
-            start_date: Data de início para os dados históricos.
-            end_date: Data de fim para os dados históricos.
-            alpha: Nível de confiança.
-            methods: Lista de métodos a serem comparados.
-            ewma_lambda: Fator de decaimento para o método EWMA.
-            weights: Pesos da carteira.
-
-        Returns:
-            Dicionário com os resultados da comparação.
-        """
+        prices = self._load_prices(assets, start_date, end_date)
+        r = self._portfolio_series(prices, assets, weights)
+        
+        comparison = {}
+        for method in methods:
+            var_value, var_details = self.compute_var(assets, start_date, end_date, alpha, method, ewma_lambda, weights)
+            es_value, es_details = self.compute_es(assets, start_date, end_date, alpha, method, ewma_lambda, weights)
+            comparison[method] = {
+                "var": var_value,
+                "es": es_value,
+            }
+        return {"comparison": comparison}
 
 class PortfolioAnalyzer:
     """
@@ -971,7 +993,7 @@ class PortfolioAnalyzer:
     de um portfólio com base em um histórico de transações.
     """
     
-    def __init__(self, transactions_df: pd.DataFrame, data_loader: YFinanceProvider = None, config: Settings = None):
+    def __init__(self, transactions_df: pd.DataFrame, data_loader: YFinanceProvider = None, config: Settings = None, end_date: Optional[str] = None):
         """
         Inicializa o analisador de portfólio com um DataFrame de transações.
         
@@ -984,7 +1006,14 @@ class PortfolioAnalyzer:
                 - Taxas: taxas e custos da transação
             data_loader: Instância de YFinanceProvider para carregar dados de mercado
             config: Instância de Config com parâmetros de configuração
+            end_date: Data final da análise. Se None, usa a data atual.
         """
+        if transactions_df.empty:
+            raise ValueError("Nenhuma transação fornecida")
+        required_columns = ['Data', 'Ativo', 'Quantidade', 'Preco']
+        if not all(col in transactions_df.columns for col in required_columns):
+            raise ValueError(f"O DataFrame de transações deve conter as colunas: {required_columns}")
+
         self.transactions = transactions_df.copy()
         
         # Converter a coluna de data para datetime, se necessário
@@ -999,7 +1028,7 @@ class PortfolioAnalyzer:
         
         # Período de análise
         self.start_date = self.transactions['Data'].min()
-        self.end_date = pd.to_datetime('today')
+        self.end_date = pd.to_datetime(end_date).normalize() if end_date else pd.to_datetime('today').normalize()
         
         # Dados calculados
         self.returns = None
@@ -1017,7 +1046,7 @@ class PortfolioAnalyzer:
         dates = pd.date_range(
             start=self.start_date,
             end=self.end_date,
-            freq='D',
+            freq='B',
             name='Data'
         )
         
@@ -1113,8 +1142,10 @@ class PortfolioAnalyzer:
         max_drawdown = drawdowns.min() * 100  # em %
         
         # Calcular VaR e ES
-        var_95 = var_historical(self.returns, alpha=0.95) * 100  # em %
-        es_95 = es_historical(self.returns, alpha=0.95) * 100  # em %
+        var_95, _ = var_historical(self.returns, alpha=0.95)
+        var_95 *= 100  # em %
+        es_95, _ = es_historical(self.returns, alpha=0.95)
+        es_95 *= 100  # em %
         
         return {
             "retorno_total_%": round(total_return, 2),
@@ -1165,12 +1196,12 @@ class PortfolioAnalyzer:
         total_value = 0.0
         
         for asset in self.assets:
-            if asset in prices.columns and not pd.isna(prices[asset].iloc[0]):
-                asset_value = positions[asset] * prices[asset].iloc[0]
+            if asset in prices.columns and not pd.isna(prices.loc[analysis_date, asset]):
+                asset_value = positions[asset] * prices.loc[analysis_date, asset]
                 if asset_value > 0:  # Apenas incluir ativos com valor positivo
                     allocation[asset] = {
                         'quantidade': positions[asset],
-                        'preco_unitario': prices[asset].iloc[0],
+                        'preco_unitario': prices.loc[analysis_date, asset],
                         'valor_total': asset_value
                     }
                     total_value += asset_value

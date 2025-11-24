@@ -13,9 +13,9 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import JSONResponse
 from typing import List, Optional
-from .models import PricesRequest, PricesResponse
+from backend_projeto.domain.models import PricesRequest, PricesResponse
 from .deps import get_loader
-from src.backend_projeto.core.data_handling import YFinanceProvider
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
 
 router = APIRouter(
     tags=["Data"],

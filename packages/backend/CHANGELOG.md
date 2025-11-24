@@ -1,5 +1,24 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.1.1] - 2025-11-24
+
+### 🏗️ Melhorias de Arquitetura
+
+- **Refatoração para Clean Architecture:** A estrutura do backend foi extensivamente refatorada para aderir mais estritamente aos princípios da Clean Architecture. Módulos foram explicitamente organizados em camadas de `domain` (lógica de negócio e entidades), `application` (casos de uso e orquestração) e `infrastructure` (detalhes de implementação como provedores de dados e visualização). Esta reorganização visa melhorar a separação de preocupações, a testabilidade e a manutenibilidade do código.
+
+### 🧪 Testes
+
+- **Correção Abrangente de Testes:** Foram corrigidos diversos testes unitários e de integração que falhavam devido à refatoração da arquitetura e a inconsistências lógicas. Isso incluiu:
+    - Correções em `tests/unit/test_core_engines.py` para alinhar asserções e mocks com a nova estrutura.
+    - Atualização e adequação dos testes em `tests/unit/test_dashboard_generator.py` à nova API da classe `DashboardGenerator`.
+    - Resolução de problemas de indexação de datas e validação de dados em `tests/unit/test_portfolio_analyzer.py`.
+    - Ajustes nas chamadas de função e no tratamento de retornos em `tests/unit/test_risk_engine.py`.
+- **`openapi.json` Gerado:** O script de geração do `openapi.json` foi corrigido e executado para garantir que os testes de contrato da API passem, validando as definições dos endpoints.
+
+### 📚 Documentação
+
+- **`RELATORIO_ARQUITETURA.md` Atualizado:** O relatório de arquitetura foi atualizado para refletir as melhorias implementadas e o alinhamento com a Clean Architecture.
+
 ## [1.1.0] - 2025-10-29
 
 ### 📚 Documentação

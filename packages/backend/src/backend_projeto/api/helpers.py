@@ -8,7 +8,7 @@ These utilities include:
 # src/backend_projeto/api/helpers.py
 from typing import Optional, List
 import pandas as pd
-from backend_projeto.core.data_handling import YFinanceProvider
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
 
 def _normalize_benchmark_alias(benchmark: Optional[str]) -> str:
     """

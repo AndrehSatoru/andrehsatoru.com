@@ -6,9 +6,9 @@ buy-and-hold portfolio, useful for backtesting and performance attribution.
 """
 # src/backend_projeto/api/portfolio_endpoints.py
 from fastapi import APIRouter, Depends
-from .models import WeightsSeriesRequest, WeightsSeriesResponse
+from backend_projeto.domain.models import WeightsSeriesRequest, WeightsSeriesResponse
 from .deps import get_loader
-from backend_projeto.core.data_handling import YFinanceProvider
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
 
 router = APIRouter(
     tags=["Portfolio"],

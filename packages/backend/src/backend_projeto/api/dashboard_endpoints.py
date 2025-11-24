@@ -12,11 +12,11 @@ import numpy as np
 from pydantic import BaseModel
 import datetime
 
-from src.backend_projeto.core.dashboard_generator import DashboardGenerator
-from src.backend_projeto.core.data_handling import YFinanceProvider
-from src.backend_projeto.core.exceptions import DataProviderError
-from src.backend_projeto.core.analysis import compute_returns, portfolio_returns, drawdown
-from src.backend_projeto.utils.config import settings
+from backend_projeto.application.dashboard_generator import DashboardGenerator
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.exceptions import DataProviderError
+from backend_projeto.domain.analysis import compute_returns, portfolio_returns, drawdown
+from backend_projeto.infrastructure.utils.config import settings
 from .deps import get_loader, get_config
 
 router = APIRouter()

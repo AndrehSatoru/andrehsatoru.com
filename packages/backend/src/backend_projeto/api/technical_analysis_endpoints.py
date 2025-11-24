@@ -7,10 +7,10 @@ It provides routes for:
 """
 # src/backend_projeto/api/technical_analysis_endpoints.py
 from fastapi import APIRouter, Depends
-from .models import TAMovingAveragesRequest, TAMacdRequest, PricesResponse
+from backend_projeto.domain.models import TAMovingAveragesRequest, TAMacdRequest, PricesResponse
 from .deps import get_loader
-from backend_projeto.core.data_handling import YFinanceProvider
-from backend_projeto.core.technical_analysis import moving_averages, macd
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.technical_analysis import moving_averages, macd
 from backend_projeto.api.helpers import _convert_prices_to_usd
 
 router = APIRouter(

@@ -8,7 +8,7 @@ It provides routes for:
 # src/backend_projeto/api/system_endpoints.py
 from fastapi import APIRouter, Depends
 from typing import Dict, Any
-from backend_projeto.utils.config import Settings
+from backend_projeto.infrastructure.utils.config import Settings
 from .deps import get_config
 
 router = APIRouter(

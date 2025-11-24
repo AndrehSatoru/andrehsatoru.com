@@ -1,11 +1,11 @@
 # api/deps.py
 # Dependências reutilizáveis (Dependency Injection) para FastAPI
 from fastapi import Depends
-from src.backend_projeto.core.data_handling import YFinanceProvider
-from src.backend_projeto.core.analysis import RiskEngine
-from src.backend_projeto.core.optimization import OptimizationEngine
-from src.backend_projeto.core.simulation import MonteCarloEngine
-from src.backend_projeto.utils.config import Settings, settings
+from backend_projeto.infrastructure.data_handling import YFinanceProvider
+from backend_projeto.domain.analysis import RiskEngine
+from backend_projeto.domain.optimization import OptimizationEngine
+from backend_projeto.domain.simulation import MonteCarloEngine
+from backend_projeto.infrastructure.utils.config import Settings, settings
 from typing import List
 
 def get_config() -> Settings:
@@ -32,9 +32,9 @@ def get_loader(config: Settings = Depends(get_config)) -> YFinanceProvider:
         YFinanceProvider: An instance of YFinanceProvider configured with potential fallback data providers.
     """
     # Import providers locally to avoid circular dependencies
-    from ..core.data_handling import YFinanceProvider, DataProvider
-    from ..core.data_providers.finnhub_provider import FinnhubProvider
-    from ..core.data_providers.alpha_vantage_provider import AlphaVantageProvider
+    from backend_projeto.infrastructure.data_handling import YFinanceProvider, DataProvider
+    from backend_projeto.infrastructure.data_providers.finnhub_provider import FinnhubProvider
+    from backend_projeto.infrastructure.data_providers.alpha_vantage_provider import AlphaVantageProvider
 
     # Setup fallback providers
     fallback_providers: List[DataProvider] = []
