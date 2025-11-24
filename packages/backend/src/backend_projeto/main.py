@@ -148,6 +148,11 @@ app.include_router(analysis_endpoints.router, prefix="/api/v1")
 app.include_router(transaction_endpoints.router, prefix="/api/v1")
 app.include_router(auth_endpoints.router, prefix="/api/v1")
 
+# Root endpoint
+@app.get("/")
+def root():
+    return {"message": "Investment Backend API", "docs": "/docs", "status": "/api/v1/status"}
+
 # Se desejar, adicione lógica de inicialização aqui
 
 

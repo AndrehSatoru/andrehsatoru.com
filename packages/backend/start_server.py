@@ -4,12 +4,15 @@ import sys
 import os
 import time
 
+# Set PYTHONPATH to include src
+os.environ['PYTHONPATH'] = os.path.join(os.getcwd(), 'src')
+
 log_file_path = "portfolio_analysis_output/uvicorn_output.log"
 os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
 
 with open(log_file_path, "w") as log_file:
     process = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "src.backend_projeto.main:app", "--host", "0.0.0.0", "--port", "8001"],
+        [sys.executable, "-m", "uvicorn", "backend_projeto.main:app", "--host", "0.0.0.0", "--port", "8001"],
         stdout=log_file,
         stderr=log_file,
         text=True,
