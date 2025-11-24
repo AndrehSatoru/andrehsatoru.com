@@ -17,8 +17,8 @@ A maneira mais fácil de executar a plataforma completa (backend + frontend) é 
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/your-username/investment-backend.git
-cd investment-backend
+git clone https://github.com/AndrehSatoru/andrehsatoru.com.git
+cd andrehsatoru.com
 
 # 2. Crie e configure o arquivo de ambiente
 cp .env.example .env
