@@ -19,8 +19,6 @@ export function useApi<T, P extends any[]>(
   const [error, setError] = useState<ApiError | null>(null);
 
   const execute = useCallback(async (...args: P) => {
-    if (skip) return;
-
     setLoading(true);
     setError(null);
     try {
@@ -46,7 +44,13 @@ export function useApi<T, P extends any[]>(
     } finally {
       setLoading(false);
     }
-  }, [asyncFunction, skip, onSuccess, onError]);
+  }, [asyncFunction, onSuccess, onError]);
+
+  useEffect(() => {
+    if (!skip) {
+      (execute as () => void)();
+    }
+  }, [execute, skip]);
 
   return { data, loading, error, execute };
 }
