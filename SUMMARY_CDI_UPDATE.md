@@ -1,29 +1,67 @@
-# Resumo das Atualizações - Implementação do Rendimento do CDI
+# Resumo das Atualizações - Implementação do Rendimento do CDI e Dividendos
 
 ## 📋 Arquivos Atualizados
 
 ### Backend
+
+#### Versão 1.4.0 (2025-11-25)
+
 1. **`packages/backend/src/backend_projeto/infrastructure/data_handling.py`**
+   - ✅ **CORREÇÃO**: `fetch_cdi_daily()` - BCB série 12 retorna taxa diária em %, não anual
+   - ✅ **CORREÇÃO**: Removido forward fill que inflacionava CDI em fins de semana
+   - ✅ **NOVO**: `fetch_dividends()` reescrito com API direta do Yahoo Finance
+   - ✅ Biblioteca yfinance substituída por chamadas HTTP diretas (mais confiável)
+
+2. **`packages/backend/src/backend_projeto/domain/analysis.py`**
+   - ✅ **CORREÇÃO**: `self.cash` agora é atualizado com CDI + dividendos acumulados
+   - ✅ **NOVO**: `_generate_monthly_returns()` para tabela de rentabilidades
+   - ✅ **CORREÇÃO**: Normalização de datas de transações e dividendos
+   - ✅ Dividendos creditados automaticamente: `quantidade × valor_por_ação`
+
+3. **`packages/backend/CHANGELOG.md`**
+   - ✅ Nova versão 1.4.0 com correções de CDI e dividendos
+   - ✅ Tabela comparativa de valores de CDI (antes vs depois vs referência BCB)
+
+### Frontend
+
+4. **`packages/frontend/components/profitability-table.tsx`**
+   - ✅ Reescrito para usar `useDashboardData()` em vez de API separada
+   - ✅ Removidos dados hardcoded de 2017-2025
+
+5. **`packages/frontend/CHANGELOG.md`**
+   - ✅ Nova versão 0.3.0 com tabela de rentabilidades dinâmica
+
+### Documentação
+
+6. **`docs/developer-guide/architecture/cdi-integration.md`**
+   - ✅ Atualizado com correções da v1.4.0
+   - ✅ Nova seção sobre busca de dividendos
+   - ✅ Tabela comparativa de CDI antes/depois/referência
+   - ✅ Documentação do erro antigo (tratava taxa diária como anual)
+
+#### Versão 1.3.0 (anteriormente documentada)
+
+7. **`packages/backend/src/backend_projeto/infrastructure/data_handling.py`**
    - ✅ Adicionado método `fetch_cdi_daily()` para buscar taxas CDI do BCB
    - ✅ Adicionado método `compute_monthly_rf_from_cdi()` para taxa livre de risco mensal
    - ✅ Integração com biblioteca `bcb` (Banco Central do Brasil)
 
-2. **`packages/backend/src/backend_projeto/domain/analysis.py`**
+8. **`packages/backend/src/backend_projeto/domain/analysis.py`**
    - ✅ Refatorado `PortfolioAnalyzer._calculate_portfolio_value()`
    - ✅ Implementado aplicação diária do rendimento CDI no caixa
    - ✅ Processamento temporal correto: rendimento → transações → atualização
 
-3. **`packages/backend/CHANGELOG.md`**
+9. **`packages/backend/CHANGELOG.md`**
    - ✅ Nova versão 1.3.0 com descrição detalhada da feature
    - ✅ Exemplos práticos de impacto
    - ✅ Comparação antes/depois
 
 ### Documentação
-4. **`docs/developer-guide/architecture/backend-general.md`**
+10. **`docs/developer-guide/architecture/backend-general.md`**
    - ✅ Atualizada seção de funcionalidades principais
    - ✅ Adicionado rendimento do CDI na lista de capacidades
 
-5. **`docs/developer-guide/architecture/cdi-integration.md`** (NOVO)
+11. **`docs/developer-guide/architecture/cdi-integration.md`** (NOVO)
    - ✅ Documentação completa da integração com BCB
    - ✅ Explicação matemática das conversões de taxa
    - ✅ Exemplos de código e uso
@@ -31,33 +69,33 @@
    - ✅ Considerações de performance e limitações
    - ✅ Próximos passos e melhorias futuras
 
-6. **`docs/developer-guide/api/quickstart.md`**
+12. **`docs/developer-guide/api/quickstart.md`**
    - ✅ Atualizado endpoints Fama-French 3 e 5 fatores
    - ✅ Documentado opção `rf_source="selic"`
    - ✅ Adicionadas dicas para uso com ativos brasileiros
 
-7. **`docs/developer-guide/api/processar-operacoes.md`**
+13. **`docs/developer-guide/api/processar-operacoes.md`**
    - ✅ Nova seção "Rendimento do CDI no Caixa"
    - ✅ Exemplo prático com números reais
    - ✅ Tabela de impacto comparativo
    - ✅ Link para documentação técnica detalhada
 
-8. **`docs/README.md`**
+14. **`docs/README.md`**
    - ✅ Adicionado "Rendimento do CDI no Caixa" nas novidades recentes
    - ✅ Destaque para a feature no topo da documentação
 
-9. **`docs/SITEMAP.md`**
+15. **`docs/SITEMAP.md`**
    - ✅ Adicionado link para `cdi-integration.md` na estrutura
    - ✅ Incluído na seção Backend (FastAPI)
 
 ### Scripts e Testes
-10. **`packages/backend/examples/scripts/demo_cdi_cash.py`** (NOVO)
+16. **`packages/backend/examples/scripts/demo_cdi_cash.py`** (NOVO)
     - ✅ Script de demonstração do funcionamento do CDI
     - ✅ Exemplo prático com R$ 100.000 investidos parcialmente
     - ✅ Análise mensal da evolução do portfólio
     - ✅ Comparação de rendimentos
 
-11. **`packages/backend/tests/test_cdi_cash_return.py`** (NOVO)
+17. **`packages/backend/tests/test_cdi_cash_return.py`** (NOVO)
     - ✅ Testes unitários para busca de CDI
     - ✅ Testes de cálculo de RF mensal
     - ✅ Teste de rendimento básico do caixa

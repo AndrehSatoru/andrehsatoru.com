@@ -40,6 +40,13 @@ Para engenheiros de DevOps e administradores de sistema.
 
 ## ✨ Novidades Recentes
 
+### 💵 Dividendos e Proventos (v1.4.0 - Nov 2025)
+- **Dividendos automáticos**: Sistema busca e contabiliza dividendos de todas as ações
+- **API Yahoo Finance direta**: Integração robusta para busca de proventos
+- **Adição automática ao caixa**: Dividendos são creditados na data ex-dividend
+- **Atualização dinâmica**: Saldo de caixa reflete CDI + dividendos recebidos
+- **Cálculo de CDI corrigido**: Taxa CDI agora aplicada apenas em dias úteis (sem inflação)
+
 ### 💰 Rendimento do CDI no Caixa (Nov 2025)
 - **Caixa rende CDI automaticamente**: Valor não investido agora gera retorno diário baseado no CDI
 - **Dados reais do BCB**: Integração com Banco Central do Brasil para taxas CDI históricas

@@ -510,6 +510,48 @@ class RiskContributionRequest(BaseRiskRequest):
     title: Optional[str] = Field("Contribuição de Risco por Ativo", description="Título do gráfico.")
 
 
+class MonthlyReturnsRequest(BaseModel):
+    assets: List[str] = Field(..., description="Lista de tickers para calcular retornos mensais")
+    start_date: str = Field(..., description="Data inicial no formato YYYY-MM-DD")
+    end_date: str = Field(..., description="Data final no formato YYYY-MM-DD")
+    weights: Optional[List[float]] = Field(None, description="Pesos dos ativos no portfólio")
+    benchmark: Optional[str] = Field(None, description="Ticker do benchmark (ex: CDI)")
+
+    @validator('assets')
+    def assets_not_empty(cls, v):
+        if not v:
+            raise ValueError("assets não pode ser vazio")
+        return v
+
+
+class MonthlyReturnRow(BaseModel):
+    year: int
+    jan: Optional[float] = None
+    fev: Optional[float] = None
+    mar: Optional[float] = None
+    abr: Optional[float] = None
+    mai: Optional[float] = None
+    jun: Optional[float] = None
+    jul: Optional[float] = None
+    ago: Optional[float] = None
+    set_: Optional[float] = Field(None, alias="set")
+    out: Optional[float] = None
+    nov: Optional[float] = None
+    dez: Optional[float] = None
+    acumAno: Optional[float] = None
+    cdi: Optional[float] = None
+    acumFdo: Optional[float] = None
+    acumCdi: Optional[float] = None
+
+    class Config:
+        populate_by_name = True
+
+
+class MonthlyReturnsResponse(BaseModel):
+    data: List[MonthlyReturnRow]
+    lastUpdate: str = Field(..., description="Data da última atualização")
+
+
 class ApiErrorResponse(BaseModel):
     error: str = Field(..., description="Código de erro, ex: 'invalid_request', 'data_provider_error'")
     message: str = Field(..., description="Mensagem legível do erro")

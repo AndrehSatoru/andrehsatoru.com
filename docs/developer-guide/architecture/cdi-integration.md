@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-A partir da versão 1.3.0, o sistema implementa o rendimento automático do CDI (Certificado de Depósito Interbancário) sobre o caixa não investido do portfólio. Esta funcionalidade torna a análise de portfólio mais realista, refletindo que na prática o dinheiro não investido em ações rende juros.
+A partir da versão 1.3.0, o sistema implementa o rendimento automático do CDI (Certificado de Depósito Interbancário) sobre o caixa não investido do portfólio. Na versão 1.4.0, foi corrigido o cálculo do CDI e adicionado o recebimento automático de dividendos.
 
 ## Motivação
 
@@ -11,6 +11,7 @@ Anteriormente, o caixa não investido era tratado como valor estático que apena
 - Recursos não investidos ficam tipicamente em produtos de renda fixa
 - O CDI é o principal benchmark para investimentos de baixo risco
 - Investidores conservadores mantêm parte do capital em liquidez diária que rende próximo ao CDI
+- Dividendos e proventos são creditados automaticamente na conta
 
 ## Arquitetura da Implementação
 
@@ -18,63 +19,65 @@ Anteriormente, o caixa não investido era tratado como valor estático que apena
 
 A integração utiliza a biblioteca `python-bcb` para acessar o Sistema Gerenciador de Séries Temporais (SGS) do Banco Central.
 
-**Série utilizada:** 12 - Taxa de juros - CDI
+**Série utilizada:** 12 - Taxa de juros - CDI (taxa diária em %)
 
 ```python
 from bcb import sgs
 
 # Buscar CDI diário
-cdi_anual = sgs.get({'CDI': 12}, start=start_date, end=end_date)
+cdi_data = sgs.get({'CDI': 12}, start=start_date, end=end_date)
 ```
 
 ### 2. Conversão de Taxas
 
-O CDI é fornecido como **taxa anual em percentual**. Precisamos converter para **taxa diária em decimal**:
+> ⚠️ **IMPORTANTE (v1.4.0)**: A série 12 do BCB retorna a **taxa DIÁRIA já em percentual**, NÃO a taxa anual!
 
-**Fórmula:**
+**Exemplo de dados do BCB:**
 ```
-taxa_diária = (1 + taxa_anual/100)^(1/252) - 1
+2024-01-02: 0.04290  (= 0.0429% ao dia)
+2024-01-03: 0.04290
+2024-01-04: 0.04290
 ```
 
-Onde:
-- `taxa_anual`: Taxa fornecida pelo BCB (ex: 13.65 para 13,65% a.a.)
-- `252`: Dias úteis no ano (convenção do mercado brasileiro)
-- `taxa_diária`: Taxa decimal (ex: 0.0004837 para 0.04837% ao dia)
+**Conversão correta:**
+```python
+# Taxa diária em decimal = valor / 100
+taxa_diaria_decimal = 0.04290 / 100  # = 0.000429
+```
 
-**Exemplo prático:**
-- CDI de 13,65% ao ano
-- Taxa diária: (1 + 0.1365)^(1/252) - 1 = 0.0004837
-- Em R$ 100.000: rendimento diário de ~R$ 48,37
+**❌ ERRO ANTIGO (v1.3.0):**
+```python
+# Tratava como taxa anual e convertia - INCORRETO!
+taxa_diaria = ((1 + taxa_anual/100) ** (1/252)) - 1
+```
 
 ### 3. Implementação no YFinanceProvider
 
-#### Método `fetch_cdi_daily()`
+#### Método `fetch_cdi_daily()` (v1.4.0)
 
 ```python
 def fetch_cdi_daily(self, start_date: str, end_date: str) -> pd.Series:
     """
     Busca taxas diárias do CDI do BCB.
     
+    IMPORTANTE: A série 12 retorna taxa DIÁRIA em %, não anual!
+    CDI só rende em dias úteis - NÃO fazer forward fill para fins de semana.
+    
     Returns:
-        pd.Series com taxas diárias em decimal, índice DatetimeIndex
+        pd.Series com taxas diárias em decimal, apenas dias úteis com dados reais
     """
-    # 1. Buscar dados do BCB
-    cdi_anual = sgs.get({'CDI': 12}, start=start_date, end=end_date)
+    cdi_data = sgs.get({'CDI': 12}, start=start_date, end=end_date)
     
-    # 2. Converter para taxa diária decimal
-    cdi_diario = ((1 + cdi_anual['CDI'] / 100.0) ** (1.0 / 252.0) - 1.0)
+    # Converter de percentual para decimal (0.017% -> 0.00017)
+    cdi_diario = cdi_data['CDI'] / 100.0
     
-    # 3. Preencher dias não úteis (finais de semana/feriados)
-    full_dates = pd.date_range(start=start_date, end=end_date, freq='D')
-    cdi_diario = cdi_diario.reindex(full_dates).ffill().fillna(0.0)
-    
-    return cdi_diario
+    return cdi_diario  # Sem forward fill!
 ```
 
-**Tratamento de erros:**
-- Se não houver dados disponíveis: retorna série com taxa zero
-- Se houver erro de conexão: log de warning e retorna taxa zero
-- Dias sem dados: forward fill (repete última taxa disponível)
+**Diferenças importantes da v1.4.0:**
+- ✅ Não faz mais forward fill para fins de semana (CDI não rende nesses dias)
+- ✅ Retorna apenas dias úteis com dados reais
+- ✅ Valores de CDI anual agora estão corretos (ex: 2020 = 2.75%, não 4.03%)
 
 #### Método `compute_monthly_rf_from_cdi()`
 
@@ -83,20 +86,48 @@ def compute_monthly_rf_from_cdi(self, start_date: str, end_date: str) -> pd.Seri
     """
     Calcula taxa livre de risco mensal a partir do CDI diário.
     
-    Usado nos endpoints Fama-French quando rf_source='selic'
-    
     Returns:
         pd.Series com taxas mensais compostas, índice month-end
     """
-    # 1. Buscar CDI diário
     cdi_daily = self.fetch_cdi_daily(start_date, end_date)
-    
-    # 2. Calcular retorno composto mensal
-    # RF_mensal = Produto((1 + r_diário)) - 1
+    cdi_df = pd.DataFrame({'CDI': cdi_daily})
     monthly_rf = cdi_df.resample('M').apply(lambda x: (1 + x).prod() - 1)['CDI']
     
     return monthly_rf
 ```
+
+### 4. Busca de Dividendos (v1.4.0)
+
+#### Método `fetch_dividends()`
+
+A partir da v1.4.0, os dividendos são buscados diretamente da API do Yahoo Finance (não mais via biblioteca yfinance que apresentava erros):
+
+```python
+def fetch_dividends(self, assets: List[str], start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    Busca histórico de dividendos via API direta do Yahoo Finance.
+    """
+    # Converter datas para timestamps
+    start_ts = int(pd.Timestamp(start_date).timestamp())
+    end_ts = int(pd.Timestamp(end_date).timestamp())
+    
+    # Chamar API direta
+    url = f'https://query2.finance.yahoo.com/v8/finance/chart/{ticker}'
+    params = {
+        'period1': start_ts,
+        'period2': end_ts,
+        'interval': '1d',
+        'events': 'div'  # Solicita apenas dividendos
+    }
+    
+    resp = requests.get(url, params=params, headers=headers)
+    data = resp.json()
+    
+    # Extrair dividendos
+    dividends = data['chart']['result'][0]['events']['dividends']
+```
+
+### 5. Aplicação no PortfolioAnalyzer (v1.4.0)
 
 ### 4. Aplicação no PortfolioAnalyzer
 
@@ -176,28 +207,43 @@ Caixa continua rendendo CDI sobre o saldo de ~R$ 90.000
 
 ## Impacto nos Resultados
 
-### Comparação Antes vs Depois
+### Correção do CDI (v1.4.0)
 
-**Cenário:** R$ 100.000 com R$ 10.000 investidos em ações, R$ 90.000 em caixa, período de 1 ano
+**O problema anterior:** O código tratava a série 12 do BCB como taxa anual e aplicava forward fill para fins de semana, resultando em valores inflacionados.
 
-| Métrica | Antes (sem CDI) | Depois (com CDI ~13,65% a.a.) | Diferença |
-|---------|-----------------|-------------------------------|-----------|
-| Caixa inicial | R$ 90.000 | R$ 90.000 | - |
-| Caixa final | R$ 90.000 | R$ 102.285 | +R$ 12.285 |
-| Rendimento do caixa | 0% | 13,65% | +13,65% |
-| Impacto no portfólio total | Nenhum | Significativo | - |
+**Comparação de valores de CDI anual:**
+
+| Ano  | Antes (incorreto) | Depois (v1.4.0) | Referência BCB |
+|------|-------------------|-----------------|----------------|
+| 2020 | 4.03%             | 2.75%           | 2.77% ✅       |
+| 2021 | 6.45%             | 4.44%           | 4.40% ✅       |
+| 2022 | 18.49%            | 12.38%          | 12.37% ✅      |
+| 2023 | 19.67%            | 13.03%          | 13.05% ✅      |
+| 2024 | 16.10%            | 10.89%          | 10.87% ✅      |
+| 2025 | 18.98%            | 12.71%          | 12.69% ✅      |
+
+### Comparação com Dividendos
+
+**Cenário:** R$ 100.000 inicial, R$ 60.000 investidos (PETR4 + VALE3), período 2020-2025
+
+| Componente | Antes | Depois (v1.4.0) |
+|------------|-------|-----------------|
+| Caixa inicial | R$ 40.000 | R$ 40.000 |
+| CDI acumulado (5 anos) | - | ~R$ 60.000 |
+| Dividendos recebidos | R$ 0 | ~R$ 74.000 |
+| **Caixa final** | R$ 40.000 | **~R$ 174.000** |
 
 ### Realismo Financeiro
 
-**Antes:**
-- Caixa era tratado como "dinheiro embaixo do colchão"
-- Não refletia custo de oportunidade
-- Subestimava retorno total do portfólio
+**Antes (v1.3.0 e anterior):**
+- Caixa mostrava valor fixo (inicial - investido)
+- Não refletia rendimento do CDI corretamente
+- Não contabilizava dividendos
 
-**Depois:**
-- Caixa rende taxa próxima ao CDI (como na prática)
-- Reflete melhor estratégia conservadora (parte em ações, parte em renda fixa)
-- Permite comparação justa com benchmarks
+**Depois (v1.4.0):**
+- Caixa rende CDI com taxas corretas
+- Dividendos são creditados automaticamente
+- Valor do caixa na tabela de alocação reflete a realidade
 
 ## Uso nos Endpoints da API
 

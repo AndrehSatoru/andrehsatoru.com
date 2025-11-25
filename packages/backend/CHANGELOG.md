@@ -1,5 +1,65 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.4.0] - 2025-11-25
+
+### 🚀 Novas Funcionalidades
+
+#### Dividendos no Caixa
+- ✨ **Dividendos Automáticos**: Implementado recebimento automático de dividendos/proventos no caixa
+- 📈 **Busca via Yahoo Finance API**: Integração direta com a API do Yahoo Finance para buscar histórico de dividendos
+- 💰 **Cálculo por Ação**: Dividendos calculados corretamente: `quantidade_ações × valor_por_ação`
+- 🔄 **Processamento por Data**: Dividendos são creditados no caixa na data de pagamento
+
+#### Tabela de Rentabilidades Mensais
+- 📊 **Novo Endpoint**: `/api/v1/portfolio/monthly-returns` para dados da tabela de rentabilidade
+- 📅 **Dados Dinâmicos**: Tabela gerada a partir dos dados reais do portfólio, não mais hardcoded
+- 🎯 **Sincronização com Frontend**: Tabela usa `analysisResult` do contexto em vez de API separada
+
+### 🐛 Correções Críticas
+
+#### CDI Corrigido
+- ✅ **Taxa Diária Correta**: BCB série 12 retorna taxa diária em %, não anual. Removida conversão incorreta
+- ✅ **Sem Forward Fill**: CDI não rende em fins de semana/feriados - removido forward fill que inflacionava os valores
+- ✅ **Valores Corretos**: CDI 2020 agora mostra 2.75% (antes: 4.03%), alinhado com dados oficiais
+
+#### Dividendos Corrigidos
+- ✅ **Busca Direta pela API**: Substituída biblioteca yfinance (que falhava) por chamada direta à API do Yahoo Finance
+- ✅ **Tratamento de Erros**: Logs detalhados quando dividendos não são encontrados
+
+#### Caixa Corrigido
+- ✅ **Valor Atualizado**: `self.cash` agora reflete CDI + dividendos acumulados, não mais valor inicial - investido
+- ✅ **Alocação Correta**: Tabela de ativos mostra caixa real com rendimentos
+
+#### Normalização de Datas
+- ✅ **Transações**: Datas das transações normalizadas e mapeadas para primeiro dia útil disponível
+- ✅ **Dividendos**: Datas de pagamento mapeadas corretamente para o índice de posições
+
+### 🔧 Melhorias
+
+#### YFinanceProvider
+- 🆕 **`fetch_dividends()` reescrito**: Usa API direta do Yahoo Finance em vez da biblioteca yfinance
+- 🔄 **Requests paralelos**: ThreadPoolExecutor para buscar dividendos de múltiplos ativos
+- 📝 **Logs informativos**: Log de quantidade de dividendos encontrados por ativo
+
+#### PortfolioAnalyzer
+- 🆕 **`_generate_monthly_returns()`**: Novo método para gerar tabela de rentabilidades mensais
+- 🔄 **Cálculo do CDI anual**: Composição correta dos retornos mensais do CDI
+- 📊 **Acumulados**: Cálculo correto de acumulado do fundo e acumulado do CDI desde início
+
+### 📊 Comparação de Valores
+
+**CDI Anual (Sistema vs Referência BCB):**
+| Ano  | Antes  | Depois | Referência |
+|------|--------|--------|------------|
+| 2020 | 4.03%  | 2.75%  | 2.77% ✅   |
+| 2021 | 6.45%  | 4.44%  | 4.40% ✅   |
+| 2022 | 18.49% | 12.38% | 12.37% ✅  |
+| 2023 | 19.67% | 13.03% | 13.05% ✅  |
+| 2024 | 16.10% | 10.89% | 10.87% ✅  |
+| 2025 | 18.98% | 12.71% | 12.69% ✅  |
+
+---
+
 ## [1.3.0] - 2025-11-25
 
 ### 🚀 Novas Funcionalidades

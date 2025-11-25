@@ -1222,12 +1222,19 @@ class PortfolioAnalyzer:
         
         # Processar cada transação
         for _, tx in self.transactions.iterrows():
-            date = tx['Data']
+            tx_date = pd.to_datetime(tx['Data']).normalize()
             asset = tx['Ativo']
             quantity = tx['Quantidade']
             
-            # Atualizar a posição a partir da data da transação
-            positions.loc[date:, asset] += quantity
+            # Encontrar o primeiro dia útil >= data da transação
+            valid_dates = dates[dates >= tx_date]
+            if len(valid_dates) > 0:
+                start_from = valid_dates[0]
+                # Atualizar a posição a partir da data da transação
+                positions.loc[start_from:, asset] += quantity
+                logging.debug(f"Posição {asset}: +{quantity} a partir de {start_from}")
+            else:
+                logging.warning(f"Data {tx_date} está fora do range de posições")
         
         # Preencher valores ausentes com o último valor válido
         positions = positions.ffill().fillna(0.0)
@@ -1273,21 +1280,73 @@ class PortfolioAnalyzer:
             logging.warning(f"Erro ao buscar CDI, usando taxa zero: {e}")
             cdi_rates = pd.Series(0.0, index=self.positions.index)
         
+        # Buscar dividendos para todos os ativos
+        try:
+            dividends_df = self.data_loader.fetch_dividends(
+                assets=self.assets,
+                start_date=self.start_date.strftime('%Y-%m-%d'),
+                end_date=self.end_date.strftime('%Y-%m-%d')
+            )
+            logging.info(f"Dividendos encontrados: {len(dividends_df)} registros")
+        except Exception as e:
+            logging.warning(f"Erro ao buscar dividendos: {e}")
+            dividends_df = pd.DataFrame()
+        
         # Calcular o caixa acumulado ao longo do tempo com rendimento do CDI
         # Caixa começa com initial_value e:
         # 1. Rende CDI diariamente
         # 2. Diminui a cada compra
+        # 3. Aumenta com dividendos recebidos
         cash_series = pd.Series(0.0, index=self.positions.index, name='Caixa')
         current_cash = self.initial_value
         
         # Criar um dicionário com as transações por data para acesso eficiente
+        # Mapear cada transação para o primeiro dia útil disponível no índice
         transactions_by_date = {}
+        position_dates = self.positions.index
+        
         for _, tx in self.transactions.iterrows():
-            tx_date = tx['Data']
+            # Normalizar a data da transação (remover hora)
+            tx_date = pd.to_datetime(tx['Data']).normalize()
             tx_value = tx['Preco'] * tx['Quantidade']
-            if tx_date not in transactions_by_date:
-                transactions_by_date[tx_date] = 0.0
-            transactions_by_date[tx_date] += tx_value
+            
+            # Encontrar o primeiro dia útil >= data da transação
+            valid_dates = position_dates[position_dates >= tx_date]
+            if len(valid_dates) > 0:
+                mapped_date = valid_dates[0]
+                if mapped_date not in transactions_by_date:
+                    transactions_by_date[mapped_date] = 0.0
+                transactions_by_date[mapped_date] += tx_value
+                logging.debug(f"Transação mapeada: {tx_date} -> {mapped_date}, valor: R$ {tx_value:.2f}")
+            else:
+                logging.warning(f"Transação em {tx_date} está fora do range de posições")
+        
+        # Criar dicionário de dividendos por data e ativo
+        # O formato de dividends_df é: índice=Date, colunas=['ValorPorAcao', 'Ativo']
+        dividends_by_date = {}
+        if not dividends_df.empty and 'ValorPorAcao' in dividends_df.columns and 'Ativo' in dividends_df.columns:
+            for div_date, div_row in dividends_df.iterrows():
+                div_date_normalized = pd.to_datetime(div_date).normalize()
+                asset = div_row['Ativo']
+                div_value = div_row['ValorPorAcao']
+                
+                # Encontrar o primeiro dia útil >= data do dividendo
+                valid_dates = position_dates[position_dates >= div_date_normalized]
+                if len(valid_dates) > 0:
+                    mapped_date = valid_dates[0]
+                    if mapped_date not in dividends_by_date:
+                        dividends_by_date[mapped_date] = {}
+                    if asset not in dividends_by_date[mapped_date]:
+                        dividends_by_date[mapped_date][asset] = 0.0
+                    dividends_by_date[mapped_date][asset] += div_value
+                    logging.debug(f"Dividendo mapeado: {asset} em {div_date_normalized} -> {mapped_date}, valor/ação: R$ {div_value:.4f}")
+        
+        logging.info(f"Transações por data: {transactions_by_date}")
+        logging.info(f"Total a descontar do caixa: {sum(transactions_by_date.values())}")
+        logging.info(f"Dividendos por data: {len(dividends_by_date)} datas com dividendos")
+        logging.info(f"Caixa inicial: {current_cash}")
+        
+        total_dividends_received = 0.0
         
         # Processar cada dia
         for date in self.positions.index:
@@ -1297,13 +1356,32 @@ class PortfolioAnalyzer:
             
             # Subtrair transações do dia (se houver)
             if date in transactions_by_date:
-                current_cash -= transactions_by_date[date]
+                tx_value = transactions_by_date[date]
+                logging.info(f"Descontando R$ {tx_value:.2f} do caixa em {date}")
+                current_cash -= tx_value
+            
+            # Adicionar dividendos recebidos ao caixa
+            if date in dividends_by_date:
+                for asset, div_per_share in dividends_by_date[date].items():
+                    # Quantidade de ações do ativo nesta data
+                    shares = self.positions.loc[date, asset] if asset in self.positions.columns else 0
+                    dividend_value = shares * div_per_share
+                    if dividend_value > 0:
+                        current_cash += dividend_value
+                        total_dividends_received += dividend_value
+                        logging.info(f"Dividendo recebido: {asset} - {shares:.2f} ações x R$ {div_per_share:.4f} = R$ {dividend_value:.2f}")
             
             # Garantir que o caixa não seja negativo
             current_cash = max(0, current_cash)
             
             # Registrar o caixa do dia
             cash_series[date] = current_cash
+        
+        logging.info(f"Caixa final: {current_cash}")
+        logging.info(f"Total de dividendos recebidos: R$ {total_dividends_received:.2f}")
+        
+        # Atualizar self.cash com o valor final (incluindo CDI e dividendos)
+        self.cash = current_cash
         
         # Valor total = ativos + caixa
         portfolio_value += cash_series
@@ -1493,11 +1571,15 @@ class PortfolioAnalyzer:
         # Gerar série temporal de performance para gráficos
         performance_series = self._generate_performance_series()
         
+        # Gerar retornos mensais para tabela de rentabilidade
+        monthly_returns = self._generate_monthly_returns()
+        
         # Retornar resultados consolidados
         return {
             'desempenho': performance,
             'alocacao': allocation,
             'performance': performance_series,
+            'monthly_returns': monthly_returns,
             'metadados': {
                 'ativos': self.assets,
                 'periodo_analise': {
@@ -1565,5 +1647,131 @@ class PortfolioAnalyzer:
                         'portfolio': round(float(portfolio_val), 2),
                         'benchmark': round(float(benchmark_values[last_idx]), 2)
                     })
+        
+        return result
+
+    def _generate_monthly_returns(self) -> list:
+        """
+        Gera tabela de retornos mensais do portfólio.
+        
+        Returns:
+            Lista de dicionários com retornos mensais por ano
+        """
+        import math
+        
+        def safe_float(value) -> float | None:
+            """Convert value to float, returning None for NaN/Infinity."""
+            if value is None:
+                return None
+            try:
+                f = float(value)
+                if math.isnan(f) or math.isinf(f):
+                    return None
+                return round(f, 2)
+            except (ValueError, TypeError):
+                return None
+        
+        if self.portfolio_value is None or self.portfolio_value.empty:
+            return []
+        
+        # Remover valores NaN
+        valid_portfolio = self.portfolio_value.dropna()
+        
+        if valid_portfolio.empty:
+            return []
+        
+        # Calcular retornos mensais do portfólio
+        # Agrupar por mês e pegar o último valor
+        monthly_values = valid_portfolio.resample('M').last()
+        
+        # Calcular retornos mensais (incluindo o primeiro mês)
+        # O primeiro mês é calculado em relação ao valor inicial
+        monthly_returns = pd.Series(index=monthly_values.index, dtype=float)
+        
+        for i, (date, value) in enumerate(monthly_values.items()):
+            if i == 0:
+                # Primeiro mês: retorno em relação ao valor inicial
+                if self.initial_value > 0:
+                    monthly_returns[date] = ((value / self.initial_value) - 1) * 100
+                else:
+                    monthly_returns[date] = 0.0
+            else:
+                # Meses subsequentes: retorno em relação ao mês anterior
+                prev_value = monthly_values.iloc[i - 1]
+                if prev_value > 0:
+                    monthly_returns[date] = ((value / prev_value) - 1) * 100
+                else:
+                    monthly_returns[date] = 0.0
+        
+        # Buscar CDI mensal usando o método existente
+        try:
+            cdi_monthly = self.data_loader.compute_monthly_rf_from_cdi(
+                start_date=self.start_date.strftime('%Y-%m-%d'),
+                end_date=self.end_date.strftime('%Y-%m-%d')
+            )
+            # Converter para percentual
+            cdi_monthly = cdi_monthly * 100
+        except Exception as e:
+            logging.warning(f"Erro ao buscar CDI mensal: {e}")
+            cdi_monthly = pd.Series(dtype=float)
+        
+        # Mapear meses para nomes
+        month_map = {1: 'jan', 2: 'fev', 3: 'mar', 4: 'abr', 5: 'mai', 6: 'jun',
+                     7: 'jul', 8: 'ago', 9: 'set_', 10: 'out', 11: 'nov', 12: 'dez'}
+        
+        # Obter anos únicos - usar monthly_values em vez de monthly_returns.dropna()
+        years = sorted(set(monthly_values.index.year))
+        result = []
+        
+        acum_fdo = 0.0
+        acum_cdi = 0.0
+        
+        for year in years:
+            year_data = monthly_returns[monthly_returns.index.year == year]
+            year_cdi = cdi_monthly[cdi_monthly.index.year == year] if not cdi_monthly.empty else pd.Series()
+            
+            row = {'year': year}
+            year_acum = 1.0
+            year_cdi_acum = 1.0
+            
+            for month in range(1, 13):
+                month_key = month_map[month]
+                
+                # Retorno do portfólio
+                month_data = year_data[year_data.index.month == month]
+                if not month_data.empty:
+                    val = safe_float(month_data.iloc[0])
+                    row[month_key] = val
+                    if val is not None:
+                        year_acum *= (1 + val / 100)
+                else:
+                    row[month_key] = None
+                
+                # CDI do mês
+                if not year_cdi.empty:
+                    month_cdi = year_cdi[year_cdi.index.month == month]
+                    if not month_cdi.empty:
+                        cdi_val = safe_float(month_cdi.iloc[0])
+                        if cdi_val is not None:
+                            year_cdi_acum *= (1 + cdi_val / 100)
+            
+            # Acumulado do ano do portfólio
+            acum_ano = safe_float((year_acum - 1) * 100)
+            row['acumAno'] = acum_ano
+            
+            # CDI do ano (anualizado, não acumulado)
+            cdi_ano = safe_float((year_cdi_acum - 1) * 100) if not year_cdi.empty else None
+            row['cdi'] = cdi_ano
+            
+            # Acumulado do fundo desde o início
+            acum_fdo = ((1 + acum_fdo / 100) * year_acum - 1) * 100
+            row['acumFdo'] = safe_float(acum_fdo)
+            
+            # Acumulado do CDI desde o início (composto)
+            if cdi_ano is not None:
+                acum_cdi = ((1 + acum_cdi / 100) * year_cdi_acum - 1) * 100
+            row['acumCdi'] = safe_float(acum_cdi)
+            
+            result.append(row)
         
         return result

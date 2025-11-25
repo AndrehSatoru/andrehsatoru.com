@@ -1,5 +1,40 @@
 # Histórico de Mudanças - Frontend
 
+## [0.3.0] - 2025-11-25
+
+### 🚀 Novas Funcionalidades
+
+#### Tabela de Rentabilidades Dinâmica
+- ✨ **Dados do Contexto**: Tabela de rentabilidades agora usa `analysisResult` do `useDashboardData()` em vez de API separada
+- 📊 **Sincronização Automática**: Dados atualizados automaticamente quando operações são enviadas
+- 🎯 **Sem Dados Hardcoded**: Removidos dados de fallback de 2017-2025 que não correspondiam à simulação
+
+#### Melhorias na Tabela de Ativos
+- 💰 **Caixa Atualizado**: Mostra valor real do caixa incluindo rendimento CDI + dividendos
+- 📈 **Percentuais Corretos**: Alocação recalculada com valor total correto
+
+### 🐛 Correções
+
+- ✅ **Tabela Rentabilidades**: Corrigido para mostrar dados a partir da data inicial da simulação (não mais 2017)
+- ✅ **CDI na Tabela**: Valores de CDI agora correspondem aos dados oficiais do BCB
+- ✅ **Caixa na Alocação**: Mostrava R$ 40.000 fixo, agora mostra valor real (~R$ 174.000 com rendimentos)
+
+### 🔧 Melhorias
+
+#### profitability-table.tsx
+- 🔄 **Refatoração Completa**: Componente reescrito para usar dados do contexto
+- 📝 **Debug Logs**: Adicionados logs para facilitar debugging
+- 🎨 **Cores Condicionais**: Mantidas cores verde/vermelho para valores positivos/negativos
+
+#### assets-table.tsx
+- 📊 **Dados Reais**: Tabela exibe alocação calculada pelo backend com caixa atualizado
+
+### 📚 Documentação
+
+- 📄 Atualizado CHANGELOG com novas funcionalidades
+
+---
+
 ## [0.2.0] - 2025-11-25
 
 ### 🚀 Novas Funcionalidades

@@ -393,6 +393,42 @@ const WeightsSeriesResponse = z
     weights: z.record(z.array(z.number())),
   })
   .passthrough();
+const MonthlyReturnsRequest = z
+  .object({
+    assets: z.array(z.string()),
+    start_date: z.string(),
+    end_date: z.string(),
+    weights: z.union([z.array(z.number()), z.null()]).optional(),
+    benchmark: z.union([z.string(), z.null()]).optional(),
+  })
+  .passthrough();
+const MonthlyReturnRow = z
+  .object({
+    year: z.number().int(),
+    jan: z.union([z.number(), z.null()]).optional(),
+    fev: z.union([z.number(), z.null()]).optional(),
+    mar: z.union([z.number(), z.null()]).optional(),
+    abr: z.union([z.number(), z.null()]).optional(),
+    mai: z.union([z.number(), z.null()]).optional(),
+    jun: z.union([z.number(), z.null()]).optional(),
+    jul: z.union([z.number(), z.null()]).optional(),
+    ago: z.union([z.number(), z.null()]).optional(),
+    set: z.union([z.number(), z.null()]).optional(),
+    out: z.union([z.number(), z.null()]).optional(),
+    nov: z.union([z.number(), z.null()]).optional(),
+    dez: z.union([z.number(), z.null()]).optional(),
+    acumAno: z.union([z.number(), z.null()]).optional(),
+    cdi: z.union([z.number(), z.null()]).optional(),
+    acumFdo: z.union([z.number(), z.null()]).optional(),
+    acumCdi: z.union([z.number(), z.null()]).optional(),
+  })
+  .passthrough();
+const MonthlyReturnsResponse = z
+  .object({
+    data: z.array(MonthlyReturnRow),
+    lastUpdate: z.string(),
+  })
+  .passthrough();
 const OrderType = z.enum(["BUY", "SELL"]);
 const TradeOrder = z
   .object({
@@ -604,6 +640,9 @@ export const schemas = {
   APTRequest,
   WeightsSeriesRequest,
   WeightsSeriesResponse,
+  MonthlyReturnsRequest,
+  MonthlyReturnRow,
+  MonthlyReturnsResponse,
   OrderType,
   TradeOrder,
   PortfolioSimulationRequest,
@@ -2320,6 +2359,40 @@ Returns:
       },
     ],
     response: WeightsSeriesResponse,
+    errors: [
+      {
+        status: 404,
+        description: `Not found`,
+        schema: z.void(),
+      },
+      {
+        status: 422,
+        description: `Validation Error`,
+        schema: HTTPValidationError,
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/v1/portfolio/monthly-returns",
+    alias: "get_monthly_returns_api_v1_portfolio_monthly_returns_post",
+    description: `Calculates monthly returns for a portfolio.
+
+Args:
+    req (MonthlyReturnsRequest): Request body containing assets, start date, end date, and optional weights.
+    loader (YFinanceProvider): Dependency injection for the data loader.
+
+Returns:
+    MonthlyReturnsResponse: A Pydantic model containing monthly returns data by year and month.`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MonthlyReturnsRequest,
+      },
+    ],
+    response: MonthlyReturnsResponse,
     errors: [
       {
         status: 404,

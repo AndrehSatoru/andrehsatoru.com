@@ -301,7 +301,7 @@ class DataProvider(ABC):
 
     def fetch_dividends(self, assets: List[str], start_date: str, end_date: str) -> pd.DataFrame:
         """
-        Fetches dividend history for a list of assets via YFinance, with parallel processing.
+        Fetches dividend history for a list of assets via Yahoo Finance API directly.
 
         Args:
             assets (List[str]): A list of asset tickers.
@@ -315,23 +315,75 @@ class DataProvider(ABC):
         all_dividends = []
         # Normalize tickers for Yahoo Finance
         normalized_assets = [normalize_ticker_for_yahoo(a) for a in assets]
-        original_map = dict(zip(normalized_assets, assets))
+        
+        # Convert dates to timestamps
+        start_ts = int(pd.Timestamp(start_date).timestamp())
+        end_ts = int(pd.Timestamp(end_date).timestamp())
+        
+        def fetch_single_dividend(norm_asset: str, orig_asset: str) -> pd.DataFrame:
+            """Fetch dividends for a single asset directly from Yahoo Finance API."""
+            try:
+                url = f'https://query2.finance.yahoo.com/v8/finance/chart/{norm_asset}'
+                params = {
+                    'period1': start_ts,
+                    'period2': end_ts,
+                    'interval': '1d',
+                    'events': 'div'
+                }
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                
+                resp = requests.get(url, params=params, headers=headers, timeout=30)
+                resp.raise_for_status()
+                data = resp.json()
+                
+                result = data.get('chart', {}).get('result', [])
+                if not result:
+                    return pd.DataFrame()
+                    
+                events = result[0].get('events', {})
+                dividends = events.get('dividends', {})
+                
+                if not dividends:
+                    return pd.DataFrame()
+                
+                # Convert to DataFrame
+                records = []
+                for ts, div_data in dividends.items():
+                    date = pd.Timestamp(int(ts), unit='s')
+                    records.append({
+                        'Date': date,
+                        'ValorPorAcao': div_data.get('amount', 0),
+                        'Ativo': orig_asset
+                    })
+                
+                if not records:
+                    return pd.DataFrame()
+                    
+                df = pd.DataFrame(records)
+                df['Date'] = pd.to_datetime(df['Date']).dt.normalize()
+                df = df.set_index('Date').sort_index()
+                logging.info(f"Dividends for {orig_asset}: {len(df)} records")
+                return df
+                
+            except Exception as e:
+                logging.warning(f"Error fetching dividends for {orig_asset}: {e}")
+                return pd.DataFrame()
         
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_asset = {executor.submit(lambda s, start, end: s.loc[start:end], yf.Ticker(norm_asset).dividends, start_date, end_date): (norm_asset, orig_asset) for norm_asset, orig_asset in zip(normalized_assets, assets)}
-            for future in concurrent.futures.as_completed(future_to_asset):
-                norm_asset, orig_asset = future_to_asset[future]
+            futures = {
+                executor.submit(fetch_single_dividend, norm_asset, orig_asset): orig_asset 
+                for norm_asset, orig_asset in zip(normalized_assets, assets)
+            }
+            
+            for future in concurrent.futures.as_completed(futures):
+                orig_asset = futures[future]
                 try:
-                    divs = future.result()
-                    if not divs.empty:
-                        divs = divs.reset_index()
-                        divs.columns = ['Date', 'ValorPorAcao']
-                        divs['Ativo'] = orig_asset  # Use original asset name
-                        divs['Date'] = pd.to_datetime(divs['Date'])
-                        divs = divs.set_index('Date')
-                        all_dividends.append(divs)
+                    result_df = future.result()
+                    if not result_df.empty:
+                        all_dividends.append(result_df)
                 except Exception as e:
-                    logging.warning(f"Could not fetch dividends for {orig_asset} from YFinance: {e}")
+                    logging.warning(f"Could not fetch dividends for {orig_asset}: {e}")
+                    
         if not all_dividends:
             return pd.DataFrame(columns=['ValorPorAcao', 'Ativo'])
         return pd.concat(all_dividends)
@@ -473,39 +525,34 @@ class YFinanceProvider(DataProvider):
             end_date (str): The end date for fetching CDI rates (YYYY-MM-DD).
             
         Returns:
-            pd.Series: A Series containing daily CDI rates in decimal format (e.g., 0.0004 for 0.04%).
-                       Index is DatetimeIndex.
+            pd.Series: A Series containing daily CDI rates in decimal format (e.g., 0.00017 for 0.017%).
+                       Index is DatetimeIndex (only business days with actual CDI data).
                        
         Raises:
             DataProviderError: If there's an error fetching data from BCB.
         """
         try:
             # CDI diário é a série 12 do SGS do BCB
-            # A taxa vem em percentual ao ano, precisamos converter para taxa diária em decimal
-            cdi_anual = sgs.get({'CDI': 12}, start=start_date, end=end_date)
+            # A série 12 retorna a taxa DIÁRIA já em percentual (ex: 0.017% ao dia)
+            # CDI só rende em dias úteis, não fazer forward fill para fins de semana
+            cdi_data = sgs.get({'CDI': 12}, start=start_date, end=end_date)
             
-            if cdi_anual.empty:
+            if cdi_data.empty:
                 logging.warning(f"Nenhum dado CDI encontrado para o período {start_date} a {end_date}")
-                # Retornar série vazia com índice de datas
-                dates = pd.date_range(start=start_date, end=end_date, freq='D')
-                return pd.Series(0.0, index=dates, name='CDI')
+                # Retornar série vazia
+                return pd.Series(dtype=float, name='CDI')
             
-            # Converter taxa anual (%) para taxa diária decimal
-            # Fórmula: (1 + taxa_anual/100)^(1/252) - 1
-            cdi_diario = ((1 + cdi_anual['CDI'] / 100.0) ** (1.0 / 252.0) - 1.0)
+            # Converter de percentual para decimal (0.017% -> 0.00017)
+            # Manter apenas os dias que têm dados reais (dias úteis)
+            cdi_diario = cdi_data['CDI'] / 100.0
             cdi_diario.name = 'CDI'
-            
-            # Preencher dias não úteis com forward fill
-            full_dates = pd.date_range(start=start_date, end=end_date, freq='D')
-            cdi_diario = cdi_diario.reindex(full_dates).ffill().fillna(0.0)
             
             return cdi_diario
             
         except Exception as e:
             logging.error(f"Erro ao buscar dados do CDI: {e}")
-            # Em caso de erro, retornar série com taxa zero
-            dates = pd.date_range(start=start_date, end=end_date, freq='D')
-            return pd.Series(0.0, index=dates, name='CDI')
+            # Em caso de erro, retornar série vazia
+            return pd.Series(dtype=float, name='CDI')
     
     def compute_monthly_rf_from_cdi(self, start_date: str, end_date: str) -> pd.Series:
         """
