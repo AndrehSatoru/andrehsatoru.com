@@ -627,7 +627,7 @@ export const schemas = {
   Token,
 };
 
-const endpoints = makeApi([
+export const endpoints = makeApi([
   {
     method: "get",
     path: "/",

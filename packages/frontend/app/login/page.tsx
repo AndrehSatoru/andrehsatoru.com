@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { useRouter } from 'next/navigation';
 import { useApi } from '../../hooks/use-api';
-import { apiClient } from '../../lib/backend-api';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -25,13 +25,22 @@ export default function LoginPage() {
 
   const { execute: loginUser, loading, error } = useApi(
     async () => {
-      const response = await apiClient.login_for_access_token_api_v1_auth_token_post({
-        body: {
-          username,
-          password,
-        },
-      });
-      login(response.access_token, response.refresh_token);
+      const formData = new URLSearchParams();
+      formData.append('username', username);
+      formData.append('password', password);
+      formData.append('grant_type', 'password');
+
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/v1/auth/token`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+      
+      login(response.data.access_token, response.data.refresh_token);
       router.push('/');
     },
     { skip: true }
@@ -39,7 +48,11 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await loginUser();
+    try {
+      await loginUser();
+    } catch (error) {
+      console.error("Login failed", JSON.stringify(error, null, 2));
+    }
   };
 
   return (

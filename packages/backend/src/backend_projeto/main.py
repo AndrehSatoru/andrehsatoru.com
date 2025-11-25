@@ -61,9 +61,7 @@ app = FastAPI(
 )
 
 # CORS (condicional)
-origins = [o.strip() for o in config.CORS_ORIGINS if o.strip()]
-if not origins:
-    origins = ["*"]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,

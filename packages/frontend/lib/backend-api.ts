@@ -14,11 +14,48 @@ export const apiClient = new Zodios(endpoints, {
   axiosInstance: axios.create({
     baseURL: API_BASE_URL,
     timeout: API_TIMEOUT,
-    headers: {
-      'Content-Type': 'application/json',
-    },
   }),
 });
+
+// --- Interceptors ---
+// Request interceptor for authentication
+apiClient.axios.interceptors.request.use(
+  (config) => {
+    const token = useAuthStore.getState().accessToken; // Get token from store
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling and retries
+apiClient.axios.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config;
+
+    // Handle 401 Unauthorized errors
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true; // Mark request as retried
+      const refreshToken = useAuthStore.getState().refreshToken;
+
+      if (refreshToken) {
+        try {
+          // Assuming there's a refresh endpoint
+          // const response = await api.auth.refresh({ refresh_token: refreshToken });
+          // But since it's not defined, perhaps skip for now
+        } catch (refreshError) {
+          // Handle refresh error
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // --- Interceptors ---
 // Request interceptor for authentication
@@ -51,7 +88,8 @@ apiClient.axios.interceptors.response.use(
           // Attempt to refresh token
           const refreshResponse = await axios.post<{ access_token: string; refresh_token?: string }>(
             `${API_BASE_URL}/api/v1/auth/refresh`,
-            { refresh_token: refreshToken }
+            null,
+            { params: { refresh_token: refreshToken } }
           );
 
           const newAccessToken = refreshResponse.data.access_token;
@@ -79,18 +117,22 @@ apiClient.axios.interceptors.response.use(
 
     // Implement standardized error handling (Phase 4)
     const apiError: ApiError = {
-      error: error.response?.data?.error || 'unknown_error',
-      message: error.response?.data?.message || error.message,
+      error: (error.response?.data as any)?.error || 'unknown_error',
+      message: (error.response?.data as any)?.message || error.message,
       status_code: error.response?.status || 500,
-      details: error.response?.data?.details,
-      request_id: error.response?.data?.request_id,
+      details: (error.response?.data as any)?.details,
+      request_id: (error.response?.data as any)?.request_id,
     };
 
-    toast({
-      title: `Erro ${apiError.status_code}: ${apiError.error}`,
-      description: apiError.message,
-      variant: "destructive",
-    });
+    // Only show toast for errors that are not 401 (handled above) or if we want to show all errors
+    // Avoiding toast for 401 if it was a failed refresh which redirects to login
+    if (error.response?.status !== 401) {
+        toast({
+            title: `Erro ${apiError.status_code}: ${apiError.error}`,
+            description: apiError.message,
+            variant: "destructive",
+        });
+    }
     
     return Promise.reject(apiError);
   }

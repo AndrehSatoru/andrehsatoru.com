@@ -14,14 +14,40 @@ from passlib.context import CryptContext
 import redis # Import redis
 from backend_projeto.infrastructure.utils.config import settings
 
+class MockRedis:
+    def __init__(self):
+        self.store = {}
+    
+    def setex(self, name, time, value):
+        self.store[name] = value
+    
+    def exists(self, name):
+        return 1 if name in self.store else 0
+        
+    def get(self, name):
+        return self.store.get(name)
+        
+    def delete(self, name):
+        if name in self.store:
+            del self.store[name]
+            
+    def ping(self):
+        return True
+
 # Initialize Redis client for refresh token storage
-redis_client = redis.Redis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_DB,
-    password=settings.REDIS_PASSWORD,
-    decode_responses=True # Decode responses to Python strings
-)
+try:
+    redis_client = redis.Redis(
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        db=settings.REDIS_DB,
+        password=settings.REDIS_PASSWORD,
+        decode_responses=True # Decode responses to Python strings
+    )
+    redis_client.ping()
+except (redis.ConnectionError, redis.TimeoutError):
+    print("Warning: Redis not available. Using in-memory mock for tokens.")
+    redis_client = MockRedis()
+
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

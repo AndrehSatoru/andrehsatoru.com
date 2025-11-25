@@ -29,13 +29,21 @@ export function useApi<T, P extends any[]>(
       }
       return result;
     } catch (err: any) {
-      const apiError: ApiError = {
-        error: err.response?.data?.error || 'unknown_error',
-        message: err.response?.data?.message || err.message,
-        status_code: err.response?.status || 500,
-        details: err.response?.data?.details,
-        request_id: err.response?.data?.request_id,
-      };
+      // If err is already an ApiError (from backend-api interceptor), use it directly
+      let apiError: ApiError;
+      
+      if (err.status_code && err.error) {
+         apiError = err as ApiError;
+      } else {
+        apiError = {
+          error: err.response?.data?.error || 'unknown_error',
+          message: err.response?.data?.message || err.message,
+          status_code: err.response?.status || 500,
+          details: err.response?.data?.details,
+          request_id: err.response?.data?.request_id,
+        };
+      }
+      
       setError(apiError);
       if (onError) {
         onError(apiError);
