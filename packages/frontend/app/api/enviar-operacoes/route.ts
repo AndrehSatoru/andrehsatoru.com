@@ -20,8 +20,9 @@ export async function POST(req: Request) {
 
     const resp = await enviarOperacoes(parsed.data);
 
-    return new Response(JSON.stringify(resp.data), {
-      status: resp.status,
+    // Zodios returns the data directly, not a full axios response
+    return new Response(JSON.stringify(resp), {
+      status: 200,
       headers: { "content-type": "application/json" },
     });
   } catch (err: any) {

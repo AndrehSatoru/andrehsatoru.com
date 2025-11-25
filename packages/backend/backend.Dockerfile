@@ -36,6 +36,7 @@ RUN mkdir -p src/backend_projeto/cache && \
 
 # Variáveis de ambiente
 ENV PATH="/app/venv/bin:$PATH" \
+    PYTHONPATH="/app/src:$PYTHONPATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     LOG_LEVEL=INFO \
@@ -48,10 +49,10 @@ USER appuser
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/status')"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/status')"
 
 # Expor porta
 EXPOSE 8000
 
 # Comando de inicialização
-CMD uvicorn src.backend_projeto.main:app --host 0.0.0.0 --port 8000 --workers 4
+CMD ["/app/venv/bin/python", "-m", "uvicorn", "src.backend_projeto.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

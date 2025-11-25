@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { schemas } from '../../shared-types/src/schemas';
+import { schemas } from 'shared-types';
 
 export const ApiErrorSchema = schemas.ApiErrorResponse;
 

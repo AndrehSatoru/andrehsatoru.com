@@ -31,7 +31,7 @@ export default function LoginPage() {
       formData.append('grant_type', 'password');
 
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/api/v1/auth/token`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/token`,
         formData,
         {
           headers: {
@@ -48,10 +48,16 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      alert('Por favor, preencha usuário e senha');
+      return;
+    }
     try {
       await loginUser();
-    } catch (error) {
-      console.error("Login failed", JSON.stringify(error, null, 2));
+    } catch (error: any) {
+      console.error("Login failed:", error);
+      console.error("Error response:", error?.response?.data);
+      alert(`Login falhou: ${error?.response?.data?.detail || error?.message || 'Erro desconhecido'}`);
     }
   };
 

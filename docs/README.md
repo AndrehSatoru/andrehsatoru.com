@@ -2,6 +2,8 @@
 
 Bem-vindo à documentação oficial da Plataforma de Análise de Investimentos. Aqui você encontrará todas as informações necessárias para utilizar, desenvolver e operar a plataforma.
 
+> 🗺️ **[Mapa da Documentação](SITEMAP.md)** - Encontre rapidamente o que você precisa!
+
 ## 📚 Estrutura da Documentação
 
 A documentação está organizada em três guias principais, dependendo do seu perfil e objetivo:
@@ -17,10 +19,14 @@ Para desenvolvedores que desejam contribuir com o código ou entender a arquitet
 - **[Setup e Instalação](developer-guide/setup/local-development.md):** Como configurar o ambiente de desenvolvimento local.
 - **[Arquitetura](developer-guide/architecture/overview.md):** Visão geral técnica, arquitetura backend e frontend.
 - **[API](developer-guide/api/quickstart.md):** Documentação dos endpoints, autenticação e exemplos de uso.
+- **[Deploy com Docker](developer-guide/deployment/docker-compose.md):** 🐳 Guia técnico de Docker Compose.
+- **[Guia Docker Usuário](../README-DOCKER.md):** Guia completo de uso do Docker Compose.
 
 ### ⚙️ [Guia de Operações](operations/deployment.md)
 Para engenheiros de DevOps e administradores de sistema.
 - **[Deploy](operations/deployment.md):** Como fazer o deploy da aplicação em produção.
+- **[Docker Compose](developer-guide/deployment/docker-compose.md):** Deploy e configuração com Docker.
+- **[Guia Docker Completo](../README-DOCKER.md):** Guia do usuário para Docker Compose.
 - **[Segurança](operations/security.md):** Práticas e configurações de segurança.
 
 ---
@@ -32,11 +38,29 @@ Para engenheiros de DevOps e administradores de sistema.
 
 ---
 
+## ✨ Novidades Recentes
+
+### 🐳 Docker Compose Integrado (Nov 2025)
+- **Deploy simplificado** com backend, frontend e Redis em containers
+- **Networking interno** otimizado para comunicação entre serviços
+- **Variáveis de ambiente** configuradas automaticamente
+- **Health checks** integrados para todos os serviços
+- **Script PowerShell** para gerenciamento facilitado
+
+### 📊 Análise de Portfólio com Cotações Reais (Nov 2025)
+- **Busca automática** de cotações históricas via YFinance
+- **Cálculo preciso** de quantidade de ações baseado em valor investido
+- **Integração completa** entre frontend e backend
+- **Processamento em tempo real** de operações financeiras
+
+---
+
 ## 🛠️ Tecnologias Principais
 
 | Categoria | Tecnologia |
 | :--- | :--- |
-| **Monorepo** | [pnpm](https://pnpm.io/) |
-| **Frontend** | [Next.js](https://nextjs.org/), [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/) |
-| **Backend** | [Python](https://www.python.org/), [FastAPI](https://fastapi.tiangolo.com/), [Pydantic](https://docs.pydantic.dev/) |
+| **Monorepo** | [pnpm](https://pnpm.io/) Workspaces |
+| **Frontend** | [Next.js 15](https://nextjs.org/), [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/), [Zodios](https://www.zodios.org/) |
+| **Backend** | [Python 3.11](https://www.python.org/), [FastAPI](https://fastapi.tiangolo.com/), [Pydantic](https://docs.pydantic.dev/), [YFinance](https://github.com/ranaroussi/yfinance) |
+| **Cache** | [Redis 7](https://redis.io/) |
 | **Infraestrutura**| [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/) |

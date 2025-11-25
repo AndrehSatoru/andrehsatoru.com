@@ -1,15 +1,81 @@
 # Guia de Implantação - API de Análise de Investimentos
 
-## Pré-requisitos
+## Visão Geral
 
-- Python 3.9+
-- pip ou poetry
-- (Opcional) Docker
-- (Opcional) Redis para cache distribuído
+Este guia cobre diferentes métodos de implantação da plataforma:
+
+1. **[Docker Compose](#docker-compose-recomendado)** - Recomendado para desenvolvimento e produção
+2. **[Implantação Local](#implantação-local)** - Execução manual dos serviços
+3. **[Implantação em Cloud](#implantação-em-cloud)** - Deploy em provedores cloud
+
+---
+
+## Docker Compose (Recomendado)
+
+### Pré-requisitos
+
+- Docker Desktop instalado e rodando
+- Docker Compose (incluído no Docker Desktop)
+- 4GB+ de RAM disponível
+- Portas 3000, 8000 e 6379 livres
+
+### Início Rápido
+
+```powershell
+# Clone o repositório
+git clone https://github.com/AndrehSatoru/andrehsatoru.com.git
+cd andrehsatoru.com
+
+# Configure variáveis de ambiente (opcional)
+cp .env.example .env
+
+# Build e inicie todos os serviços
+.\start-docker.ps1 build
+.\start-docker.ps1 start
+```
+
+### Serviços Incluídos
+
+- **Backend (FastAPI):** Porta 8000, 4 workers
+- **Frontend (Next.js):** Porta 3000
+- **Redis:** Porta 6379, cache persistente
+
+### Comandos Disponíveis
+
+```powershell
+.\start-docker.ps1 start     # Iniciar serviços
+.\start-docker.ps1 stop      # Parar serviços
+.\start-docker.ps1 restart   # Reiniciar serviços
+.\start-docker.ps1 logs      # Ver logs em tempo real
+.\start-docker.ps1 down      # Parar e remover containers
+.\start-docker.ps1 status    # Ver status dos containers
+```
+
+### Verificação
+
+```powershell
+# Verificar status dos containers
+.\start-docker.ps1 status
+
+# Testar endpoints
+curl http://localhost:8000/status
+curl http://localhost:3000
+```
+
+📖 **Documentação Docker:**
+- **[Guia do Usuário](../../README-DOCKER.md)** - Guia completo para usuários
+- **[Guia Técnico](../developer-guide/deployment/docker-compose.md)** - Detalhes técnicos e troubleshooting avançado
 
 ---
 
 ## Implantação Local
+
+### Pré-requisitos
+
+- Python 3.9+
+- Node.js 18+
+- pnpm
+- (Opcional) Redis para cache
 
 ### 1. Instalar Dependências
 

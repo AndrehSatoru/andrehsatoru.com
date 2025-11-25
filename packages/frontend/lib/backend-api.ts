@@ -1,12 +1,15 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { z } from 'zod';
 import { makeApi, Zodios, type ZodiosOptions } from "@zodios/core";
-import { endpoints, schemas } from 'shared-types/src/schemas';
+import { endpoints, schemas } from 'shared-types';
 import { useAuthStore } from '../hooks/useAuthStore';
-import { toast } from '../hooks/use-toast'; // Import toast
 
 // Define the base URL and timeout from environment variables
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use INTERNAL_API_URL for server-side calls (API routes), NEXT_PUBLIC_API_URL for client-side
+const isServer = typeof window === 'undefined';
+const API_BASE_URL = isServer 
+  ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000', 10);
 
 // Create a Zodios instance
@@ -124,15 +127,8 @@ apiClient.axios.interceptors.response.use(
       request_id: (error.response?.data as any)?.request_id,
     };
 
-    // Only show toast for errors that are not 401 (handled above) or if we want to show all errors
-    // Avoiding toast for 401 if it was a failed refresh which redirects to login
-    if (error.response?.status !== 401) {
-        toast({
-            title: `Erro ${apiError.status_code}: ${apiError.error}`,
-            description: apiError.message,
-            variant: "destructive",
-        });
-    }
+    // Note: Toast notifications should be handled in components, not in interceptors
+    // since interceptors run on both server and client side
     
     return Promise.reject(apiError);
   }
@@ -146,3 +142,8 @@ export type ApiError = {
   details?: Record<string, any>;
   request_id?: string;
 };
+
+// Export function to send operations
+export async function enviarOperacoes(data: any) {
+  return await apiClient.post("/api/v1/processar_operacoes", data);
+}

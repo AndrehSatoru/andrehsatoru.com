@@ -2,7 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
-import { Analytics } from "@vercel/analytics/next"
+// import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { PeriodProvider } from "@/lib/period-context"
 import { DashboardDataProvider } from "@/lib/dashboard-data-context"
@@ -27,7 +27,6 @@ export default function RootLayout({
             <PeriodProvider>{children}</PeriodProvider>
           </DashboardDataProvider>
         </Suspense>
-        <Analytics />
       </body>
     </html>
   )

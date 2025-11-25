@@ -1,5 +1,49 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.2.0] - 2025-11-25
+
+### 🚀 Novas Funcionalidades
+
+#### Integração de Preços Históricos
+- ✨ **Busca Automática de Cotações**: Implementada integração com YFinance para buscar preços históricos reais de ações
+- 📊 **Cálculo Automático de Quantidade**: Sistema calcula automaticamente `Quantidade = Valor / Preço` para cada operação
+- 🔍 **Janela de Busca Inteligente**: Busca preços em ±5 dias caso a data exata não tenha dados de mercado
+- 📝 **Logging Detalhado**: Logs mostram cálculos realizados: "Operação VALE3 em 2019-10-10: valor=10000.00, preço=50.25, quantidade=199.00"
+- 🛡️ **Fallback Robusto**: Se preço não for encontrado, usa valor como preço e quantidade=1.0
+
+#### Endpoint `/api/v1/transactions/processar-operacoes`
+- 🔄 **Refatoração Completa**: Endpoint reescrito para integrar PortfolioAnalyzer com dados históricos
+- ✅ **Validação Aprimorada**: Verifica formato de data e disponibilidade de dados
+- 📈 **Mapeamento Correto**: DataFrame agora usa colunas corretas ['Data', 'Ativo', 'Quantidade', 'Preco']
+
+### 🐳 Infraestrutura Docker
+
+#### Docker Compose
+- ✨ **Setup Completo**: Implementado docker-compose.yml com 3 serviços (backend, frontend, redis)
+- 🔧 **Health Checks**: Todos os serviços com verificações de saúde configuradas
+- 🌐 **Networking Otimizado**: Rede interna 'app-network' com DNS Docker para comunicação entre containers
+- 📦 **Volumes Persistentes**: Redis com armazenamento persistente
+- 🔌 **Portas Configuradas**: Backend (8000), Frontend (3000), Redis (6380→6379)
+
+#### Dockerfile Melhorado
+- ✅ **CMD Corrigido**: Usa caminho completo `/app/venv/bin/python -m uvicorn`
+- ✅ **PYTHONPATH Configurado**: `/app/src` para resolução correta de módulos
+- ✅ **Workers Uvicorn**: 4 workers para melhor performance
+- ✅ **Health Check**: Endpoint `/api/v1/status` verificado automaticamente
+
+### 🐛 Correções
+
+- 🔴 **DataFrame Columns Error**: Corrigido mapeamento de colunas de Tipo/Valor para Quantidade/Preco
+- 🟢 **Module Import Error**: PYTHONPATH configurado corretamente no Dockerfile
+- 🔵 **Port Conflicts**: Redis movido para porta 6380 externa
+- 🟡 **CORS Configuration**: Permitido localhost:3000 no backend
+
+### 📚 Documentação
+
+- 📖 **API Documentation**: Criado `docs/developer-guide/api/processar-operacoes.md` com guia completo
+- 📖 **Docker Guide**: Atualizado `docs/developer-guide/deployment/docker-compose.md` com troubleshooting
+- 📖 **README Updates**: Seção "Novidades Recentes" adicionada ao docs/README.md
+
 ## [1.1.1] - 2025-11-24
 
 ### 🏗️ Melhorias de Arquitetura

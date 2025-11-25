@@ -7,33 +7,40 @@ Uma plataforma full-stack para análise de risco, otimização de portfólio e a
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
 
 
-## 🚀 Início Rápido (Recomendado)
+## 🚀 Início Rápido
 
-A maneira mais fácil de executar a plataforma completa (backend + frontend) é com o Docker Compose.
+### Opção 1: Docker Compose (Recomendado) 🐳
+
+A maneira mais fácil de executar a plataforma completa (backend + frontend + redis) é com o Docker Compose.
 
 **Pré-requisitos:**
-- Docker e Docker Compose instalados.
-- Git instalado.
+- Docker Desktop instalado e rodando
+- Git instalado
+- Portas 3000, 8000 e 6379 livres
 
-```bash
+```powershell
 # 1. Clone o repositório
 git clone https://github.com/AndrehSatoru/andrehsatoru.com.git
 cd andrehsatoru.com
 
-# 2. Crie e configure o arquivo de ambiente
+# 2. Crie e configure o arquivo de ambiente (opcional)
 cp .env.example .env
-# Abra o .env e adicione suas chaves de API (FINNHUB_API_KEY, ALPHA_VANTAGE_API_KEY)
-# Você pode obter as chaves em:
-# - Finnhub: https://finnhub.io/
-# - Alpha Vantage: https://www.alphavantage.co/
+# Edite o .env se necessário
 
-# 3. Construa e execute os serviços
-docker-compose up --build -d
+# 3. Build e inicie todos os serviços
+.\start-docker.ps1 build
+.\start-docker.ps1 start
 ```
 
-Você pode acessar:
-- **Frontend (React App):** [http://localhost:3000](http://localhost:3000)
-- **Documentação da API (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
+**Serviços disponíveis:**
+- **Frontend:** [http://localhost:3000](http://localhost:3000)
+- **Backend API:** [http://localhost:8000](http://localhost:8000)
+- **API Docs (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Redis:** localhost:6379
+
+📖 **[Guia completo do Docker](../../../README-DOCKER.md)** - Comandos, troubleshooting e configurações avançadas.
+
+### Opção 2: Desenvolvimento Manual
 
 ## 📚 Documentação
 
