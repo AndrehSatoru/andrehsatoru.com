@@ -10,11 +10,16 @@ export function PerformanceChart() {
   const { period } = usePeriod()
   const { analysisResult } = useDashboardData()
 
-  // Assuming the analysisResult has a 'performance' array
-  const allData = analysisResult?.performance || []
+  // Backend returns performance in results.performance
+  const allData = analysisResult?.results?.performance || []
   const data = filterDataByPeriod(allData, period)
 
-  if (!analysisResult) {
+  // Debug log
+  console.log("[PerformanceChart] analysisResult:", analysisResult)
+  console.log("[PerformanceChart] allData length:", allData.length)
+  console.log("[PerformanceChart] data length:", data.length)
+
+  if (!analysisResult || data.length === 0) {
     return (
       <Card className="border-border">
         <CardHeader>
@@ -60,7 +65,11 @@ export function PerformanceChart() {
             <YAxis
               stroke="hsl(var(--muted-foreground))"
               fontSize={12}
-              tickFormatter={(value) => `R$ ${(value / 1000000).toFixed(1)}M`}
+              tickFormatter={(value) => {
+                if (value >= 1000000) return `R$ ${(value / 1000000).toFixed(1)}M`
+                if (value >= 1000) return `R$ ${(value / 1000).toFixed(0)}K`
+                return `R$ ${value.toFixed(0)}`
+              }}
             />
             <Tooltip
               contentStyle={{

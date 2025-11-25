@@ -1141,7 +1141,7 @@ class PortfolioAnalyzer:
     de um portfólio com base em um histórico de transações.
     """
     
-    def __init__(self, transactions_df: pd.DataFrame, data_loader: YFinanceProvider = None, config: Settings = None, end_date: Optional[str] = None):
+    def __init__(self, transactions_df: pd.DataFrame, data_loader: YFinanceProvider = None, config: Settings = None, start_date: Optional[str] = None, end_date: Optional[str] = None, initial_value: float = 0.0):
         """
         Inicializa o analisador de portfólio com um DataFrame de transações.
         
@@ -1154,7 +1154,9 @@ class PortfolioAnalyzer:
                 - Taxas: taxas e custos da transação
             data_loader: Instância de YFinanceProvider para carregar dados de mercado
             config: Instância de Config com parâmetros de configuração
+            start_date: Data inicial da análise. Se None, usa a data da primeira transação.
             end_date: Data final da análise. Se None, usa a data atual.
+            initial_value: Valor inicial do portfólio (capital disponível)
         """
         if transactions_df.empty:
             raise ValueError("Nenhuma transação fornecida")
@@ -1175,8 +1177,25 @@ class PortfolioAnalyzer:
         self.assets = self.transactions['Ativo'].unique().tolist()
         
         # Período de análise
-        self.start_date = self.transactions['Data'].min()
+        # Se start_date foi fornecido, usa ele; caso contrário, usa a data da primeira transação
+        if start_date:
+            self.start_date = pd.to_datetime(start_date).normalize()
+        else:
+            self.start_date = self.transactions['Data'].min()
         self.end_date = pd.to_datetime(end_date).normalize() if end_date else pd.to_datetime('today').normalize()
+        
+        # Valor inicial do portfólio (capital disponível)
+        self.initial_value = initial_value
+        
+        # Calcular total investido em ativos
+        self.total_invested = sum(
+            row['Preco'] * row['Quantidade'] 
+            for _, row in self.transactions.iterrows() 
+            if row['Quantidade'] > 0
+        )
+        
+        # Caixa = valor inicial - total investido
+        self.cash = max(0, self.initial_value - self.total_invested)
         
         # Dados calculados
         self.returns = None
@@ -1218,6 +1237,7 @@ class PortfolioAnalyzer:
     def _calculate_portfolio_value(self) -> pd.Series:
         """
         Calcula o valor total do portfólio ao longo do tempo.
+        Inclui o valor dos ativos + caixa disponível.
         
         Returns:
             Série com o valor do portfólio por data
@@ -1232,7 +1252,7 @@ class PortfolioAnalyzer:
             end_date=self.end_date.strftime('%Y-%m-%d')
         )
         
-        # Calcular o valor de cada posição
+        # Calcular o valor de cada posição (ativos)
         portfolio_value = pd.Series(0.0, index=self.positions.index, name='Valor')
         
         for asset in self.assets:
@@ -1240,6 +1260,53 @@ class PortfolioAnalyzer:
                 # Preencher valores ausentes nos preços com o último valor válido
                 asset_prices = prices[asset].reindex(portfolio_value.index).ffill()
                 portfolio_value += self.positions[asset] * asset_prices
+        
+        # Buscar taxas diárias do CDI para o período
+        try:
+            cdi_rates = self.data_loader.fetch_cdi_daily(
+                start_date=self.start_date.strftime('%Y-%m-%d'),
+                end_date=self.end_date.strftime('%Y-%m-%d')
+            )
+            # Alinhar com o índice do portfólio
+            cdi_rates = cdi_rates.reindex(self.positions.index).fillna(0.0)
+        except Exception as e:
+            logging.warning(f"Erro ao buscar CDI, usando taxa zero: {e}")
+            cdi_rates = pd.Series(0.0, index=self.positions.index)
+        
+        # Calcular o caixa acumulado ao longo do tempo com rendimento do CDI
+        # Caixa começa com initial_value e:
+        # 1. Rende CDI diariamente
+        # 2. Diminui a cada compra
+        cash_series = pd.Series(0.0, index=self.positions.index, name='Caixa')
+        current_cash = self.initial_value
+        
+        # Criar um dicionário com as transações por data para acesso eficiente
+        transactions_by_date = {}
+        for _, tx in self.transactions.iterrows():
+            tx_date = tx['Data']
+            tx_value = tx['Preco'] * tx['Quantidade']
+            if tx_date not in transactions_by_date:
+                transactions_by_date[tx_date] = 0.0
+            transactions_by_date[tx_date] += tx_value
+        
+        # Processar cada dia
+        for date in self.positions.index:
+            # Aplicar rendimento do CDI ao caixa do dia anterior
+            if date in cdi_rates.index and cdi_rates[date] > 0:
+                current_cash *= (1 + cdi_rates[date])
+            
+            # Subtrair transações do dia (se houver)
+            if date in transactions_by_date:
+                current_cash -= transactions_by_date[date]
+            
+            # Garantir que o caixa não seja negativo
+            current_cash = max(0, current_cash)
+            
+            # Registrar o caixa do dia
+            cash_series[date] = current_cash
+        
+        # Valor total = ativos + caixa
+        portfolio_value += cash_series
         
         return portfolio_value
     
@@ -1277,27 +1344,47 @@ class PortfolioAnalyzer:
         if len(self.returns) < 2:
             return {"error": "Dados insuficientes para análise de desempenho"}
         
-        # Calcular métricas de desempenho
-        total_return = (self.portfolio_value.iloc[-1] / self.portfolio_value.iloc[0] - 1) * 100  # em %
-        annualized_return = (1 + self.returns.mean()) ** 252 - 1  # Supondo 252 dias de negociação por ano
-        annualized_vol = self.returns.std() * np.sqrt(252)  # Volatilidade anualizada
-        sharpe_ratio = annualized_return / annualized_vol if annualized_vol > 0 else 0
+        # Remover valores NaN para cálculos
+        valid_portfolio = self.portfolio_value.dropna()
+        
+        if valid_portfolio.empty or len(valid_portfolio) < 2:
+            return {"error": "Dados insuficientes para análise de desempenho"}
+        
+        # Calcular métricas de desempenho usando valores válidos
+        initial_value = valid_portfolio.iloc[0]
+        final_value = valid_portfolio.iloc[-1]
+        total_return = (final_value / initial_value - 1) * 100  # em %
+        
+        # CAGR (Compound Annual Growth Rate) - retorno anualizado correto
+        n_years = len(valid_portfolio) / 252  # anos de análise
+        if n_years > 0 and initial_value > 0:
+            cagr = (pow(final_value / initial_value, 1 / n_years) - 1)
+        else:
+            cagr = 0
+        
+        # Volatilidade anualizada (usando retornos simples para consistência)
+        simple_returns = valid_portfolio.pct_change().dropna()
+        annualized_vol = simple_returns.std() * np.sqrt(252)
+        
+        # Sharpe Ratio usando CAGR e volatilidade anualizada
+        # Assumindo taxa livre de risco de 0% para simplificar
+        sharpe_ratio = cagr / annualized_vol if annualized_vol > 0 else 0
         
         # Calcular drawdown
-        cum_returns = (1 + self.returns).cumprod()
+        cum_returns = (1 + simple_returns).cumprod()
         running_max = cum_returns.cummax()
         drawdowns = (cum_returns - running_max) / running_max
         max_drawdown = drawdowns.min() * 100  # em %
         
-        # Calcular VaR e ES
-        var_95, _ = var_historical(self.returns, alpha=0.95)
+        # Calcular VaR e ES usando retornos simples
+        var_95, _ = var_historical(simple_returns, alpha=0.95)
         var_95 *= 100  # em %
-        es_95, _ = es_historical(self.returns, alpha=0.95)
+        es_95, _ = es_historical(simple_returns, alpha=0.95)
         es_95 *= 100  # em %
         
         return {
             "retorno_total_%": round(total_return, 2),
-            "retorno_anualizado_%": round(annualized_return * 100, 2),
+            "retorno_anualizado_%": round(cagr * 100, 2),
             "volatilidade_anual_%": round(annualized_vol * 100, 2),
             "indice_sharpe": round(sharpe_ratio, 2),
             "max_drawdown_%": round(max_drawdown, 2),
@@ -1332,27 +1419,49 @@ class PortfolioAnalyzer:
         # Obter posições na data de análise
         positions = self.positions.loc[analysis_date]
         
-        # Obter preços na data de análise
+        # Obter preços - buscar um intervalo maior para garantir que temos dados
+        # (considerando fins de semana e feriados)
+        start_fetch = (analysis_date - pd.Timedelta(days=10)).strftime('%Y-%m-%d')
+        end_fetch = analysis_date.strftime('%Y-%m-%d')
+        
         prices = self.data_loader.fetch_stock_prices(
             assets=self.assets,
-            start_date=analysis_date.strftime('%Y-%m-%d'),
-            end_date=analysis_date.strftime('%Y-%m-%d')
+            start_date=start_fetch,
+            end_date=end_fetch
         )
+        
+        # Usar a última data disponível nos preços
+        if prices.empty:
+            return {"error": f"Não foi possível obter preços para os ativos na data {analysis_date}"}
+        
+        # Pegar a última data disponível (mais recente)
+        available_date = prices.index[-1]
         
         # Calcular valores das posições
         allocation = {}
-        total_value = 0.0
+        total_assets_value = 0.0
         
         for asset in self.assets:
-            if asset in prices.columns and not pd.isna(prices.loc[analysis_date, asset]):
-                asset_value = positions[asset] * prices.loc[analysis_date, asset]
+            if asset in prices.columns and not pd.isna(prices.loc[available_date, asset]):
+                asset_value = positions[asset] * prices.loc[available_date, asset]
                 if asset_value > 0:  # Apenas incluir ativos com valor positivo
                     allocation[asset] = {
                         'quantidade': positions[asset],
-                        'preco_unitario': prices.loc[analysis_date, asset],
-                        'valor_total': asset_value
+                        'preco_unitario': float(prices.loc[available_date, asset]),
+                        'valor_total': float(asset_value)
                     }
-                    total_value += asset_value
+                    total_assets_value += asset_value
+        
+        # Adicionar Caixa à alocação se houver valor inicial definido
+        if self.cash > 0:
+            allocation['Caixa'] = {
+                'quantidade': 1,
+                'preco_unitario': float(self.cash),
+                'valor_total': float(self.cash)
+            }
+        
+        # Valor total inclui ativos + caixa
+        total_value = total_assets_value + self.cash
         
         # Calcular percentuais
         for asset in allocation:
@@ -1361,6 +1470,8 @@ class PortfolioAnalyzer:
         return {
             'data_analise': analysis_date.strftime('%Y-%m-%d'),
             'valor_total': total_value,
+            'valor_investido': total_assets_value,
+            'caixa': self.cash,
             'alocacao': allocation
         }
     
@@ -1379,10 +1490,14 @@ class PortfolioAnalyzer:
         performance = self.analyze_performance()
         allocation = self.analyze_allocation()
         
+        # Gerar série temporal de performance para gráficos
+        performance_series = self._generate_performance_series()
+        
         # Retornar resultados consolidados
         return {
             'desempenho': performance,
             'alocacao': allocation,
+            'performance': performance_series,
             'metadados': {
                 'ativos': self.assets,
                 'periodo_analise': {
@@ -1393,3 +1508,62 @@ class PortfolioAnalyzer:
                 'transacoes': len(self.transactions)
             }
         }
+    
+    def _generate_performance_series(self) -> list:
+        """
+        Gera série temporal de performance para gráficos.
+        
+        Returns:
+            Lista de dicionários com data, valor do portfólio e benchmark
+        """
+        if self.portfolio_value is None or self.portfolio_value.empty:
+            return []
+        
+        # Remover valores NaN do portfolio_value
+        valid_portfolio = self.portfolio_value.dropna()
+        
+        if valid_portfolio.empty:
+            return []
+        
+        # Calcular benchmark (CDI + 2% anual)
+        # CDI aproximado de 12% ao ano, então benchmark = 14% ao ano
+        annual_rate = 0.14
+        daily_rate = (1 + annual_rate) ** (1/252) - 1
+        
+        initial_value = valid_portfolio.iloc[0]
+        benchmark_values = [initial_value]
+        
+        for i in range(1, len(valid_portfolio)):
+            benchmark_values.append(benchmark_values[-1] * (1 + daily_rate))
+        
+        # Criar lista de dados para o gráfico (amostrar para não sobrecarregar)
+        # Pegar no máximo 250 pontos para o gráfico
+        step = max(1, len(valid_portfolio) // 250)
+        
+        result = []
+        for i in range(0, len(valid_portfolio), step):
+            date = valid_portfolio.index[i]
+            portfolio_val = valid_portfolio.iloc[i]
+            # Pular se ainda for NaN
+            if pd.isna(portfolio_val):
+                continue
+            result.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'portfolio': round(float(portfolio_val), 2),
+                'benchmark': round(float(benchmark_values[i]), 2)
+            })
+        
+        # Garantir que o último ponto está incluído
+        if len(valid_portfolio) > 0:
+            last_idx = len(valid_portfolio) - 1
+            if last_idx % step != 0:
+                date = valid_portfolio.index[last_idx]
+                portfolio_val = valid_portfolio.iloc[last_idx]
+                if not pd.isna(portfolio_val):
+                    result.append({
+                        'date': date.strftime('%Y-%m-%d'),
+                        'portfolio': round(float(portfolio_val), 2),
+                        'benchmark': round(float(benchmark_values[last_idx]), 2)
+                    })
+        
+        return result

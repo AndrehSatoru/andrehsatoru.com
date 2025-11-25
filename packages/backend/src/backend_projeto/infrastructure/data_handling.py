@@ -38,6 +38,53 @@ from backend_projeto.infrastructure.utils.cache_cleaner import CacheCleaner
 
 __all__ = ["DataProvider", "YFinanceProvider", "FinnhubProvider", "AlphaVantageProvider"]
 
+
+def normalize_ticker_for_yahoo(ticker: str) -> str:
+    """
+    Normalize a ticker symbol for Yahoo Finance.
+    
+    Brazilian stocks need the .SA suffix to be recognized.
+    If the ticker already has .SA or another suffix (contains a dot), leave it unchanged.
+    
+    Args:
+        ticker: The ticker symbol (e.g., 'PETR4', 'VALE3', 'AAPL')
+    
+    Returns:
+        The normalized ticker (e.g., 'PETR4.SA', 'VALE3.SA', 'AAPL')
+    """
+    if not ticker:
+        return ticker
+    
+    # If it already has a suffix, leave it unchanged
+    if '.' in ticker:
+        return ticker
+    
+    # Brazilian ticker pattern: 4 letters + number(s) (e.g., PETR4, VALE3, ITUB4)
+    # Some also have F at the end (e.g., PETR4F for fractional)
+    import re
+    brazilian_pattern = re.compile(r'^[A-Z]{4}\d{1,2}[FBW]?$', re.IGNORECASE)
+    
+    if brazilian_pattern.match(ticker.upper()):
+        return f"{ticker.upper()}.SA"
+    
+    return ticker
+
+
+def denormalize_ticker(ticker: str) -> str:
+    """
+    Remove the Yahoo Finance suffix from a ticker.
+    
+    Args:
+        ticker: The ticker with suffix (e.g., 'PETR4.SA')
+    
+    Returns:
+        The ticker without suffix (e.g., 'PETR4')
+    """
+    if ticker and '.SA' in ticker.upper():
+        return ticker.replace('.SA', '').replace('.sa', '')
+    return ticker
+
+
 class DataProvider(ABC):
     """
     Abstract Base Class for all data providers.
@@ -81,6 +128,97 @@ class DataProvider(ABC):
         """
         pass
 
+    def _fetch_prices_direct_api(self, normalized_assets: List[str], start: pd.Timestamp, end: pd.Timestamp, 
+                                  original_assets: List[str], ticker_map: Dict[str, str]) -> Optional[pd.DataFrame]:
+        """
+        Fetch prices directly from Yahoo Finance API with proper headers.
+        This is more reliable than yfinance when dealing with rate limiting.
+        """
+        import time as time_module
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9',
+        }
+        
+        all_data = {}
+        
+        for i, (norm_ticker, orig_ticker) in enumerate(zip(normalized_assets, original_assets)):
+            try:
+                # Add small delay between requests to avoid rate limiting
+                if i > 0:
+                    time_module.sleep(0.5)
+                
+                # Convert dates to Unix timestamps
+                start_ts = int(start.timestamp())
+                end_ts = int(end.timestamp())
+                
+                url = f"https://query1.finance.yahoo.com/v8/finance/chart/{norm_ticker}"
+                params = {
+                    'period1': start_ts,
+                    'period2': end_ts,
+                    'interval': '1d',
+                    'includePrePost': 'false',
+                    'events': 'div,splits'
+                }
+                
+                logging.info(f"Fetching {norm_ticker} from Yahoo Finance API...")
+                response = requests.get(url, headers=headers, params=params, timeout=30)
+                
+                if response.status_code == 429:
+                    logging.warning(f"Rate limited by Yahoo Finance, waiting 5 seconds...")
+                    time_module.sleep(5)
+                    response = requests.get(url, headers=headers, params=params, timeout=30)
+                
+                if response.status_code != 200:
+                    logging.error(f"Yahoo Finance API returned {response.status_code} for {norm_ticker}")
+                    continue
+                
+                data = response.json()
+                
+                if 'chart' not in data or 'result' not in data['chart'] or not data['chart']['result']:
+                    logging.error(f"No data in Yahoo Finance response for {norm_ticker}")
+                    continue
+                
+                result = data['chart']['result'][0]
+                timestamps = result.get('timestamp', [])
+                
+                if not timestamps:
+                    logging.warning(f"No timestamps in Yahoo Finance response for {norm_ticker}")
+                    continue
+                
+                indicators = result.get('indicators', {}).get('quote', [{}])[0]
+                closes = indicators.get('close', [])
+                
+                if not closes:
+                    logging.warning(f"No close prices in Yahoo Finance response for {norm_ticker}")
+                    continue
+                
+                # Create series with dates as index - normalize to date only (no time)
+                dates = pd.to_datetime(timestamps, unit='s').tz_localize('UTC').tz_convert('America/Sao_Paulo').tz_localize(None)
+                # Normalize to just date (remove time component) for proper alignment
+                dates = dates.normalize()
+                series = pd.Series(closes, index=dates, name=orig_ticker)
+                series = series.dropna()
+                # Remove duplicates (keep first) in case of multiple entries per day
+                series = series[~series.index.duplicated(keep='first')]
+                
+                if not series.empty:
+                    all_data[orig_ticker] = series
+                    logging.info(f"Successfully fetched {len(series)} data points for {orig_ticker}")
+                
+            except Exception as e:
+                logging.error(f"Error fetching {norm_ticker} from direct API: {str(e)}")
+                continue
+        
+        if not all_data:
+            return None
+        
+        df = pd.DataFrame(all_data)
+        df.index = pd.to_datetime(df.index)
+        return df
+
     @retry_with_backoff(max_retries=3, backoff_factor=2.0)
     def fetch_stock_prices(self, assets: List[str], start_date: str, end_date: str) -> pd.DataFrame:
         """
@@ -106,9 +244,51 @@ class DataProvider(ABC):
         
         logging.info(f"Fetching prices for {assets} from {start_date} to {end_date}")
         try:
-            data = pdr.get_data_yahoo(assets, start=start_date, end=end_date, timeout=self.timeout)
-            if isinstance(data.index, pd.MultiIndex):
-                data = data['Adj Close']
+            # Normalize tickers for Yahoo Finance (add .SA for Brazilian stocks)
+            original_assets = assets.copy() if isinstance(assets, list) else list(assets)
+            normalized_assets = [normalize_ticker_for_yahoo(a) for a in original_assets]
+            ticker_map = dict(zip(normalized_assets, original_assets))  # To restore original names
+            
+            logging.info(f"Normalized tickers: {normalized_assets}")
+            
+            # Add extra days to handle weekends/holidays
+            start = pd.to_datetime(start_date) - pd.Timedelta(days=7)
+            end = pd.to_datetime(end_date) + pd.Timedelta(days=7)
+            
+            # Try direct API call first (more reliable)
+            data = self._fetch_prices_direct_api(normalized_assets, start, end, original_assets, ticker_map)
+            
+            # If direct API fails, try yfinance as fallback
+            if data is None or data.empty:
+                logging.info("Direct API failed, trying yfinance...")
+                if len(normalized_assets) == 1:
+                    ticker = yf.Ticker(normalized_assets[0])
+                    data = ticker.history(start=start, end=end)
+                    if not data.empty and 'Close' in data.columns:
+                        # Use original asset name for column
+                        data = data['Close'].to_frame(name=original_assets[0])
+                    else:
+                        data = pd.DataFrame()
+                else:
+                    data = yf.download(normalized_assets, start=start, end=end, progress=False)
+                    if not data.empty:
+                        if isinstance(data.columns, pd.MultiIndex):
+                            data = data['Close']
+                    else:
+                        data = data[['Close']] if 'Close' in data.columns else data
+                    # Rename columns back to original asset names
+                    if hasattr(data, 'columns'):
+                        data.columns = [ticker_map.get(c, c) for c in data.columns]
+            
+            if data is None or data.empty:
+                logging.error(f"No data returned from Yahoo Finance for {assets}")
+                raise DataProviderError(f"No data available for {assets} between {start_date} and {end_date}")
+            
+            # Filter to requested date range
+            data = data.loc[start_date:end_date]
+            
+            if data.empty:
+                logging.warning(f"No data in exact date range {start_date} to {end_date}, returning available data")
             
             # Cache the result
             if self.cache.enabled:
@@ -133,21 +313,25 @@ class DataProvider(ABC):
                           Columns typically include 'ValorPorAcao' and 'Ativo'.
         """
         all_dividends = []
+        # Normalize tickers for Yahoo Finance
+        normalized_assets = [normalize_ticker_for_yahoo(a) for a in assets]
+        original_map = dict(zip(normalized_assets, assets))
+        
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_asset = {executor.submit(lambda s, start, end: s.loc[start:end], yf.Ticker(asset).dividends, start_date, end_date): asset for asset in assets}
+            future_to_asset = {executor.submit(lambda s, start, end: s.loc[start:end], yf.Ticker(norm_asset).dividends, start_date, end_date): (norm_asset, orig_asset) for norm_asset, orig_asset in zip(normalized_assets, assets)}
             for future in concurrent.futures.as_completed(future_to_asset):
-                asset = future_to_asset[future]
+                norm_asset, orig_asset = future_to_asset[future]
                 try:
                     divs = future.result()
                     if not divs.empty:
                         divs = divs.reset_index()
                         divs.columns = ['Date', 'ValorPorAcao']
-                        divs['Ativo'] = asset
+                        divs['Ativo'] = orig_asset  # Use original asset name
                         divs['Date'] = pd.to_datetime(divs['Date'])
                         divs = divs.set_index('Date')
                         all_dividends.append(divs)
                 except Exception as e:
-                    logging.warning(f"Could not fetch dividends for {asset} from YFinance: {e}")
+                    logging.warning(f"Could not fetch dividends for {orig_asset} from YFinance: {e}")
         if not all_dividends:
             return pd.DataFrame(columns=['ValorPorAcao', 'Ativo'])
         return pd.concat(all_dividends)
@@ -217,9 +401,11 @@ class DataProvider(ABC):
         market_caps = {}
         for asset in assets:
             try:
-                ticker = yf.Ticker(asset)
+                # Normalize ticker for Yahoo Finance
+                normalized = normalize_ticker_for_yahoo(asset)
+                ticker = yf.Ticker(normalized)
                 data = ticker.info
-                market_caps[asset] = float(data.get('marketCap', 0.0))
+                market_caps[asset] = float(data.get('marketCap', 0.0))  # Use original asset name
             except Exception as e:
                 logging.warning(f"Could not fetch market cap for {asset} from YFinance: {e}")
                 market_caps[asset] = 0.0
@@ -230,6 +416,12 @@ class YFinanceProvider(DataProvider):
     
     _price_cache = {}
     _cache_cleaner = CacheCleaner(_price_cache)
+
+    def __init__(self):
+        """Initialize YFinanceProvider with default configuration."""
+        super().__init__()
+        self.cache = CacheManager(enabled=settings.ENABLE_CACHE)
+        self.timeout = settings.DATA_PROVIDER_TIMEOUT
 
     def _get_cache_key(self, assets: List[str], start_date: str, end_date: str) -> str:
         """
@@ -271,6 +463,86 @@ class YFinanceProvider(DataProvider):
                 logging.warning(f"Could not fetch info for {asset} from YFinance: {e}")
                 info[asset] = {'currency': 'USD', 'sector': 'N/A', 'longName': asset}
         return info
+
+    def fetch_cdi_daily(self, start_date: str, end_date: str) -> pd.Series:
+        """
+        Fetches daily CDI (Certificado de Depósito Interbancário) rates from BCB (Banco Central do Brasil).
+        
+        Args:
+            start_date (str): The start date for fetching CDI rates (YYYY-MM-DD).
+            end_date (str): The end date for fetching CDI rates (YYYY-MM-DD).
+            
+        Returns:
+            pd.Series: A Series containing daily CDI rates in decimal format (e.g., 0.0004 for 0.04%).
+                       Index is DatetimeIndex.
+                       
+        Raises:
+            DataProviderError: If there's an error fetching data from BCB.
+        """
+        try:
+            # CDI diário é a série 12 do SGS do BCB
+            # A taxa vem em percentual ao ano, precisamos converter para taxa diária em decimal
+            cdi_anual = sgs.get({'CDI': 12}, start=start_date, end=end_date)
+            
+            if cdi_anual.empty:
+                logging.warning(f"Nenhum dado CDI encontrado para o período {start_date} a {end_date}")
+                # Retornar série vazia com índice de datas
+                dates = pd.date_range(start=start_date, end=end_date, freq='D')
+                return pd.Series(0.0, index=dates, name='CDI')
+            
+            # Converter taxa anual (%) para taxa diária decimal
+            # Fórmula: (1 + taxa_anual/100)^(1/252) - 1
+            cdi_diario = ((1 + cdi_anual['CDI'] / 100.0) ** (1.0 / 252.0) - 1.0)
+            cdi_diario.name = 'CDI'
+            
+            # Preencher dias não úteis com forward fill
+            full_dates = pd.date_range(start=start_date, end=end_date, freq='D')
+            cdi_diario = cdi_diario.reindex(full_dates).ffill().fillna(0.0)
+            
+            return cdi_diario
+            
+        except Exception as e:
+            logging.error(f"Erro ao buscar dados do CDI: {e}")
+            # Em caso de erro, retornar série com taxa zero
+            dates = pd.date_range(start=start_date, end=end_date, freq='D')
+            return pd.Series(0.0, index=dates, name='CDI')
+    
+    def compute_monthly_rf_from_cdi(self, start_date: str, end_date: str) -> pd.Series:
+        """
+        Computes monthly risk-free rate from daily CDI data.
+        
+        Args:
+            start_date (str): The start date (YYYY-MM-DD).
+            end_date (str): The end date (YYYY-MM-DD).
+            
+        Returns:
+            pd.Series: Monthly risk-free rate in decimal format, indexed by month-end dates.
+                       
+        Raises:
+            DataProviderError: If there's an error computing the monthly rate.
+        """
+        try:
+            # Buscar CDI diário
+            cdi_daily = self.fetch_cdi_daily(start_date, end_date)
+            
+            if cdi_daily.empty:
+                logging.warning("CDI diário vazio, retornando taxa mensal zero")
+                dates = pd.date_range(start=start_date, end=end_date, freq='M')
+                return pd.Series(0.0, index=dates, name='RF')
+            
+            # Converter para DataFrame para facilitar o resample
+            cdi_df = pd.DataFrame({'CDI': cdi_daily})
+            
+            # Calcular retorno composto mensal: produto de (1 + r_diário) - 1
+            # Resample para mensal e aplicar a fórmula de composição
+            monthly_rf = cdi_df.resample('M').apply(lambda x: (1 + x).prod() - 1)['CDI']
+            monthly_rf.name = 'RF'
+            
+            return monthly_rf
+            
+        except Exception as e:
+            logging.error(f"Erro ao calcular taxa mensal do CDI: {e}")
+            raise DataProviderError(f"Erro ao calcular taxa mensal do CDI: {e}")
 
     def fetch_ff3_us_monthly(self, start_date: str, end_date: str) -> pd.DataFrame:
         """

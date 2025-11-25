@@ -19,31 +19,15 @@ def get_config() -> Settings:
 
 def get_loader(config: Settings = Depends(get_config)) -> YFinanceProvider:
     """
-    Dependency that provides a configured data loader (YFinanceProvider) with fallback options.
-
-    The data loader is initialized with the application's configuration and
-    can include fallback providers like Finnhub or AlphaVantage if their
-    API keys are available in the configuration.
+    Dependency that provides a configured data loader (YFinanceProvider).
 
     Args:
         config (Settings): The application's configuration settings.
 
     Returns:
-        YFinanceProvider: An instance of YFinanceProvider configured with potential fallback data providers.
+        YFinanceProvider: An instance of YFinanceProvider.
     """
-    # Import providers locally to avoid circular dependencies
-    from backend_projeto.infrastructure.data_handling import YFinanceProvider, DataProvider
-    from backend_projeto.infrastructure.data_providers.finnhub_provider import FinnhubProvider
-    from backend_projeto.infrastructure.data_providers.alpha_vantage_provider import AlphaVantageProvider
-
-    # Setup fallback providers
-    fallback_providers: List[DataProvider] = []
-    if config.FINNHUB_API_KEY:
-        fallback_providers.append(FinnhubProvider(config=config))
-    if config.ALPHA_VANTAGE_API_KEY:
-        fallback_providers.append(AlphaVantageProvider(config=config))
-    
-    return YFinanceProvider(config=config, fallback_providers=fallback_providers)
+    return YFinanceProvider()
 
 def get_risk_engine(loader: YFinanceProvider = Depends(get_loader), config: Settings = Depends(get_config)) -> RiskEngine:
     """

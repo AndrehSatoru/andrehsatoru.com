@@ -9,6 +9,7 @@ import pandas as pd
 class CacheManager:
     """Gerencia o armazenamento e a recuperação de dados em cache usando Redis."""
     def __init__(self, enabled: bool = True, redis_host: str = 'localhost', redis_port: int = 6379):
+        self.enabled = enabled
         self.redis_client = None
         if not enabled:
             logging.info("Cache is disabled. CacheManager will not connect to Redis.")

@@ -101,8 +101,12 @@ async def processar_operacoes(
         
         df = pd.DataFrame(operations_data)
         
-        # Executar análise completa
-        analyzer = PortfolioAnalyzer(df)
+        # Executar análise completa com valor inicial e data inicial
+        analyzer = PortfolioAnalyzer(
+            df, 
+            start_date=body.dataInicial,
+            initial_value=body.valorInicial
+        )
         results = analyzer.run_analysis()
         
         return {

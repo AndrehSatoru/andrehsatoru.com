@@ -1,13 +1,42 @@
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-
-const riskMetrics = [
-  { label: "Beta", value: 0.92, max: 2, color: "bg-primary" },
-  { label: "Alpha", value: 1.8, max: 3, color: "bg-secondary" },
-  { label: "Correlação", value: 0.75, max: 1, color: "bg-accent" },
-]
+import { useDashboardData } from "@/lib/dashboard-data-context"
 
 export function RiskMetrics() {
+  const { analysisResult } = useDashboardData()
+  
+  const desempenho = analysisResult?.results?.desempenho || {}
+  
+  const riskMetrics = [
+    { 
+      label: "Volatilidade Anual", 
+      value: desempenho["volatilidade_anual_%"] || 0, 
+      max: 50, 
+      color: "bg-primary",
+      suffix: "%"
+    },
+    { 
+      label: "Sharpe Ratio", 
+      value: desempenho["indice_sharpe"] || 0, 
+      max: 3, 
+      color: "bg-secondary",
+      suffix: ""
+    },
+    { 
+      label: "VaR 95%", 
+      value: Math.abs(desempenho["var_95%_1d_%"] || 0), 
+      max: 10, 
+      color: "bg-accent",
+      suffix: "%"
+    },
+  ]
+
+  const maxDrawdown = desempenho["max_drawdown_%"] || 0
+  const es95 = desempenho["es_95%_1d_%"] || 0
+  const diasAnalisados = desempenho["dias_analisados"] || 0
+
   return (
     <Card className="border-border">
       <CardHeader>
@@ -19,24 +48,30 @@ export function RiskMetrics() {
           <div key={metric.label} className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">{metric.label}</span>
-              <span className="text-sm font-bold text-foreground">{metric.value.toFixed(2)}</span>
+              <span className="text-sm font-bold text-foreground">
+                {metric.value.toFixed(2)}{metric.suffix}
+              </span>
             </div>
-            <Progress value={(metric.value / metric.max) * 100} className="h-2" />
+            <Progress value={Math.min((Math.abs(metric.value) / metric.max) * 100, 100)} className="h-2" />
           </div>
         ))}
 
         <div className="mt-6 space-y-3 rounded-lg bg-muted p-4">
           <div className="flex justify-between">
             <span className="text-sm text-muted-foreground">Drawdown Máximo</span>
-            <span className="text-sm font-semibold text-destructive">-5.2%</span>
+            <span className="text-sm font-semibold text-destructive">
+              {maxDrawdown.toFixed(2)}%
+            </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Sortino Ratio</span>
-            <span className="text-sm font-semibold text-foreground">2.14</span>
+            <span className="text-sm text-muted-foreground">Expected Shortfall (95%)</span>
+            <span className="text-sm font-semibold text-foreground">
+              {es95.toFixed(2)}%
+            </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Information Ratio</span>
-            <span className="text-sm font-semibold text-foreground">1.67</span>
+            <span className="text-sm text-muted-foreground">Dias Analisados</span>
+            <span className="text-sm font-semibold text-foreground">{diasAnalisados}</span>
           </div>
         </div>
       </CardContent>

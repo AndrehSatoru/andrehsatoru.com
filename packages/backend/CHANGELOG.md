@@ -1,5 +1,77 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.3.0] - 2025-11-25
+
+### 🚀 Novas Funcionalidades
+
+#### Rendimento do CDI no Caixa
+- ✨ **CDI no Caixa Não Investido**: Implementado rendimento automático do CDI no caixa disponível do portfólio
+- 📈 **Busca de Dados Reais do CDI**: Integração com BCB (Banco Central do Brasil) via biblioteca `bcb` para buscar taxas diárias do CDI (Série 12 do SGS)
+- 🔄 **Aplicação Diária**: O caixa agora é atualizado diariamente com a fórmula: `caixa_novo = caixa_anterior × (1 + taxa_CDI_diária)`
+- 💰 **Cálculo Realista**: Valor do portfólio agora reflete a realidade onde o caixa não fica "parado" sem rendimento
+- 📊 **Taxa Livre de Risco Mensal**: Novo método `compute_monthly_rf_from_cdi()` que calcula taxa mensal composta a partir do CDI diário
+
+#### Novos Métodos no YFinanceProvider
+- 🆕 **`fetch_cdi_daily(start_date, end_date)`**: Busca taxas diárias do CDI do BCB
+  - Converte taxa anual (%) para taxa diária em decimal: `(1 + taxa_anual/100)^(1/252) - 1`
+  - Preenche dias não úteis com forward fill
+  - Tratamento de erros com fallback para taxa zero
+- 🆕 **`compute_monthly_rf_from_cdi(start_date, end_date)`**: Calcula taxa livre de risco mensal
+  - Utilizado nos endpoints Fama-French quando `rf_source='selic'`
+  - Retorna série mensal com taxas compostas
+  - Corrige erro anterior onde o método era chamado mas não existia
+
+### 🔧 Melhorias
+
+#### PortfolioAnalyzer
+- 🔄 **Refatoração do `_calculate_portfolio_value()`**: Lógica completamente reescrita para aplicar rendimento do CDI
+- 📅 **Processamento Dia-a-Dia**: Loop através de cada data do índice para aplicar rendimentos e transações na ordem correta
+- 🎯 **Precisão Temporal**: Transações organizadas por data para subtração eficiente do caixa
+- 🛡️ **Proteção de Caixa Negativo**: Caixa sempre ≥ 0 após cada operação
+
+### 🐛 Correções
+
+- ✅ **Endpoints Fama-French**: Corrigido erro onde `compute_monthly_rf_from_cdi()` era chamado mas não existia
+- ✅ **Taxa Livre de Risco**: Implementação completa da fonte 'selic' para rf_source nos endpoints FF3/FF5
+- ✅ **Cálculo de Portfólio**: Valor total agora inclui corretamente: ativos + caixa rendendo CDI
+
+### 📚 Documentação
+
+- 📄 **Exemplo de Demonstração**: Novo script `examples/scripts/demo_cdi_cash.py` mostrando funcionamento do CDI
+- 📄 **Teste Unitário**: Arquivo `tests/test_cdi_cash_return.py` com testes do rendimento do CDI
+- 📖 **Documentação da Arquitetura**: Atualizado com descrição da integração BCB/CDI
+
+### 📊 Impacto
+
+**Antes:**
+```python
+# Caixa apenas diminuía, sem rendimento
+cash_series = pd.Series(initial_value, index=dates)
+for tx in transactions:
+    cash_series.loc[tx_date:] -= tx_value
+```
+
+**Depois:**
+```python
+# Caixa rende CDI diariamente e diminui com transações
+current_cash = initial_value
+for date in dates:
+    # 1. Aplicar rendimento do CDI
+    current_cash *= (1 + cdi_rate[date])
+    # 2. Subtrair transações do dia
+    current_cash -= transactions_on_date
+    cash_series[date] = max(0, current_cash)
+```
+
+**Exemplo Prático:**
+- Capital inicial: R$ 100.000
+- Investido em ações: R$ 10.000
+- Caixa: R$ 90.000
+- CDI ~13,65% a.a. (2024)
+- Rendimento do caixa em 1 ano: ~R$ 12.285 (em vez de R$ 0)
+
+---
+
 ## [1.2.0] - 2025-11-25
 
 ### 🚀 Novas Funcionalidades

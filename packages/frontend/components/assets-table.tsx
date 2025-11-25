@@ -9,9 +9,21 @@ import { Empty } from "./ui/empty"
 
 export function AssetsTable() {
   const { analysisResult } = useDashboardData()
-  const assets = analysisResult?.assets || []
+  
+  // Extrair dados de alocação do resultado
+  const alocacaoData = analysisResult?.results?.alocacao?.alocacao || {}
+  const metadados = analysisResult?.results?.metadados || {}
+  
+  // Converter para array de ativos
+  const assets = Object.entries(alocacaoData).map(([name, info]: [string, any]) => ({
+    name,
+    allocation: info?.percentual?.toFixed(2) || 0,
+    value: info?.valor_total || 0,
+    quantidade: info?.quantidade || 0,
+    precoUnitario: info?.preco_unitario || 0,
+  }))
 
-  if (!analysisResult) {
+  if (!analysisResult || assets.length === 0) {
     return (
       <Card className="border-border">
         <CardHeader>
@@ -29,47 +41,37 @@ export function AssetsTable() {
     <Card className="border-border">
       <CardHeader>
         <CardTitle className="text-foreground">Ativos da Carteira</CardTitle>
-        <CardDescription className="text-muted-foreground">Detalhamento dos principais investimentos</CardDescription>
+        <CardDescription className="text-muted-foreground">
+          {metadados.transacoes} transação(ões) • {metadados.ativos?.length || 0} ativo(s)
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow className="border-border">
               <TableHead className="text-muted-foreground">Ativo</TableHead>
-              <TableHead className="text-muted-foreground">Tipo</TableHead>
+              <TableHead className="text-right text-muted-foreground">Quantidade</TableHead>
+              <TableHead className="text-right text-muted-foreground">Preço Unitário</TableHead>
+              <TableHead className="text-right text-muted-foreground">Valor Total</TableHead>
               <TableHead className="text-right text-muted-foreground">Alocação</TableHead>
-              <TableHead className="text-right text-muted-foreground">Valor</TableHead>
-              <TableHead className="text-right text-muted-foreground">Retorno</TableHead>
-              <TableHead className="text-muted-foreground">Risco</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {assets.map((asset: any) => (
               <TableRow key={asset.name} className="border-border">
                 <TableCell className="font-medium text-foreground">{asset.name}</TableCell>
-                <TableCell className="text-muted-foreground">{asset.type}</TableCell>
-                <TableCell className="text-right text-foreground">{asset.allocation}%</TableCell>
                 <TableCell className="text-right font-mono text-foreground">
-                  R$ {asset.value.toLocaleString("pt-BR")}
+                  {asset.quantidade.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </TableCell>
+                <TableCell className="text-right font-mono text-foreground">
+                  R$ {asset.precoUnitario.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                </TableCell>
+                <TableCell className="text-right font-mono text-foreground">
+                  R$ {asset.value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    {asset.return > 0 ? (
-                      <ArrowUpRight className="h-4 w-4 text-success" />
-                    ) : (
-                      <ArrowDownRight className="h-4 w-4 text-destructive" />
-                    )}
-                    <span className={asset.return > 0 ? "text-success" : "text-destructive"}>
-                      {asset.return > 0 ? "+" : ""}
-                      {asset.return}%
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={asset.risk === "Baixo" ? "secondary" : asset.risk === "Médio" ? "default" : "destructive"}
-                  >
-                    {asset.risk}
+                  <Badge variant="secondary">
+                    {asset.allocation}%
                   </Badge>
                 </TableCell>
               </TableRow>

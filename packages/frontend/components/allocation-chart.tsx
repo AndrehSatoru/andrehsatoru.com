@@ -18,7 +18,20 @@ const COLORS = [
 export function AllocationChart() {
   const { analysisResult } = useDashboardData()
 
-  if (!analysisResult) {
+  // Extrair dados de alocação do resultado
+  const alocacaoData = analysisResult?.results?.alocacao?.alocacao || {}
+  
+  // Converter para formato esperado pelo gráfico
+  const data = Object.entries(alocacaoData).map(([name, info]: [string, any], index: number) => ({
+    name,
+    value: info?.percentual || 0,
+    valorTotal: info?.valor_total || 0,
+    quantidade: info?.quantidade || 0,
+    precoUnitario: info?.preco_unitario || 0,
+    color: COLORS[index % COLORS.length],
+  }))
+
+  if (!analysisResult || data.length === 0) {
     return (
       <Card className="border-border">
         <CardHeader>
@@ -31,11 +44,6 @@ export function AllocationChart() {
       </Card>
     )
   }
-
-  const data = (analysisResult?.allocation || []).map((item: any, index: number) => ({
-    ...item,
-    color: COLORS[index % COLORS.length],
-  }))
 
   return (
     <Card className="border-border">
@@ -67,7 +75,10 @@ export function AllocationChart() {
                 borderRadius: "8px",
                 color: "hsl(var(--foreground))",
               }}
-              formatter={(value: number) => [`${value}%`, ""]}
+              formatter={(value: number, name: string, props: any) => [
+                `${value.toFixed(2)}% (R$ ${props.payload.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
+                props.payload.name
+              ]}
             />
           </PieChart>
         </ResponsiveContainer>
