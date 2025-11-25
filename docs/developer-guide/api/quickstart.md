@@ -446,9 +446,13 @@ curl -X POST http://localhost:8000/api/v1/factors/ff3 \
 ```
 
 **Observações**:
-- `rf_source`: `ff` usa a taxa livre de risco do próprio dataset Fama-French (recomendado para consistência). `selic` compõe a taxa mensal via CDI. `us10y` usa a Treasury de 10 anos do FRED (convertendo para taxa mensal).
+- `rf_source`: 
+  - `"ff"`: Taxa livre de risco do dataset Fama-French (padrão, recomendado para consistência)
+  - `"selic"`: **Taxa CDI do Banco Central do Brasil** - compõe taxa mensal via dados diários do BCB (série 12)
+  - `"us10y"`: Treasury de 10 anos do FRED (convertendo para taxa mensal)
 - `convert_to_usd`: quando `true`, os preços dos ativos em BRL são convertidos para USD via USDBRL antes da regressão, mantendo a consistência com os fatores em USD.
 - Fatores são dos EUA (Biblioteca Kenneth French) com frequência mensal: `MKT_RF`, `SMB`, `HML`.
+- **💡 Dica**: Use `rf_source="selic"` para ativos brasileiros - reflete melhor a taxa livre de risco local.
 
 ---
 
@@ -492,8 +496,12 @@ curl -X POST http://localhost:8000/api/v1/factors/ff5 \
 
 **Notas**:
 - Fatores 5: `MKT_RF`, `SMB`, `HML`, `RMW` (rentabilidade), `CMA` (investimento).
-- `rf_source = ff` usa a taxa livre de risco do dataset. `selic` e `us10y` também estão disponíveis.
+- `rf_source`: 
+  - `"ff"`: Taxa do dataset Fama-French (padrão)
+  - `"selic"`: **CDI do BCB** - mais apropriado para ativos brasileiros
+  - `"us10y"`: Treasury 10 anos dos EUA
 - `convert_to_usd` é recomendado para ativos em BRL.
+- **💡 Para portfólios brasileiros**: use `rf_source="selic"` para taxa livre de risco baseada no CDI.
 
 ---
 

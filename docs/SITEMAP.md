@@ -30,7 +30,8 @@ Guia rápido para encontrar informações na documentação do projeto.
 │   ├── Arquitetura
 │   │   ├── Overview ─────────────── developer-guide/architecture/overview.md
 │   │   ├── Backend ──────────────── developer-guide/architecture/backend-architecture.md
-│   │   └── Frontend ─────────────── developer-guide/architecture/frontend-architecture.md
+│   │   ├── Frontend ─────────────── developer-guide/architecture/frontend-architecture.md
+│   │   └── Integração CDI ───────── developer-guide/architecture/cdi-integration.md
 │   ├── API
 │   │   ├── Quick Start ──────────── developer-guide/api/quickstart.md
 │   │   └── Endpoints ────────────── developer-guide/api/endpoints/
@@ -65,6 +66,7 @@ Guia rápido para encontrar informações na documentação do projeto.
 - **[API Quick Start](developer-guide/api/quickstart.md)**
 - **[Endpoints](developer-guide/api/endpoints/)**
 - **[Processar Operações](developer-guide/api/processar-operacoes.md)** - Endpoint de análise com preços históricos
+- **[Integração CDI](developer-guide/architecture/cdi-integration.md)** - Rendimento do caixa com dados do BCB
 - **[Backend Dockerfile](../packages/backend/backend.Dockerfile)**
 
 ### 🗄️ Redis

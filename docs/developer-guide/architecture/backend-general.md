@@ -48,6 +48,7 @@ Aqui reside a lógica de negócio principal e os algoritmos financeiros complexo
 *   **Modelos de Fatores:** Aplicação de modelos como CAPM (Capital Asset Pricing Model) e Fama-French para análise de fatores de risco.
 *   **Análise de Performance:** Cálculo de retornos, volatilidade, e outros indicadores de desempenho.
 *   **Processamento de Dados:** Funções para limpeza, transformação e agregação de dados financeiros.
+*   **Rendimento do CDI:** Integração com BCB para buscar taxas CDI e aplicar rendimento diário ao caixa não investido.
 
 ### 2.3. `src/backend_projeto/utils/`
 
@@ -82,6 +83,7 @@ O backend oferece uma vasta gama de funcionalidades de análise financeira, expo
 *   **Modelos de Fatores:** CAPM, Fama-French, etc.
 *   **Análise Técnica:** Médias móveis, MACD, etc.
 *   **Processamento de Transações:** Análise de portfólio baseada em operações de compra e venda.
+*   **Rendimento do CDI:** Caixa não investido rende CDI automaticamente com dados reais do Banco Central do Brasil.
 
 ## 4. Configuração
 

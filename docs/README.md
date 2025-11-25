@@ -40,6 +40,13 @@ Para engenheiros de DevOps e administradores de sistema.
 
 ## ✨ Novidades Recentes
 
+### 💰 Rendimento do CDI no Caixa (Nov 2025)
+- **Caixa rende CDI automaticamente**: Valor não investido agora gera retorno diário baseado no CDI
+- **Dados reais do BCB**: Integração com Banco Central do Brasil para taxas CDI históricas
+- **Cálculo preciso**: Rendimento composto aplicado dia-a-dia sobre o saldo disponível
+- **Taxa livre de risco**: Implementação completa para análises Fama-French com fonte SELIC
+- **Realismo financeiro**: Portfólio reflete melhor a realidade onde dinheiro parado rende juros
+
 ### 🐳 Docker Compose Integrado (Nov 2025)
 - **Deploy simplificado** com backend, frontend e Redis em containers
 - **Networking interno** otimizado para comunicação entre serviços

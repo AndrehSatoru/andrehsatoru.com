@@ -2,6 +2,17 @@
 
 Uma plataforma full-stack para análise de risco, otimização de portfólio e análise técnica de investimentos.
 
+## ✨ Novidade: Rendimento do CDI no Caixa
+
+🎉 **Versão 1.3.0** - Agora o caixa não investido rende CDI automaticamente!
+
+- 💰 **Dados Reais**: Integração com Banco Central do Brasil
+- 📈 **Rendimento Diário**: Juros compostos aplicados dia-a-dia
+- 🎯 **Realismo**: Portfólio reflete melhor a realidade do mercado
+- 📊 **Exemplo**: R$ 90.000 em caixa por 1 ano = +R$ 12.285 de rendimento (CDI ~13,65% a.a.)
+
+[📖 Saiba mais sobre a integração CDI](docs/developer-guide/architecture/cdi-integration.md)
+
 ## 📚 Documentação
 
 A documentação completa deste projeto está disponível no diretório [`docs/`](docs/).

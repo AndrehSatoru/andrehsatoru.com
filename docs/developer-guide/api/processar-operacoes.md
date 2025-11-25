@@ -223,12 +223,64 @@ O sistema valida:
 - **Timeout**: 30 segundos por requisição ao YFinance
 - **Retry**: 3 tentativas com backoff exponencial
 
+## 💰 Rendimento do CDI no Caixa
+
+**Novidade (v1.3.0)**: O caixa não investido agora rende CDI automaticamente!
+
+### Como Funciona
+
+1. **Capital Inicial**: Define-se `valorInicial` (ex: R$ 100.000)
+2. **Transações**: A cada compra, o valor é subtraído do caixa
+3. **Rendimento Diário**: O saldo em caixa rende **CDI diário** baseado em dados reais do Banco Central
+4. **Valor Total**: Portfólio = Valor dos ativos + Caixa (rendendo CDI)
+
+### Exemplo Prático
+
+```json
+{
+  "valorInicial": 100000,
+  "dataInicial": "2024-01-01",
+  "operacoes": [
+    {
+      "data": "2024-01-15",
+      "ticker": "PETR4.SA",
+      "tipo": "compra",
+      "valor": 10000
+    }
+  ]
+}
+```
+
+**Resultado:**
+- **Dias 01-14**: R$ 100.000 rendendo CDI (~13,65% a.a. em 2024)
+- **Dia 15**: Compra de R$ 10.000, caixa reduz para R$ 90.XXX (com rendimento acumulado)
+- **Dias 16+**: R$ 90.000+ continuam rendendo CDI diariamente
+- **Valor Final**: Ações + Caixa (com rendimento CDI)
+
+### Impacto
+
+| Cenário | Sem CDI | Com CDI (13,65% a.a.) | Diferença |
+|---------|---------|----------------------|-----------|
+| Caixa R$ 90k por 1 ano | R$ 90.000 | R$ 102.285 | +R$ 12.285 |
+| Retorno | 0% | 13,65% | +13,65% |
+
+### Fonte de Dados
+
+- **BCB Série 12**: Taxa CDI diária do Banco Central do Brasil
+- **Conversão**: Taxa anual → taxa diária: `(1 + taxa/100)^(1/252) - 1`
+- **Aplicação**: Composta diariamente sobre o saldo em caixa
+
+📖 **Detalhes técnicos**: [Integração CDI](../architecture/cdi-integration.md)
+
+---
+
 ## 📝 Notas Importantes
 
 1. **Cotações de ações brasileiras**: Use sufixo `.SA` para ações da B3 (ex: PETR4.SA)
 2. **Fins de semana**: Sistema busca próxima data útil automaticamente
 3. **Feriados**: Considera calendário de negociação brasileiro
 4. **Horário**: Usa preços de fechamento (Adjusted Close)
+5. **💰 Caixa rende CDI**: Valor não investido rende automaticamente taxa CDI diária do BCB
 
 ## 🔗 Endpoints Relacionados
 
