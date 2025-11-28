@@ -12,6 +12,9 @@ export const metadata: Metadata = {
   title: "AndrehSatoru",
   description: "Criado por Andreh Satoru",
   generator: "AndrehSatoru",
+  icons: {
+    icon: "/placeholder-logo.svg",
+  },
 }
 
 export default function RootLayout({

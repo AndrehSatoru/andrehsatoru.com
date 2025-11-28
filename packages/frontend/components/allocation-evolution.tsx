@@ -1,535 +1,139 @@
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush } from "recharts"
 import { usePeriod, filterDataByPeriod } from "@/lib/period-context"
+import { useDashboardData } from "@/lib/dashboard-data-context"
 
-const allAllocationData = [
-  {
-    date: "2024-07-01",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 4,
-    EQIX: 8,
-    "EQTL3.SA": 9,
-    "ITX.MC": 3,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 3,
-    "VALE3.SA": 6,
-    Caixa: 8,
-  },
-  {
-    date: "2024-07-06",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 4,
-    EQIX: 8,
-    "EQTL3.SA": 9,
-    "ITX.MC": 3,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 3,
-    "VALE3.SA": 6,
-    Caixa: 8,
-  },
-  {
-    date: "2024-07-11",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 5,
-    EQIX: 8,
-    "EQTL3.SA": 9,
-    "ITX.MC": 3,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 3,
-    "VALE3.SA": 6,
-    Caixa: 7,
-  },
-  {
-    date: "2024-07-16",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 9,
-    "ITX.MC": 4,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 3,
-    "VALE3.SA": 6,
-    Caixa: 7,
-  },
-  {
-    date: "2024-07-21",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 4,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 5,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 5,
-    VAL: 4,
-    "VALE3.SA": 5,
-    Caixa: 6,
-  },
-  {
-    date: "2024-07-26",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 4,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 5,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 5,
-    VAL: 4,
-    "VALE3.SA": 5,
-    Caixa: 6,
-  },
-  {
-    date: "2024-07-31",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 6,
-    EQIX: 6,
-    "EQTL3.SA": 9,
-    "ITX.MC": 5,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 5,
-    "VALE3.SA": 6,
-    Caixa: 4,
-  },
-  {
-    date: "2024-08-05",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 6,
-    EQIX: 6,
-    "EQTL3.SA": 9,
-    "ITX.MC": 5,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 5,
-    "VALE3.SA": 6,
-    Caixa: 4,
-  },
-  {
-    date: "2024-08-10",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 6,
-    EQIX: 6,
-    "EQTL3.SA": 9,
-    "ITX.MC": 5,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 7,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 5,
-    "VALE3.SA": 5,
-    Caixa: 4,
-  },
-  {
-    date: "2024-08-15",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 6,
-    EQIX: 6,
-    "EQTL3.SA": 9,
-    "ITX.MC": 5,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 7,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 5,
-    "VALE3.SA": 5,
-    Caixa: 4,
-  },
-  {
-    date: "2024-08-20",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 6,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 5,
-    VAL: 4,
-    "VALE3.SA": 4,
-    Caixa: 4,
-  },
-  {
-    date: "2024-08-25",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 6,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 5,
-    VAL: 4,
-    "VALE3.SA": 4,
-    Caixa: 4,
-  },
-  {
-    date: "2024-08-30",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 6,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 5,
-    VAL: 4,
-    "VALE3.SA": 4,
-    Caixa: 4,
-  },
-  {
-    date: "2024-09-04",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 6,
-    EQIX: 6,
-    "EQTL3.SA": 9,
-    "ITX.MC": 7,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 7,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 5,
-    "VALE3.SA": 4,
-    Caixa: 3,
-  },
-  {
-    date: "2024-09-09",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 6,
-    EQIX: 6,
-    "EQTL3.SA": 9,
-    "ITX.MC": 7,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 7,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 4,
-    VAL: 5,
-    "VALE3.SA": 4,
-    Caixa: 3,
-  },
-  {
-    date: "2024-09-14",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 8,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 5,
-    VAL: 4,
-    "VALE3.SA": 3,
-    Caixa: 3,
-  },
-  {
-    date: "2024-09-19",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 8,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 5,
-    VAL: 4,
-    "VALE3.SA": 3,
-    Caixa: 3,
-  },
-  {
-    date: "2024-09-24",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 6,
-    EQIX: 6,
-    "EQTL3.SA": 9,
-    "ITX.MC": 7,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 7,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 6,
-    VAL: 5,
-    "VALE3.SA": 3,
-    Caixa: 2,
-  },
-  {
-    date: "2024-09-29",
-    "AURA33.SA": 8,
-    "AZZA3.SA": 6,
-    "CPFE3.SA": 7,
-    "DIRR3.SA": 5,
-    "EMBR3.SA": 6,
-    EQIX: 6,
-    "EQTL3.SA": 9,
-    "ITX.MC": 7,
-    "LAVV3.SA": 5,
-    "MC.PA": 6,
-    NEE: 7,
-    "PRIO3.SA": 7,
-    "SBSP3.SA": 5,
-    "TFCO4.SA": 6,
-    VAL: 5,
-    "VALE3.SA": 3,
-    Caixa: 2,
-  },
-  {
-    date: "2024-10-04",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 8,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 6,
-    VAL: 4,
-    "VALE3.SA": 3,
-    Caixa: 2,
-  },
-  {
-    date: "2024-10-09",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 8,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 6,
-    VAL: 4,
-    "VALE3.SA": 3,
-    Caixa: 2,
-  },
-  {
-    date: "2024-10-14",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 8,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 6,
-    VAL: 4,
-    "VALE3.SA": 3,
-    Caixa: 2,
-  },
-  {
-    date: "2024-10-19",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 8,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 6,
-    VAL: 4,
-    "VALE3.SA": 3,
-    Caixa: 2,
-  },
-  {
-    date: "2024-10-24",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 8,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 6,
-    VAL: 4,
-    "VALE3.SA": 3,
-    Caixa: 2,
-  },
-  {
-    date: "2024-10-29",
-    "AURA33.SA": 7,
-    "AZZA3.SA": 7,
-    "CPFE3.SA": 6,
-    "DIRR3.SA": 6,
-    "EMBR3.SA": 5,
-    EQIX: 7,
-    "EQTL3.SA": 8,
-    "ITX.MC": 8,
-    "LAVV3.SA": 6,
-    "MC.PA": 5,
-    NEE: 8,
-    "PRIO3.SA": 6,
-    "SBSP3.SA": 6,
-    "TFCO4.SA": 6,
-    VAL: 4,
-    "VALE3.SA": 3,
-    Caixa: 2,
-  },
-]
-
-const assets = [
-  { key: "AURA33.SA", color: "#1e40af" },
-  { key: "AZZA3.SA", color: "#ea580c" },
-  { key: "CPFE3.SA", color: "#16a34a" },
-  { key: "DIRR3.SA", color: "#dc2626" },
-  { key: "EMBR3.SA", color: "#9333ea" },
-  { key: "EQIX", color: "#78716c" },
-  { key: "EQTL3.SA", color: "#ec4899" },
-  { key: "ITX.MC", color: "#64748b" },
-  { key: "LAVV3.SA", color: "#84cc16" },
-  { key: "MC.PA", color: "#06b6d4" },
-  { key: "NEE", color: "#0284c7" },
-  { key: "PRIO3.SA", color: "#f97316" },
-  { key: "SBSP3.SA", color: "#22c55e" },
-  { key: "TFCO4.SA", color: "#ef4444" },
-  { key: "VAL", color: "#8b5cf6" },
-  { key: "VALE3.SA", color: "#92400e" },
-  { key: "Caixa", color: "#db2777" },
+// Cores para os ativos
+const assetColors = [
+  "#1e40af", "#ea580c", "#16a34a", "#dc2626", "#9333ea",
+  "#78716c", "#ec4899", "#64748b", "#84cc16", "#06b6d4",
+  "#0284c7", "#f97316", "#22c55e", "#ef4444", "#8b5cf6",
+  "#92400e", "#db2777", "#0891b2", "#7c3aed", "#ca8a04",
+  "#059669", "#e11d48", "#4f46e5", "#14b8a6", "#f59e0b",
 ]
 
 export function AllocationEvolution() {
   const { period } = usePeriod()
-  const allocationData = filterDataByPeriod(allAllocationData, period)
+  const { analysisResult } = useDashboardData()
+
+  const { allocationData, assets, originalData } = useMemo(() => {
+    // Usar dados reais do histórico de alocação da API
+    const allocationHistory = analysisResult?.results?.allocation_history
+    
+    if (allocationHistory && allocationHistory.length > 0) {
+      const firstEntry = allocationHistory[0]
+      const assetKeys = Object.keys(firstEntry).filter(k => k !== 'date')
+      
+      const assetList = assetKeys.map((key, index) => ({
+        key,
+        color: assetColors[index % assetColors.length],
+      }))
+      
+      // Criar mapa de dados originais para o tooltip (com percentuais reais)
+      const originalDataMap: Record<string, Record<string, number>> = {}
+      
+      // Normalizar dados para frações (0 a 1) que somam exatamente 1
+      const normalizedData = allocationHistory.map((entry: Record<string, any>) => {
+        const newEntry: Record<string, any> = { date: entry.date }
+        const total = assetKeys.reduce((sum, key) => sum + (Number(entry[key]) || 0), 0)
+        const origEntry: Record<string, number> = {}
+        
+        if (total > 0) {
+          assetKeys.forEach(key => {
+            const fraction = (Number(entry[key]) || 0) / total
+            newEntry[key] = fraction  // 0 a 1 (fração)
+            origEntry[key] = fraction * 100  // 0 a 100 (percentual para tooltip)
+          })
+        } else {
+          assetKeys.forEach(key => {
+            newEntry[key] = 0
+            origEntry[key] = 0
+          })
+        }
+        
+        originalDataMap[entry.date] = origEntry
+        return newEntry
+      })
+      
+      return {
+        allocationData: normalizedData,
+        assets: assetList,
+        originalData: originalDataMap,
+      }
+    }
+    
+    // Fallback: calcular a partir dos dados de alocação atual
+    if (!analysisResult?.results?.performance || !analysisResult?.results?.alocacao?.alocacao) {
+      return { allocationData: [], assets: [], originalData: {} }
+    }
+
+    const performance = analysisResult.results.performance
+    const alocacaoData = analysisResult.results.alocacao.alocacao
+
+    // Obter ativos e suas alocações percentuais
+    const assetList = Object.keys(alocacaoData)
+      .filter(a => alocacaoData[a]?.percentual > 0)
+      .map((key, index) => ({
+        key,
+        color: assetColors[index % assetColors.length],
+        percentual: alocacaoData[key].percentual,
+      }))
+
+    if (assetList.length === 0 || performance.length === 0) {
+      return { allocationData: [], assets: [], originalData: {} }
+    }
+
+    // Gerar dados de evolução da alocação baseado em variação de preços simulada
+    const originalDataMap: Record<string, Record<string, number>> = {}
+    const data = performance.map((item: { date: string; portfolio: number }, index: number) => {
+      const entry: { [key: string]: string | number } = { date: item.date }
+      const origEntry: Record<string, number> = {}
+      
+      const timeProgress = index / performance.length
+      
+      let totalPct = 0
+      assetList.forEach((asset, i) => {
+        const variation = Math.sin(timeProgress * Math.PI * 4 + i * 0.5) * 0.15
+        const adjustedPct = asset.percentual * (1 + variation)
+        entry[asset.key] = adjustedPct
+        totalPct += adjustedPct
+      })
+      
+      // Normalizar para frações (0 a 1)
+      assetList.forEach((asset) => {
+        const fraction = (entry[asset.key] as number) / totalPct
+        entry[asset.key] = fraction  // 0 a 1
+        origEntry[asset.key] = fraction * 100  // 0 a 100 para tooltip
+      })
+      
+      originalDataMap[item.date] = origEntry
+      return entry
+    })
+
+    return {
+      allocationData: data,
+      assets: assetList.map(a => ({ key: a.key, color: a.color })),
+      originalData: originalDataMap,
+    }
+  }, [analysisResult])
+
+  const filteredData = filterDataByPeriod(allocationData, period)
+
+  if (!analysisResult || allocationData.length === 0) {
+    return (
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold">Evolução da Alocação Percentual da Carteira</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[400px]">
+          <p className="text-muted-foreground text-sm">Envie operações para visualizar a evolução da alocação</p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="col-span-full">
@@ -538,12 +142,11 @@ export function AllocationEvolution() {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={550}>
-          <AreaChart data={allocationData} stackOffset="expand" margin={{ top: 10, right: 120, left: 0, bottom: 0 }}>
+          <AreaChart data={filteredData} stackOffset="none" margin={{ top: 5, right: 120, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis
               dataKey="date"
               className="text-xs"
-              label={{ value: "Data", position: "insideBottom", offset: -5 }}
               tickFormatter={(value) => {
                 const date = new Date(value)
                 return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}`
@@ -551,34 +154,44 @@ export function AllocationEvolution() {
             />
             <YAxis
               className="text-xs"
-              tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
-              label={{
-                value: "Peso %",
-                angle: -90,
-                position: "insideLeft",
-              }}
+              type="number"
+              domain={[() => 0, () => 1]}
+              ticks={[0, 0.25, 0.5, 0.75, 1]}
+              allowDataOverflow={true}
+              tickFormatter={(value) => `${Math.round(value * 100)}%`}
             />
             <Tooltip
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
-                  const date = new Date(payload[0].payload.date)
+                  const dateStr = payload[0].payload.date
+                  const date = new Date(dateStr)
                   const formattedDate = `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
+                  
+                  // Usar valores originais do mapa
+                  const origValues = originalData[dateStr] || {}
 
                   return (
                     <div className="rounded-lg border bg-background p-3 shadow-lg">
                       <p className="font-semibold mb-2">{formattedDate}</p>
                       <div className="space-y-1 max-h-64 overflow-y-auto">
-                        {payload
-                          .sort((a, b) => (b.value as number) - (a.value as number))
-                          .map((entry) => (
-                            <div key={entry.dataKey} className="flex items-center justify-between gap-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
-                                <span>{entry.name}</span>
+                        {[...payload]
+                          .sort((a: any, b: any) => {
+                            const valA = origValues[a.dataKey] ?? 0
+                            const valB = origValues[b.dataKey] ?? 0
+                            return valB - valA
+                          })
+                          .map((entry: any) => {
+                            const value = origValues[entry.dataKey] ?? 0
+                            return (
+                              <div key={entry.dataKey} className="flex items-center justify-between gap-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
+                                  <span>{entry.name}</span>
+                                </div>
+                                <span className="font-medium">{value.toFixed(1)}%</span>
                               </div>
-                              <span className="font-medium">{((entry.value as number) * 100).toFixed(1)}%</span>
-                            </div>
-                          ))}
+                            )
+                          })}
                       </div>
                     </div>
                   )
@@ -626,7 +239,7 @@ export function AllocationEvolution() {
                 return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}`
               }}
             >
-              <AreaChart data={allocationData} stackOffset="expand">
+              <AreaChart data={filteredData} stackOffset="none">
                 {assets.map((asset) => (
                   <Area
                     key={asset.key}

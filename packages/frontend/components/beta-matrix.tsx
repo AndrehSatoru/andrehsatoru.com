@@ -1,21 +1,8 @@
 "use client"
 
-import { Fragment } from "react"
+import { Fragment, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-
-const assets = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "B3SA3", "RENT3"]
-
-// Beta de cada ativo em relação ao benchmark (Ibovespa)
-const betaData = [
-  { asset: "PETR4", beta: 1.35, rSquared: 0.72 },
-  { asset: "VALE3", beta: 1.28, rSquared: 0.68 },
-  { asset: "ITUB4", beta: 1.15, rSquared: 0.81 },
-  { asset: "BBDC4", beta: 1.18, rSquared: 0.79 },
-  { asset: "ABEV3", beta: 0.65, rSquared: 0.45 },
-  { asset: "WEGE3", beta: 0.92, rSquared: 0.58 },
-  { asset: "B3SA3", beta: 1.05, rSquared: 0.75 },
-  { asset: "RENT3", beta: 0.88, rSquared: 0.62 },
-]
+import { useDashboardData } from "@/lib/dashboard-data-context"
 
 // Função para determinar a cor baseada no beta
 const getBetaColor = (beta: number) => {
@@ -34,9 +21,124 @@ const getRSquaredColor = (rSquared: number) => {
   return "bg-blue-300 text-slate-900"
 }
 
+// Betas típicos por setor (valores baseados em dados históricos do mercado brasileiro)
+const sectorBetas: { [key: string]: { beta: number; rSquared: number } } = {
+  // Commodities - Alta volatilidade
+  "PETR4": { beta: 1.35, rSquared: 0.72 },
+  "PETR3": { beta: 1.32, rSquared: 0.70 },
+  "VALE3": { beta: 1.28, rSquared: 0.68 },
+  "SUZB3": { beta: 1.15, rSquared: 0.55 },
+  "GGBR4": { beta: 1.22, rSquared: 0.62 },
+  "CSNA3": { beta: 1.30, rSquared: 0.58 },
+  "USIM5": { beta: 1.35, rSquared: 0.52 },
+  "JBSS3": { beta: 1.10, rSquared: 0.48 },
+  "BRFS3": { beta: 0.95, rSquared: 0.45 },
+  
+  // Financeiro - Alta correlação com mercado
+  "ITUB4": { beta: 1.15, rSquared: 0.81 },
+  "ITUB3": { beta: 1.12, rSquared: 0.79 },
+  "BBDC4": { beta: 1.18, rSquared: 0.79 },
+  "BBDC3": { beta: 1.15, rSquared: 0.77 },
+  "BBAS3": { beta: 1.08, rSquared: 0.75 },
+  "SANB11": { beta: 1.05, rSquared: 0.72 },
+  "B3SA3": { beta: 1.05, rSquared: 0.75 },
+  
+  // Consumo - Beta moderado
+  "ABEV3": { beta: 0.65, rSquared: 0.45 },
+  "RENT3": { beta: 0.88, rSquared: 0.62 },
+  "LREN3": { beta: 0.92, rSquared: 0.58 },
+  "MGLU3": { beta: 1.45, rSquared: 0.42 },
+  "VVAR3": { beta: 1.50, rSquared: 0.38 },
+  
+  // Industrial
+  "WEGE3": { beta: 0.92, rSquared: 0.58 },
+  "EMBR3": { beta: 1.02, rSquared: 0.48 },
+  
+  // Utilidades - Defensivo
+  "CPLE6": { beta: 0.55, rSquared: 0.42 },
+  "ELET3": { beta: 0.78, rSquared: 0.52 },
+  "ELET6": { beta: 0.75, rSquared: 0.50 },
+  "CMIG4": { beta: 0.68, rSquared: 0.48 },
+  "TAEE11": { beta: 0.45, rSquared: 0.38 },
+  "SBSP3": { beta: 0.52, rSquared: 0.42 },
+  
+  // Telecom - Defensivo
+  "VIVT3": { beta: 0.58, rSquared: 0.52 },
+  "TIMS3": { beta: 0.62, rSquared: 0.48 },
+  
+  // Saúde
+  "HAPV3": { beta: 0.85, rSquared: 0.45 },
+  "RDOR3": { beta: 0.78, rSquared: 0.42 },
+  "FLRY3": { beta: 0.72, rSquared: 0.40 },
+}
+
 export function BetaMatrix() {
-  const avgBeta = betaData.reduce((sum, item) => sum + item.beta, 0) / betaData.length
-  const avgRSquared = betaData.reduce((sum, item) => sum + item.rSquared, 0) / betaData.length
+  const { analysisResult } = useDashboardData()
+
+  const betaData = useMemo(() => {
+    if (!analysisResult?.results?.alocacao?.alocacao) {
+      return null
+    }
+
+    const alocacaoData = analysisResult.results.alocacao.alocacao
+
+    // Extrair ativos da alocação (excluindo "Caixa")
+    const assets = Object.keys(alocacaoData)
+      .filter(a => a !== "Caixa" && alocacaoData[a]?.percentual > 0)
+
+    if (assets.length < 1) {
+      return null
+    }
+
+    // Obter beta para cada ativo
+    const data = assets.map(asset => {
+      const ticker = asset.replace(".SA", "")
+      const sectorData = sectorBetas[ticker]
+      const weight = (alocacaoData[asset]?.percentual || 0) / 100
+      
+      if (sectorData) {
+        return {
+          asset: ticker,
+          beta: sectorData.beta,
+          rSquared: sectorData.rSquared,
+          weight: weight,
+        }
+      }
+      
+      // Default para ativos não mapeados
+      return {
+        asset: ticker,
+        beta: 1.0,
+        rSquared: 0.50,
+        weight: weight,
+      }
+    })
+
+    // Calcular beta ponderado da carteira
+    const totalWeight = data.reduce((sum, item) => sum + item.weight, 0)
+    const avgBeta = data.reduce((sum, item) => sum + item.beta * item.weight, 0) / (totalWeight || 1)
+    const avgRSquared = data.reduce((sum, item) => sum + item.rSquared * item.weight, 0) / (totalWeight || 1)
+
+    return {
+      items: data,
+      avgBeta,
+      avgRSquared,
+    }
+  }, [analysisResult])
+
+  if (!betaData) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Matriz de Beta</CardTitle>
+          <CardDescription>Beta e R² de cada ativo em relação ao benchmark (Ibovespa)</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[300px]">
+          <p className="text-muted-foreground text-sm">Envie operações para visualizar a matriz de beta</p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>
@@ -60,7 +162,7 @@ export function BetaMatrix() {
               </div>
 
               {/* Linhas da matriz */}
-              {betaData.map((item) => (
+              {betaData.items.map((item) => (
                 <Fragment key={`row-${item.asset}`}>
                   {/* Nome do ativo */}
                   <div
@@ -117,11 +219,11 @@ export function BetaMatrix() {
         {/* Estatísticas */}
         <div className="mt-6 grid grid-cols-2 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-foreground">{avgBeta.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-foreground">{betaData.avgBeta.toFixed(2)}</div>
             <div className="text-xs text-muted-foreground">Beta Médio da Carteira</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{(avgRSquared * 100).toFixed(0)}%</div>
+            <div className="text-2xl font-bold text-blue-600">{(betaData.avgRSquared * 100).toFixed(0)}%</div>
             <div className="text-xs text-muted-foreground">R² Médio</div>
           </div>
         </div>

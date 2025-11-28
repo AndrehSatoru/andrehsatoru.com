@@ -85,6 +85,28 @@ O backend oferece uma vasta gama de funcionalidades de análise financeira, expo
 *   **Processamento de Transações:** Análise de portfólio baseada em operações de compra e venda.
 *   **Rendimento do CDI:** Caixa não investido rende CDI automaticamente com dados reais do Banco Central do Brasil.
 
+### 4.1. Geração de Dados para Gráficos (v1.5.0)
+
+O `PortfolioAnalyzer` gera dados estruturados para os gráficos do dashboard:
+
+| Método | Campo na Resposta | Descrição |
+|--------|------------------|-----------|
+| `_generate_risk_contribution()` | `risk_contribution` | Decomposição do risco por ativo |
+| `_generate_beta_evolution()` | `beta_evolution` | Série temporal do beta rolante (60 dias) vs IBOVESPA |
+| `_generate_monte_carlo_simulation()` | `monte_carlo` | Simulação com MGB e Bootstrap |
+
+**Detalhes do Monte Carlo:**
+
+- **MGB (Movimento Geométrico Browniano):** Usa volatilidade histórica (`returns.std()`) e drift baseado na média dos retornos
+- **Bootstrap:** Reamostragem dos retornos históricos com reposição (252 dias × 1000 simulações)
+- **Bins fixos:** 45 bins independente do tamanho do portfólio
+
+**Cálculo do Beta:**
+
+- Janela rolante de 60 dias
+- Benchmark: IBOVESPA (^BVSP via yfinance)
+- Agregação mensal (último valor do mês)
+
 ## 4. Configuração
 
 A configuração do backend é gerenciada através de variáveis de ambiente. Crie um arquivo `.env` na raiz do diretório `packages/backend/` (baseado no `.env.example`) para configurar a aplicação.

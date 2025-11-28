@@ -1,40 +1,63 @@
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts"
-
-const riskContributionData = [
-  { asset: "AURA33.SA", contribution: 30.7 },
-  { asset: "EMBR3.SA", contribution: 22.2 },
-  { asset: "DIRR3.SA", contribution: 9.9 },
-  { asset: "LAVV3.SA", contribution: 7.2 },
-  { asset: "SBSP3.SA", contribution: 6.2 },
-  { asset: "TFCO4.SA", contribution: 4.3 },
-  { asset: "EQTL3.SA", contribution: 2.9 },
-  { asset: "NEE", contribution: 2.6 },
-  { asset: "VAL", contribution: 2.5 },
-  { asset: "EQIX", contribution: 2.3 },
-  { asset: "ITX.MC", contribution: 1.8 },
-  { asset: "VALE3.SA", contribution: 1.8 },
-  { asset: "CPFE3.SA", contribution: 1.8 },
-  { asset: "PRIO3.SA", contribution: 1.7 },
-  { asset: "AZZA3.SA", contribution: 1.5 },
-  { asset: "MC.PA", contribution: 0.6 },
-]
+import { useDashboardData } from "@/lib/dashboard-data-context"
 
 export function RiskContribution() {
+  const { analysisResult } = useDashboardData()
+  
+  const riskContributionData = useMemo(() => {
+    // Usar dados da API
+    const apiData = analysisResult?.results?.risk_contribution
+    
+    if (apiData && apiData.length > 0) {
+      return apiData
+    }
+    
+    // Fallback: dados vazios
+    return []
+  }, [analysisResult])
+  
+  // Calcular estatísticas
+  const stats = useMemo(() => {
+    if (riskContributionData.length === 0) {
+      return { topContributor: null, top3Sum: 0, maxContribution: 35 }
+    }
+    
+    const topContributor = riskContributionData[0]
+    const top3Sum = riskContributionData.slice(0, 3).reduce((sum, item) => sum + item.contribution, 0)
+    const maxContribution = Math.max(...riskContributionData.map(d => d.contribution), 35)
+    
+    return { topContributor, top3Sum, maxContribution }
+  }, [riskContributionData])
+  
+  if (!analysisResult || riskContributionData.length === 0) {
+    return (
+      <Card className="col-span-full">
+        <CardHeader>
+          <CardTitle className="text-balance">Decomposição da Contribuição de Risco (Volatilidade)</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[400px]">
+          <p className="text-muted-foreground text-sm">Envie operações para visualizar a contribuição de risco</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="col-span-full">
       <CardHeader>
         <CardTitle className="text-balance">Decomposição da Contribuição de Risco (Volatilidade)</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={500}>
+        <ResponsiveContainer width="100%" height={Math.max(300, riskContributionData.length * 40)}>
           <BarChart data={riskContributionData} layout="vertical" margin={{ top: 5, right: 60, left: 80, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis
               type="number"
-              domain={[0, 35]}
+              domain={[0, Math.ceil(stats.maxContribution / 5) * 5]}
               tickFormatter={(value) => `${value.toFixed(1)}%`}
               stroke="hsl(var(--foreground))"
               label={{
@@ -65,23 +88,20 @@ export function RiskContribution() {
           <div>
             <p className="text-muted-foreground">Maior Contribuidor</p>
             <p className="font-semibold">
-              {riskContributionData[0].asset} ({riskContributionData[0].contribution}%)
+              {stats.topContributor ? `${stats.topContributor.asset} (${stats.topContributor.contribution}%)` : '-'}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Top 3 Contribuição</p>
             <p className="font-semibold">
-              {(
-                riskContributionData[0].contribution +
-                riskContributionData[1].contribution +
-                riskContributionData[2].contribution
-              ).toFixed(1)}
-              %
+              {stats.top3Sum.toFixed(1)}%
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Concentração de Risco</p>
-            <p className="font-semibold">{riskContributionData[0].contribution > 25 ? "Alta" : "Moderada"}</p>
+            <p className="font-semibold">
+              {stats.topContributor && stats.topContributor.contribution > 25 ? "Alta" : "Moderada"}
+            </p>
           </div>
         </div>
       </CardContent>

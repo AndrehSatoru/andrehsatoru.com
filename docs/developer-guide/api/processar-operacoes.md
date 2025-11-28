@@ -69,7 +69,7 @@ Content-Type: application/json
   "status": "success",
   "message": "Análise executada com sucesso!",
   "results": {
-    "metrics": {
+    "desempenho": {
       "return_total": 0.0847,
       "sharpe_ratio": 1.85,
       "volatility": 0.083,
@@ -79,12 +79,54 @@ Content-Type: application/json
       "cvar_95": -0.0234,
       "max_drawdown": -0.052
     },
-    "allocation": {
-      "VALE3": 0.48,
-      "PETR4": 0.52
+    "alocacao": {
+      "VALE3": { "valor": 50000, "percentual": 48 },
+      "PETR4": { "valor": 52000, "percentual": 52 }
     },
     "performance": [...],
-    "charts": {...}
+    "monthly_returns": [...],
+    "allocation_history": [...],
+    "rolling_annualized_returns": [...],
+    "risk_contribution": [
+      { "asset": "VALE3", "contribution": 55.2 },
+      { "asset": "PETR4", "contribution": 44.8 }
+    ],
+    "beta_evolution": [
+      { "date": "2024-01", "beta": 0.95 },
+      { "date": "2024-02", "beta": 1.02 }
+    ],
+    "monte_carlo": {
+      "distribution": [
+        { "value": 100000, "valueLabel": "R$ 100.0M", "mgb": 0.02, "bootstrap": 0.03 }
+      ],
+      "initialValue": 100000,
+      "mgb": {
+        "median": 105000,
+        "mean": 106000,
+        "std": 15000,
+        "percentile_5": 85000,
+        "percentile_95": 130000,
+        "drift_annual": 12.5,
+        "volatility_annual": 18.2
+      },
+      "bootstrap": {
+        "median": 108000,
+        "mean": 110000,
+        "std": 20000,
+        "percentile_5": 80000,
+        "percentile_95": 145000
+      },
+      "params": { "n_paths": 5000, "n_days": 252 }
+    },
+    "metadados": {
+      "ativos": ["VALE3", "PETR4"],
+      "periodo_analise": {
+        "inicio": "2019-10-10",
+        "fim": "2025-11-27",
+        "dias_uteis": 1500
+      },
+      "transacoes": 2
+    }
   }
 }
 ```
@@ -95,6 +137,47 @@ Content-Type: application/json
 {
   "detail": "Erro ao processar operações: [mensagem de erro]"
 }
+```
+
+## 📊 Dados para Gráficos (v1.5.0)
+
+A resposta inclui todos os dados necessários para renderizar os gráficos do dashboard:
+
+### risk_contribution
+Contribuição de cada ativo para a volatilidade total do portfólio.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `asset` | string | Ticker do ativo |
+| `contribution` | number | Contribuição em % da volatilidade total |
+
+### beta_evolution
+Evolução histórica do beta da carteira vs IBOVESPA (rolling 60 dias).
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `date` | string | Mês no formato YYYY-MM |
+| `beta` | number | Beta rolling calculado |
+
+### monte_carlo
+Simulação Monte Carlo comparativa com dois métodos:
+
+| Campo | Descrição |
+|-------|-----------|
+| `distribution` | Array de bins para o histograma |
+| `initialValue` | Valor atual da carteira |
+| `mgb` | Estatísticas do método MGB (Geometric Brownian Motion) |
+| `bootstrap` | Estatísticas do método Bootstrap Histórico |
+| `params` | Parâmetros da simulação (n_paths, n_days) |
+
+**Estatísticas MGB/Bootstrap:**
+- `median` - Mediana dos valores terminais
+- `mean` - Média dos valores terminais
+- `std` - Desvio padrão
+- `percentile_5` - Percentil 5% (cenário pessimista)
+- `percentile_95` - Percentil 95% (cenário otimista)
+- `drift_annual` - Drift anualizado em % (apenas MGB)
+- `volatility_annual` - Volatilidade anualizada em % (apenas MGB)
 ```
 
 ## 🔧 Funcionamento Interno

@@ -12,57 +12,54 @@ import {
   ReferenceLine,
   Brush,
 } from "recharts"
-import { usePeriod, filterDataByPeriod } from "@/lib/period-context"
-
-const allData = [
-  { date: "2024-07-01", drawdown: 0 },
-  { date: "2024-07-05", drawdown: -0.3 },
-  { date: "2024-07-10", drawdown: -0.5 },
-  { date: "2024-07-15", drawdown: -0.8 },
-  { date: "2024-07-20", drawdown: -1.2 },
-  { date: "2024-07-25", drawdown: -0.9 },
-  { date: "2024-07-31", drawdown: -0.6 },
-  { date: "2024-08-05", drawdown: -1.1 },
-  { date: "2024-08-10", drawdown: -1.5 },
-  { date: "2024-08-15", drawdown: -1.8 },
-  { date: "2024-08-20", drawdown: -2.2 },
-  { date: "2024-08-25", drawdown: -2.5 },
-  { date: "2024-08-31", drawdown: -2.1 },
-  { date: "2024-09-05", drawdown: -1.7 },
-  { date: "2024-09-10", drawdown: -2.3 },
-  { date: "2024-09-15", drawdown: -2.8 },
-  { date: "2024-09-20", drawdown: -3.2 },
-  { date: "2024-09-25", drawdown: -3.6 },
-  { date: "2024-09-30", drawdown: -4.2 },
-  { date: "2024-10-05", drawdown: -4.8 },
-  { date: "2024-10-10", drawdown: -5.2 },
-  { date: "2024-10-15", drawdown: -4.7 },
-  { date: "2024-10-20", drawdown: -4.2 },
-  { date: "2024-10-25", drawdown: -3.8 },
-  { date: "2024-10-31", drawdown: -3.5 },
-  { date: "2024-11-05", drawdown: -3.1 },
-  { date: "2024-11-10", drawdown: -2.7 },
-  { date: "2024-11-15", drawdown: -2.3 },
-  { date: "2024-11-20", drawdown: -1.9 },
-  { date: "2024-11-25", drawdown: -1.5 },
-  { date: "2024-11-30", drawdown: -1.2 },
-  { date: "2024-12-05", drawdown: -0.9 },
-  { date: "2024-12-10", drawdown: -1.3 },
-  { date: "2024-12-15", drawdown: -1.7 },
-  { date: "2024-12-20", drawdown: -2.1 },
-  { date: "2024-12-25", drawdown: -1.8 },
-  { date: "2024-12-31", drawdown: -1.4 },
-  { date: "2025-01-05", drawdown: -1.0 },
-  { date: "2025-01-10", drawdown: -0.7 },
-  { date: "2025-01-15", drawdown: -0.4 },
-  { date: "2025-01-20", drawdown: -0.2 },
-  { date: "2025-01-25", drawdown: -0.1 },
-  { date: "2025-01-31", drawdown: 0 },
-]
+import { useDashboardData } from "@/lib/dashboard-data-context"
+import { useMemo } from "react"
 
 export function DrawdownChart() {
-  const { period } = usePeriod()
-  const data = filterDataByPeriod(allData, period)
+  const { analysisResult } = useDashboardData()
+  
+  // Calcular série de drawdown a partir da série de performance
+  const data = useMemo(() => {
+    // Se não há dados da API, retornar array vazio
+    if (!analysisResult?.results?.performance || analysisResult.results.performance.length === 0) {
+      return []
+    }
+    
+    const performanceData = analysisResult.results.performance
+    
+    // Calcular drawdown: (valor atual - máximo histórico) / máximo histórico * 100
+    let peak = performanceData[0].portfolio
+    
+    return performanceData.map((item: { date: string; portfolio: number }) => {
+      // Atualizar o pico se valor atual é maior
+      if (item.portfolio > peak) {
+        peak = item.portfolio
+      }
+      
+      // Calcular drawdown em percentual (será negativo ou zero)
+      const drawdown = ((item.portfolio - peak) / peak) * 100
+      
+      return {
+        date: item.date,
+        drawdown: parseFloat(drawdown.toFixed(2))
+      }
+    })
+  }, [analysisResult])
+
+  // Se não há dados, mostrar mensagem
+  if (data.length === 0) {
+    return (
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-foreground">Drawdown</CardTitle>
+          <CardDescription className="text-muted-foreground">Queda acumulada do pico (%)</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[250px]">
+          <p className="text-muted-foreground text-sm">Envie operações para visualizar o drawdown</p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="border-border">

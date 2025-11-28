@@ -1,5 +1,51 @@
 # Histórico de Mudanças - Frontend
 
+## [0.4.0] - 2025-11-27
+
+### 🚀 Novas Funcionalidades
+
+#### Gráficos Conectados à API
+
+##### Evolução da Alocação Percentual
+- ✨ **Dados Reais**: Gráfico de área empilhada conectado ao `allocation_history` da API
+- 📊 **Eixo Y Corrigido**: Normalização para 0-100% com `stackOffset="none"` e domain fixo
+- 🎨 **Tooltip com Percentuais**: Mostra valores reais em % (não frações)
+
+##### Decomposição de Contribuição de Risco
+- ✨ **Dados da API**: Conectado ao `risk_contribution` do backend
+- 📊 **Barras Horizontais**: Ordenadas por contribuição (maior para menor)
+- 📈 **Estatísticas Dinâmicas**: Top contribuidor e soma dos top 3
+
+##### Evolução do Beta da Carteira
+- ✨ **Beta Real**: Conectado ao `beta_evolution` da API (rolling 60 dias vs IBOVESPA)
+- 📉 **Linha de Referência Mercado**: Beta = 1.0 (linha cinza pontilhada)
+- 🟠 **Linha de Referência Média**: Beta médio da carteira (linha laranja pontilhada)
+- 📊 **Estatísticas**: Beta atual, médio, mínimo (filtrado >0.1) e máximo
+- 🎯 **Domain Dinâmico**: Eixo Y ajustado automaticamente aos dados
+
+##### Simulação Monte Carlo
+- ✨ **Distribuição Comparativa**: MGB (paramétrico) vs Bootstrap Histórico
+- 📊 **45 Bins Fixos**: Histograma com densidade proporcional ao valor da carteira
+- 💰 **Labels Inteligentes**: Formatação K/M/B conforme o valor
+- 📈 **Drift Anualizado**: Calculado dinamicamente dos retornos históricos
+- 📉 **Linha de Valor Inicial**: Referência pontilhada no valor atual
+
+### 🐛 Correções
+
+- ✅ **Favicon 404**: Adicionado ícone no `layout.tsx` metadata para evitar erro 404
+- ✅ **Beta Mínimo**: Filtrado valores <0.1 (início da carteira sem dados suficientes)
+- ✅ **Import Path**: Corrigido import de `useDashboardData` para `@/lib/dashboard-data-context`
+
+### 🔧 Melhorias
+
+#### Componentes Refatorados
+- 🔄 **allocation-evolution.tsx**: Reescrito com normalização correta e dados da API
+- 🔄 **risk-contribution.tsx**: Convertido de hardcoded para dados dinâmicos
+- 🔄 **beta-evolution.tsx**: Novo hook `useDashboardData`, domain dinâmico, linhas de referência
+- 🔄 **monte-carlo-distribution.tsx**: Removido `generateDistributionData()`, usa API
+
+---
+
 ## [0.3.0] - 2025-11-25
 
 ### 🚀 Novas Funcionalidades

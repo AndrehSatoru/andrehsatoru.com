@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Bar,
@@ -14,58 +14,105 @@ import {
   Scatter,
   Cell,
 } from "recharts"
-
-const generateDailyData = () => {
-  const data = []
-  const startDate = new Date(2024, 6, 1) // Julho 2024
-  const days = 450
-
-  let var95 = -1500000
-  let var99 = -2000000
-  const violations: number[] = []
-
-  for (let i = 0; i < days; i++) {
-    const date = new Date(startDate)
-    date.setDate(date.getDate() + i)
-
-    // Simular retornos diários com distribuição realista
-    const randomReturn = (Math.random() - 0.48) * 3000000
-    const volatility = Math.sin(i / 30) * 500000
-    const returns = randomReturn + volatility
-
-    // VaR evolui ao longo do tempo
-    var95 = -1500000 + Math.sin(i / 60) * 300000
-    var99 = -2000000 + Math.sin(i / 60) * 500000
-
-    // Detectar violações do VaR 99%
-    const isViolation = returns < var99
-    if (isViolation) {
-      violations.push(i)
-    }
-
-    data.push({
-      date: date.toISOString().split("T")[0],
-      returns,
-      var95,
-      var99,
-      violation: isViolation ? returns : null,
-    })
-  }
-
-  return { data, violationCount: violations.length }
-}
+import { useDashboardData } from "@/lib/dashboard-data-context"
 
 export function VarChart() {
-  const [chartData, setChartData] = useState<{ data: any[]; violationCount: number } | null>(null)
+  const { analysisResult } = useDashboardData()
 
-  useEffect(() => {
-    const generated = generateDailyData()
-    setChartData(generated)
-  }, [])
+  const chartData = useMemo(() => {
+    if (!analysisResult?.results?.performance || analysisResult.results.performance.length < 2) {
+      return null
+    }
+
+    const performanceData = analysisResult.results.performance
+    
+    // Calcular retornos monetários diários a partir da série de performance
+    const returns: number[] = []
+
+    for (let i = 1; i < performanceData.length; i++) {
+      const prevValue = performanceData[i - 1].portfolio
+      const currValue = performanceData[i].portfolio
+      const dailyReturn = currValue - prevValue // Retorno monetário
+      returns.push(dailyReturn)
+    }
+
+    if (returns.length < 20) {
+      return null // Dados insuficientes para calcular VaR
+    }
+
+    // Função para calcular percentil com interpolação linear
+    const percentile = (sortedArr: number[], p: number): number => {
+      const index = (sortedArr.length - 1) * p
+      const lower = Math.floor(index)
+      const upper = Math.ceil(index)
+      const weight = index - lower
+      if (upper >= sortedArr.length) return sortedArr[lower]
+      return sortedArr[lower] * (1 - weight) + sortedArr[upper] * weight
+    }
+
+    // Janela móvel para VaR dinâmico (até 252 dias úteis = 1 ano)
+    const maxWindowSize = 252
+    const minWindowSize = 20
+    const data = []
+    let violationCount = 0
+
+    // Calcular VaR rolling para cada ponto, usando janela adaptativa
+    for (let i = minWindowSize; i < returns.length; i++) {
+      // Janela cresce até maxWindowSize
+      const windowSize = Math.min(i, maxWindowSize)
+      const windowReturns = returns.slice(i - windowSize, i)
+      const sortedWindow = [...windowReturns].sort((a, b) => a - b)
+      
+      // VaR com interpolação linear para suavizar
+      const var95 = percentile(sortedWindow, 0.05)
+      const var99 = percentile(sortedWindow, 0.01)
+
+      const dailyReturn = returns[i]
+      const isViolation = dailyReturn < var99
+      if (isViolation) violationCount++
+
+      data.push({
+        date: performanceData[i + 1].date,
+        returns: dailyReturn,
+        var95: var95,
+        var99: var99,
+        violation: isViolation ? dailyReturn : null,
+      })
+    }
+
+    // Calcular valores atuais (último ponto)
+    const lastPoint = data[data.length - 1]
+    const currentVar95 = lastPoint?.var95 || 0
+    const currentVar99 = lastPoint?.var99 || 0
+
+    return { data, violationCount, var95: currentVar95, var99: currentVar99 }
+  }, [analysisResult])
+
+  const formatValue = (value: number) => {
+    if (Math.abs(value) >= 1000000) {
+      return `R$ ${(value / 1000000).toFixed(2)}M`
+    } else if (Math.abs(value) >= 1000) {
+      return `R$ ${(value / 1000).toFixed(0)}K`
+    }
+    return `R$ ${value.toFixed(0)}`
+  }
 
   if (!chartData) {
-    return <Card className="border-border"><CardHeader><CardTitle className="text-foreground">Retorno Monetário Diário vs. VaR Histórico Diário</CardTitle><CardDescription className="text-muted-foreground">Carregando...</CardDescription></CardHeader></Card>
+    return (
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-foreground">Retorno Monetário Diário vs. VaR Histórico Diário</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Retornos diários da carteira comparados aos limites de VaR
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[400px]">
+          <p className="text-muted-foreground text-sm">Envie operações para visualizar o VaR</p>
+        </CardContent>
+      </Card>
+    )
   }
+
   return (
     <Card className="border-border">
       <CardHeader>
@@ -86,12 +133,19 @@ export function VarChart() {
                 const date = new Date(value)
                 return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
               }}
-              interval={60}
+              interval={Math.floor(chartData.data.length / 6)}
             />
             <YAxis
               stroke="hsl(var(--muted-foreground))"
               fontSize={12}
-              tickFormatter={(value) => `R$ ${(value / 1000000).toFixed(1)}M`}
+              tickFormatter={(value) => {
+                if (Math.abs(value) >= 1000000) {
+                  return `R$ ${(value / 1000000).toFixed(1)}M`
+                } else if (Math.abs(value) >= 1000) {
+                  return `R$ ${(value / 1000).toFixed(0)}K`
+                }
+                return `R$ ${value.toFixed(0)}`
+              }}
             />
             <Tooltip
               contentStyle={{
@@ -101,68 +155,75 @@ export function VarChart() {
               }}
               labelStyle={{ color: "hsl(var(--popover-foreground))" }}
               formatter={(value: number, name: string) => {
-                if (name === "Retorno Monetário Diário") {
-                  return [
-                    `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-                    name,
-                  ]
-                }
-                if (name === "VaR Histórico (99%)") {
-                  return [
-                    `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-                    name,
-                  ]
-                }
-                if (name === "VaR Histórico (95%)") {
-                  return [
-                    `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-                    name,
-                  ]
-                }
-                return [value, name]
+                const formatted = `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                return [formatted, name]
               }}
+              labelFormatter={(label) => {
+                const date = new Date(label)
+                return date.toLocaleDateString("pt-BR")
+              }}
+            />
+            {/* Linha VaR 99% Rolling */}
+            <Line
+              type="monotone"
+              dataKey="var99"
+              stroke="#dc2626"
+              strokeWidth={2}
+              dot={false}
+              name="VaR 99% (Rolling 252d)"
+            />
+            {/* Linha VaR 95% Rolling */}
+            <Line
+              type="monotone"
+              dataKey="var95"
+              stroke="#f97316"
+              strokeWidth={2}
+              strokeDasharray="5 3"
+              dot={false}
+              name="VaR 95% (Rolling 252d)"
             />
             <Bar dataKey="returns" name="Retorno Monetário Diário" radius={[2, 2, 0, 0]}>
               {chartData.data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.returns >= 0 ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)"} />
               ))}
             </Bar>
-            <Line
-              type="monotone"
-              dataKey="var99"
-              stroke="hsl(var(--foreground))"
-              strokeWidth={2}
-              strokeDasharray="8 4"
-              dot={false}
-              name="VaR Histórico (99%)"
-            />
-            <Line
-              type="monotone"
-              dataKey="var95"
-              stroke="hsl(var(--foreground))"
-              strokeWidth={2}
-              strokeDasharray="2 2"
-              dot={false}
-              name="VaR Histórico (95%)"
-            />
             <Scatter
               dataKey="violation"
               fill="#eab308"
               stroke="#000"
               strokeWidth={2}
-              shape="circle"
-              name={`Quebras do VaR (99%): ${chartData.violationCount}`}
+              name={`Quebras do VaR (99%)`}
             />
           </ComposedChart>
         </ResponsiveContainer>
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
+        <div className="mt-4 grid grid-cols-4 gap-4 rounded-lg bg-muted p-4">
+          <div>
+            <p className="text-xs text-muted-foreground">VaR 99% Atual</p>
+            <p className="text-lg font-bold text-red-600">{formatValue(chartData.var99)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">VaR 95% Atual</p>
+            <p className="text-lg font-bold text-orange-500">{formatValue(chartData.var95)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Quebras VaR 99%</p>
+            <p className="text-lg font-bold text-yellow-500">{chartData.violationCount}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Taxa de Violação</p>
+            <p className="text-lg font-bold text-foreground">
+              {((chartData.violationCount / chartData.data.length) * 100).toFixed(2)}%
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <div className="h-0.5 w-8 border-t-2 border-dashed border-foreground" />
-            <span className="text-muted-foreground">VaR Histórico (99%)</span>
+            <div className="h-0.5 w-8 bg-red-600" />
+            <span className="text-muted-foreground">VaR 99% (Rolling 252d)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-0.5 w-8 border-t-2 border-dotted border-foreground" />
-            <span className="text-muted-foreground">VaR Histórico (95%)</span>
+            <div className="h-0.5 w-8 bg-orange-500" style={{ borderStyle: 'dashed', borderWidth: '2px', borderColor: '#f97316' }} />
+            <span className="text-muted-foreground">VaR 95% (Rolling 252d)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-yellow-500 ring-2 ring-black" />
@@ -170,7 +231,11 @@ export function VarChart() {
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-8 bg-green-600" />
-            <span className="text-muted-foreground">Retorno Monetário Diário</span>
+            <span className="text-muted-foreground">Retorno Positivo</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-8 bg-red-500" />
+            <span className="text-muted-foreground">Retorno Negativo</span>
           </div>
         </div>
       </CardContent>

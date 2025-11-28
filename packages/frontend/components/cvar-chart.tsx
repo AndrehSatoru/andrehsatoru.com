@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Bar,
@@ -10,43 +11,117 @@ import {
   Tooltip,
   ResponsiveContainer,
   Line,
-  Area,
+  Scatter,
   Cell,
 } from "recharts"
-
-const generateCVarData = () => {
-  const data = []
-  const startDate = new Date(2024, 6, 1)
-  const days = 450
-
-  for (let i = 0; i < days; i++) {
-    const date = new Date(startDate)
-    date.setDate(date.getDate() + i)
-
-    // Simular retornos diários
-    const randomReturn = (Math.random() - 0.48) * 3000000
-    const volatility = Math.sin(i / 30) * 500000
-    const returns = randomReturn + volatility
-
-    // CVaR é a média das perdas além do VaR
-    const var95 = -1500000 + Math.sin(i / 60) * 300000
-    const cvar95 = var95 * 1.35 // CVaR é tipicamente 30-40% maior que VaR
-
-    data.push({
-      date: date.toISOString().split("T")[0],
-      returns,
-      var95,
-      cvar95,
-      tailLoss: returns < var95 ? returns : null,
-    })
-  }
-
-  return data
-}
-
-const cvarData = generateCVarData()
+import { useDashboardData } from "@/lib/dashboard-data-context"
 
 export function CVarChart() {
+  const { analysisResult } = useDashboardData()
+
+  const chartData = useMemo(() => {
+    if (!analysisResult?.results?.performance || analysisResult.results.performance.length < 2) {
+      return null
+    }
+
+    const performanceData = analysisResult.results.performance
+    
+    // Calcular retornos monetários diários a partir da série de performance
+    const returns: number[] = []
+
+    for (let i = 1; i < performanceData.length; i++) {
+      const prevValue = performanceData[i - 1].portfolio
+      const currValue = performanceData[i].portfolio
+      const dailyReturn = currValue - prevValue // Retorno monetário
+      returns.push(dailyReturn)
+    }
+
+    if (returns.length < 20) {
+      return null // Dados insuficientes para calcular CVaR
+    }
+
+    // Função para calcular percentil com interpolação linear
+    const percentile = (sortedArr: number[], p: number): number => {
+      const index = (sortedArr.length - 1) * p
+      const lower = Math.floor(index)
+      const upper = Math.ceil(index)
+      const weight = index - lower
+      if (upper >= sortedArr.length) return sortedArr[lower]
+      return sortedArr[lower] * (1 - weight) + sortedArr[upper] * weight
+    }
+
+    // Janela móvel para CVaR dinâmico (até 252 dias úteis = 1 ano)
+    const maxWindowSize = 252
+    const minWindowSize = 20
+    const data = []
+    let violationCount = 0
+
+    // Calcular CVaR rolling para cada ponto, usando janela adaptativa
+    for (let i = minWindowSize; i < returns.length; i++) {
+      // Janela cresce até maxWindowSize
+      const windowSize = Math.min(i, maxWindowSize)
+      const windowReturns = returns.slice(i - windowSize, i)
+      const sortedWindow = [...windowReturns].sort((a, b) => a - b)
+      
+      // VaR com interpolação linear
+      const var95 = percentile(sortedWindow, 0.05)
+      
+      // CVaR é a média dos retornos abaixo do VaR (Expected Shortfall)
+      const var95Index = Math.ceil(windowSize * 0.05)
+      const tailReturns = sortedWindow.slice(0, var95Index + 1)
+      const cvar95 = tailReturns.length > 0 
+        ? tailReturns.reduce((sum, r) => sum + r, 0) / tailReturns.length 
+        : var95
+
+      const dailyReturn = returns[i]
+      const isViolation = dailyReturn < cvar95
+      if (isViolation) violationCount++
+
+      data.push({
+        date: performanceData[i + 1].date,
+        returns: dailyReturn,
+        var95: var95,
+        cvar95: cvar95,
+        violation: isViolation ? dailyReturn : null,
+      })
+    }
+
+    // Calcular valores atuais (último ponto)
+    const lastPoint = data[data.length - 1]
+    const currentVar95 = lastPoint?.var95 || 0
+    const currentCvar95 = lastPoint?.cvar95 || 0
+    
+    // Calcular diferença percentual CVaR/VaR
+    const diffPercent = currentVar95 !== 0 ? ((currentCvar95 - currentVar95) / Math.abs(currentVar95)) * 100 : 0
+
+    return { data, var95: currentVar95, cvar95: currentCvar95, diffPercent, violationCount }
+  }, [analysisResult])
+
+  const formatValue = (value: number) => {
+    if (Math.abs(value) >= 1000000) {
+      return `R$ ${(value / 1000000).toFixed(2)}M`
+    } else if (Math.abs(value) >= 1000) {
+      return `R$ ${(value / 1000).toFixed(0)}K`
+    }
+    return `R$ ${value.toFixed(2)}`
+  }
+
+  if (!chartData) {
+    return (
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-foreground">CVaR (Conditional Value at Risk)</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Perda média esperada além do VaR - Expected Shortfall
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[400px]">
+          <p className="text-muted-foreground text-sm">Envie operações para visualizar o CVaR</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="border-border">
       <CardHeader>
@@ -57,13 +132,7 @@ export function CVarChart() {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={400}>
-          <ComposedChart data={cvarData}>
-            <defs>
-              <linearGradient id="tailArea" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.1} />
-              </linearGradient>
-            </defs>
+          <ComposedChart data={chartData.data}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
             <XAxis
               dataKey="date"
@@ -73,12 +142,19 @@ export function CVarChart() {
                 const date = new Date(value)
                 return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
               }}
-              interval={60}
+              interval={Math.floor(chartData.data.length / 6)}
             />
             <YAxis
               stroke="hsl(var(--muted-foreground))"
               fontSize={12}
-              tickFormatter={(value) => `R$ ${(value / 1000000).toFixed(1)}M`}
+              tickFormatter={(value) => {
+                if (Math.abs(value) >= 1000000) {
+                  return `R$ ${(value / 1000000).toFixed(1)}M`
+                } else if (Math.abs(value) >= 1000) {
+                  return `R$ ${(value / 1000).toFixed(0)}K`
+                }
+                return `R$ ${value.toFixed(0)}`
+              }}
             />
             <Tooltip
               contentStyle={{
@@ -89,54 +165,88 @@ export function CVarChart() {
               labelStyle={{ color: "hsl(var(--popover-foreground))" }}
               formatter={(value: number, name: string) => {
                 return [
-                  `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                  `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
                   name,
                 ]
               }}
+              labelFormatter={(label) => {
+                const date = new Date(label)
+                return date.toLocaleDateString("pt-BR")
+              }}
             />
-            <Bar dataKey="returns" name="Retorno Diário" radius={[2, 2, 0, 0]}>
-              {cvarData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.returns >= 0 ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)"} />
-              ))}
-            </Bar>
-            <Area
-              type="monotone"
-              dataKey="tailLoss"
-              fill="url(#tailArea)"
-              stroke="none"
-              name="Perdas na Cauda (além do VaR)"
-            />
+            {/* Linha VaR 95% Rolling */}
             <Line
               type="monotone"
               dataKey="var95"
-              stroke="hsl(var(--chart-1))"
+              stroke="#f97316"
               strokeWidth={2}
-              strokeDasharray="8 4"
+              strokeDasharray="5 3"
               dot={false}
-              name="VaR 95%"
+              name="VaR 95% (Rolling 252d)"
             />
+            {/* Linha CVaR 95% Rolling */}
             <Line
               type="monotone"
               dataKey="cvar95"
-              stroke="hsl(var(--chart-2))"
-              strokeWidth={3}
+              stroke="#dc2626"
+              strokeWidth={2}
               dot={false}
-              name="CVaR 95% (Expected Shortfall)"
+              name="CVaR 95% (Rolling 252d)"
             />
+            <Scatter
+              dataKey="violation"
+              fill="#eab308"
+              stroke="#000"
+              strokeWidth={2}
+              name="Quebras do CVaR (95%)"
+            />
+            <Bar dataKey="returns" name="Retorno Diário" radius={[2, 2, 0, 0]}>
+              {chartData.data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.returns >= 0 ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)"} />
+              ))}
+            </Bar>
           </ComposedChart>
         </ResponsiveContainer>
-        <div className="mt-4 grid grid-cols-3 gap-4 rounded-lg bg-muted p-4">
+        <div className="mt-4 grid grid-cols-4 gap-4 rounded-lg bg-muted p-4">
           <div>
             <p className="text-xs text-muted-foreground">VaR 95% Atual</p>
-            <p className="text-lg font-bold text-foreground">R$ -1.52M</p>
+            <p className="text-lg font-bold text-orange-500">{formatValue(chartData.var95)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">CVaR 95% Atual</p>
-            <p className="text-lg font-bold text-destructive">R$ -2.05M</p>
+            <p className="text-lg font-bold text-red-600">{formatValue(chartData.cvar95)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Quebras CVaR 95%</p>
+            <p className="text-lg font-bold text-yellow-500">{chartData.violationCount}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Diferença CVaR/VaR</p>
-            <p className="text-lg font-bold text-orange-600">+35%</p>
+            <p className="text-lg font-bold text-amber-600">
+              {chartData.diffPercent > 0 ? "+" : ""}{chartData.diffPercent.toFixed(0)}%
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="h-0.5 w-8 bg-orange-500" style={{ borderStyle: 'dashed', borderWidth: '2px', borderColor: '#f97316' }} />
+            <span className="text-muted-foreground">VaR 95% (Rolling 252d)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-0.5 w-8 bg-red-600" />
+            <span className="text-muted-foreground">CVaR 95% (Rolling 252d)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-yellow-500 ring-2 ring-black" />
+            <span className="text-muted-foreground">Quebras do CVaR: {chartData.violationCount}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-8 bg-green-600" />
+            <span className="text-muted-foreground">Retorno Positivo</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-8 bg-red-500" />
+            <span className="text-muted-foreground">Retorno Negativo</span>
           </div>
         </div>
       </CardContent>

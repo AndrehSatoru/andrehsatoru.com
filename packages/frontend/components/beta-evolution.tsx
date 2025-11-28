@@ -2,43 +2,77 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
+import { useDashboardData } from "@/lib/dashboard-data-context"
+import { useMemo } from "react"
 
-const data = [
-  { date: "2023-07", beta: 0.85 },
-  { date: "2023-08", beta: 0.88 },
-  { date: "2023-09", beta: 0.92 },
-  { date: "2023-10", beta: 0.95 },
-  { date: "2023-11", beta: 0.98 },
-  { date: "2023-12", beta: 1.02 },
-  { date: "2024-01", beta: 1.05 },
-  { date: "2024-02", beta: 1.08 },
-  { date: "2024-03", beta: 1.12 },
-  { date: "2024-04", beta: 1.15 },
-  { date: "2024-05", beta: 1.18 },
-  { date: "2024-06", beta: 1.22 },
-  { date: "2024-07", beta: 1.25 },
-  { date: "2024-08", beta: 1.28 },
-  { date: "2024-09", beta: 1.32 },
-  { date: "2024-10", beta: 1.35 },
-  { date: "2024-11", beta: 1.38 },
-  { date: "2024-12", beta: 1.42 },
-  { date: "2025-01", beta: 1.45 },
-  { date: "2025-02", beta: 1.42 },
-  { date: "2025-03", beta: 1.38 },
-  { date: "2025-04", beta: 1.35 },
-  { date: "2025-05", beta: 1.32 },
-  { date: "2025-06", beta: 1.28 },
-  { date: "2025-07", beta: 1.25 },
-  { date: "2025-08", beta: 1.22 },
-  { date: "2025-09", beta: 1.18 },
-  { date: "2025-10", beta: 1.15 },
-]
+interface BetaDataPoint {
+  date: string
+  beta: number
+}
 
 export function BetaEvolution() {
-  const currentBeta = data[data.length - 1].beta
-  const avgBeta = (data.reduce((sum, d) => sum + d.beta, 0) / data.length).toFixed(2)
-  const minBeta = Math.min(...data.map((d) => d.beta)).toFixed(2)
-  const maxBeta = Math.max(...data.map((d) => d.beta)).toFixed(2)
+  const { analysisResult } = useDashboardData()
+  
+  // Obter dados de beta_evolution da API
+  const data: BetaDataPoint[] = useMemo(() => {
+    if (!analysisResult?.results?.beta_evolution) {
+      return []
+    }
+    return analysisResult.results.beta_evolution
+  }, [analysisResult])
+  
+  // Calcular estatísticas (filtrando valores muito baixos que indicam início da carteira)
+  const stats = useMemo(() => {
+    if (data.length === 0) {
+      return { currentBeta: 0, avgBeta: 0, minBeta: 0, maxBeta: 0 }
+    }
+    
+    // Filtrar valores maiores que 0.1 para evitar betas artificialmente baixos do início
+    const validBetaValues = data.map((d) => d.beta).filter((b) => b > 0.1)
+    
+    if (validBetaValues.length === 0) {
+      return { currentBeta: 0, avgBeta: 0, minBeta: 0, maxBeta: 0 }
+    }
+    
+    const currentBeta = data[data.length - 1].beta
+    const avgBeta = validBetaValues.reduce((sum, b) => sum + b, 0) / validBetaValues.length
+    const minBeta = Math.min(...validBetaValues)
+    const maxBeta = Math.max(...validBetaValues)
+    
+    return { currentBeta, avgBeta, minBeta, maxBeta }
+  }, [data])
+  
+  // Calcular domain do eixo Y dinamicamente
+  const yDomain = useMemo(() => {
+    if (data.length === 0) return [0.5, 1.5]
+    
+    const betaValues = data.map((d) => d.beta)
+    const minVal = Math.min(...betaValues)
+    const maxVal = Math.max(...betaValues)
+    
+    // Adicionar margem de 20% para cima e para baixo
+    const margin = (maxVal - minVal) * 0.2
+    const domainMin = Math.max(0, Math.floor((minVal - margin) * 10) / 10)
+    const domainMax = Math.ceil((maxVal + margin) * 10) / 10
+    
+    return [domainMin, domainMax]
+  }, [data])
+
+  // Estado vazio
+  if (data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-balance">Evolução do Beta da Carteira</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-[400px] items-center justify-center text-muted-foreground">
+            Dados de beta não disponíveis
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>
@@ -49,19 +83,19 @@ export function BetaEvolution() {
         <div className="mb-4 grid grid-cols-4 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Beta Atual</p>
-            <p className="text-2xl font-bold">{currentBeta.toFixed(2)}</p>
+            <p className="text-2xl font-bold">{stats.currentBeta.toFixed(2)}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Beta Médio</p>
-            <p className="text-2xl font-bold">{avgBeta}</p>
+            <p className="text-2xl font-bold">{stats.avgBeta.toFixed(2)}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Beta Mínimo</p>
-            <p className="text-2xl font-bold text-green-600">{minBeta}</p>
+            <p className="text-2xl font-bold text-green-600">{stats.minBeta.toFixed(2)}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Beta Máximo</p>
-            <p className="text-2xl font-bold text-red-600">{maxBeta}</p>
+            <p className="text-2xl font-bold text-red-600">{stats.maxBeta.toFixed(2)}</p>
           </div>
         </div>
 
@@ -70,7 +104,7 @@ export function BetaEvolution() {
             <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis dataKey="date" stroke="#6b7280" tick={{ fill: "#6b7280" }} />
-              <YAxis stroke="#6b7280" tick={{ fill: "#6b7280" }} domain={[0.5, 1.8]} />
+              <YAxis stroke="#6b7280" tick={{ fill: "#6b7280" }} domain={yDomain} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "rgba(255, 255, 255, 0.95)",
@@ -83,7 +117,13 @@ export function BetaEvolution() {
                 y={1.0}
                 stroke="#9ca3af"
                 strokeDasharray="5 5"
-                label={{ value: "Beta = 1.0 (Mercado)", position: "right", fill: "#6b7280" }}
+                label={{ value: "Mercado (1.0)", position: "right", fill: "#6b7280", fontSize: 11 }}
+              />
+              <ReferenceLine
+                y={stats.avgBeta}
+                stroke="#f59e0b"
+                strokeDasharray="8 4"
+                label={{ value: `Média (${stats.avgBeta.toFixed(2)})`, position: "left", fill: "#f59e0b", fontSize: 11 }}
               />
               <Line
                 type="monotone"

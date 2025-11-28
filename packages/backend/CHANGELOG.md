@@ -1,5 +1,46 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.5.0] - 2025-11-27
+
+### 🚀 Novas Funcionalidades
+
+#### Contribuição de Risco por Ativo
+- ✨ **`_generate_risk_contribution()`**: Novo método que calcula a contribuição de cada ativo para a volatilidade total
+- 📊 **Risk Attribution**: Usa função `risk_attribution()` existente para calcular contribuições marginais
+- 📈 **Ordenação por Contribuição**: Ativos ordenados do maior para o menor contribuidor de risco
+
+#### Evolução do Beta da Carteira
+- ✨ **`_generate_beta_evolution()`**: Novo método para calcular beta rolling vs IBOVESPA (^BVSP)
+- 📉 **Beta Rolling 60 dias**: Janela de 60 dias úteis para cálculo do beta
+- 📅 **Dados Mensais**: Agrupamento por mês para não sobrecarregar o gráfico
+- 🎯 **Estatísticas**: Beta atual, médio, mínimo e máximo calculados dinamicamente
+
+#### Simulação Monte Carlo
+- ✨ **`_generate_monte_carlo_simulation()`**: Simulação comparativa MGB vs Bootstrap Histórico
+- 📊 **MGB (Geometric Brownian Motion)**: Simulação paramétrica com volatilidade histórica
+- 🔄 **Bootstrap Histórico**: Simulação por reamostragem de retornos históricos reais
+- 📈 **5.000 simulações**: Por padrão, 5.000 paths para cada método
+- 📉 **45 bins dinâmicos**: Histograma com número fixo de bins, independente do valor da carteira
+- 💰 **Formatação inteligente**: Labels adaptados (K, M, B) conforme o valor
+
+### 🔧 Melhorias
+
+#### run_analysis()
+- 🆕 **Novos campos**: `risk_contribution`, `beta_evolution`, `monte_carlo` adicionados ao retorno
+- 📊 **Dados completos**: Todos os dados necessários para os gráficos do dashboard em uma única chamada
+
+### 📊 Novos Endpoints de Dados
+
+| Campo | Descrição |
+|-------|-----------|
+| `risk_contribution` | Lista de `{asset, contribution}` ordenada por contribuição |
+| `beta_evolution` | Lista de `{date, beta}` com evolução mensal |
+| `monte_carlo.distribution` | Dados do histograma para ambas distribuições |
+| `monte_carlo.mgb` | Estatísticas da simulação MGB (mediana, percentis, etc) |
+| `monte_carlo.bootstrap` | Estatísticas da simulação Bootstrap |
+
+---
+
 ## [1.4.0] - 2025-11-25
 
 ### 🚀 Novas Funcionalidades

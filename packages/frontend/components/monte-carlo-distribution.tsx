@@ -12,32 +12,47 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts"
+import { useDashboardData } from "@/lib/dashboard-data-context"
+import { useMemo } from "react"
 
-// Simulated Monte Carlo distribution data
-const generateDistributionData = () => {
-  const data = []
-  const initialValue = 164898026.23
-
-  // Generate histogram bins with 5M intervals instead of 10M
-  for (let value = 100000000; value <= 350000000; value += 5000000) {
-    // MGB with GARCH - centered around initial value with slight positive skew
-    const mgbDensity = Math.exp(-Math.pow((value - 165000000) / 25000000, 2)) * 2.1
-
-    // Bootstrap Historical - centered around 200M with wider spread
-    const bootstrapDensity = Math.exp(-Math.pow((value - 200000000) / 30000000, 2)) * 1.7
-
-    data.push({
-      value,
-      mgb: mgbDensity > 0.05 ? mgbDensity : 0,
-      bootstrap: bootstrapDensity > 0.05 ? bootstrapDensity : 0,
-      valueLabel: `R$ ${(value / 1000000).toFixed(0)}M`,
-    })
-  }
-
-  return { data, initialValue }
+interface DistributionDataPoint {
+  value: number
+  valueLabel: string
+  mgb: number
+  bootstrap: number
 }
 
-const { data, initialValue } = generateDistributionData()
+interface MonteCarloData {
+  distribution: DistributionDataPoint[]
+  initialValue: number
+  mgb: {
+    median: number
+    mean: number
+    std: number
+    percentile_5: number
+    percentile_95: number
+    drift_annual: number
+    volatility_annual: number
+  }
+  bootstrap: {
+    median: number
+    mean: number
+    std: number
+    percentile_5: number
+    percentile_95: number
+  }
+  params: {
+    n_paths: number
+    n_days: number
+  }
+}
+
+const formatCurrency = (value: number) => {
+  if (value >= 1_000_000_000) {
+    return `R$ ${(value / 1_000_000_000).toFixed(2)}B`
+  }
+  return `R$ ${(value / 1_000_000).toFixed(1)}M`
+}
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -56,6 +71,65 @@ const CustomTooltip = ({ active, payload }: any) => {
 }
 
 export function MonteCarloDistribution() {
+  const { analysisResult } = useDashboardData()
+  
+  // Obter dados de monte_carlo da API
+  const monteCarloData: MonteCarloData | null = useMemo(() => {
+    if (!analysisResult?.results?.monte_carlo?.distribution) {
+      return null
+    }
+    return analysisResult.results.monte_carlo as MonteCarloData
+  }, [analysisResult])
+  
+  // Calcular domínio do eixo Y dinamicamente
+  const yDomain = useMemo(() => {
+    if (!monteCarloData?.distribution) return [0, 2.5]
+    
+    const maxMgb = Math.max(...monteCarloData.distribution.map(d => d.mgb))
+    const maxBootstrap = Math.max(...monteCarloData.distribution.map(d => d.bootstrap))
+    const maxVal = Math.max(maxMgb, maxBootstrap)
+    
+    return [0, Math.ceil(maxVal * 1.2 * 10) / 10]
+  }, [monteCarloData])
+  
+  // Encontrar o bin mais próximo do valor inicial para a linha de referência
+  const initialValueLabel = useMemo(() => {
+    if (!monteCarloData?.distribution || !monteCarloData.initialValue) return ""
+    
+    const initialValue = monteCarloData.initialValue
+    // Encontrar o bin mais próximo
+    let closestBin = monteCarloData.distribution[0]
+    let minDist = Math.abs(monteCarloData.distribution[0].value - initialValue)
+    
+    for (const bin of monteCarloData.distribution) {
+      const dist = Math.abs(bin.value - initialValue)
+      if (dist < minDist) {
+        minDist = dist
+        closestBin = bin
+      }
+    }
+    
+    return closestBin.valueLabel
+  }, [monteCarloData])
+
+  // Estado vazio
+  if (!monteCarloData || !monteCarloData.distribution?.length) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-balance">Distribuição Comparativa dos Resultados de Monte Carlo</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-[500px] items-center justify-center text-muted-foreground">
+            Dados de simulação Monte Carlo não disponíveis
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const { distribution, initialValue, mgb, bootstrap } = monteCarloData
+
   return (
     <Card>
       <CardHeader>
@@ -63,7 +137,7 @@ export function MonteCarloDistribution() {
         <div className="flex flex-wrap gap-4 mt-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-[#F59E0B] border border-[#D97706]" />
-            <span>MGB (Drift Anualizado: 0.00%) com GARCH</span>
+            <span>MGB (Drift Anualizado: {mgb.drift_annual.toFixed(2)}%) com GARCH</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-[#6B7280] border border-[#4B5563]" />
@@ -74,7 +148,7 @@ export function MonteCarloDistribution() {
               className="w-4 h-0.5 bg-black border-dashed"
               style={{ borderTop: "2px dashed black", width: "20px" }}
             />
-            <span>Valor Inicial: R$ {(initialValue / 1000000).toFixed(1)}M</span>
+            <span>Valor Inicial: {formatCurrency(initialValue)}</span>
           </div>
         </div>
       </CardHeader>
@@ -82,7 +156,7 @@ export function MonteCarloDistribution() {
         <div className="h-[500px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart
-              data={data}
+              data={distribution}
               margin={{ top: 20, right: 30, left: 80, bottom: 60 }}
               barCategoryGap={0}
               barGap={-20}
@@ -109,12 +183,14 @@ export function MonteCarloDistribution() {
                   position: "insideLeft",
                   style: { fill: "hsl(var(--foreground))", fontSize: 12 },
                 }}
-                domain={[0, 2.5]}
+                domain={yDomain}
               />
               <Tooltip content={<CustomTooltip />} />
 
               {/* Reference line for initial value */}
-              <ReferenceLine x="R$ 165M" stroke="#000" strokeDasharray="5 5" strokeWidth={2} />
+              {initialValueLabel && (
+                <ReferenceLine x={initialValueLabel} stroke="#000" strokeDasharray="5 5" strokeWidth={2} />
+              )}
 
               {/* Bars for distributions */}
               <Bar
@@ -160,15 +236,15 @@ export function MonteCarloDistribution() {
         <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t">
           <div>
             <p className="text-sm text-muted-foreground">Valor Inicial</p>
-            <p className="text-lg font-semibold">R$ {(initialValue / 1000000).toFixed(2)}M</p>
+            <p className="text-lg font-semibold">{formatCurrency(initialValue)}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Mediana MGB</p>
-            <p className="text-lg font-semibold text-amber-600">R$ 165.0M</p>
+            <p className="text-lg font-semibold text-amber-600">{formatCurrency(mgb.median)}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Mediana Bootstrap</p>
-            <p className="text-lg font-semibold text-gray-600">R$ 200.0M</p>
+            <p className="text-lg font-semibold text-gray-600">{formatCurrency(bootstrap.median)}</p>
           </div>
         </div>
       </CardContent>

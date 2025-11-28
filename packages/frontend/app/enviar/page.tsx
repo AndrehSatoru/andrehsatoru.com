@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useDashboardData } from "@/lib/dashboard-data-context"
 import { useRouter } from "next/navigation"
 
@@ -11,6 +11,45 @@ type Operacao = {
   valor: number | ""
 }
 
+type FormData = {
+  valorInicial: string
+  dataInicial: string
+  operacoes: Operacao[]
+}
+
+const STORAGE_KEY = "enviar_operacoes_form"
+
+function getStoredFormData(): FormData | null {
+  if (typeof window === "undefined") return null
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (e) {
+    console.error("Erro ao carregar dados salvos:", e)
+  }
+  return null
+}
+
+function saveFormData(data: FormData) {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch (e) {
+    console.error("Erro ao salvar dados:", e)
+  }
+}
+
+function clearStoredFormData() {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch (e) {
+    console.error("Erro ao limpar dados:", e)
+  }
+}
+
 export default function EnviarOperacoesPage() {
   const [valorInicial, setValorInicial] = useState<string>("")
   const [dataInicial, setDataInicial] = useState<string>("")
@@ -19,8 +58,37 @@ export default function EnviarOperacoesPage() {
   ])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isHydrated, setIsHydrated] = useState(false)
   const { setAnalysisResult } = useDashboardData()
   const router = useRouter()
+
+  // Carregar dados salvos do localStorage na inicialização
+  useEffect(() => {
+    const stored = getStoredFormData()
+    if (stored) {
+      setValorInicial(stored.valorInicial)
+      setDataInicial(stored.dataInicial)
+      if (stored.operacoes && stored.operacoes.length > 0) {
+        setOperacoes(stored.operacoes)
+      }
+    }
+    setIsHydrated(true)
+  }, [])
+
+  // Salvar dados no localStorage sempre que mudarem
+  useEffect(() => {
+    if (!isHydrated) return
+    saveFormData({ valorInicial, dataInicial, operacoes })
+  }, [valorInicial, dataInicial, operacoes, isHydrated])
+
+  // Função para limpar todo o formulário
+  const clearForm = useCallback(() => {
+    setValorInicial("")
+    setDataInicial("")
+    setOperacoes([{ data: "", ticker: "", tipo: "compra", valor: "" }])
+    clearStoredFormData()
+    setError(null)
+  }, [])
 
   function addOperacao() {
     setOperacoes((ops) => [...ops, { data: "", ticker: "", tipo: "compra", valor: "" }])
@@ -211,6 +279,13 @@ export default function EnviarOperacoesPage() {
               className="rounded-md bg-primary text-primary-foreground px-4 py-2"
             >
               {loading ? "Enviando..." : "Enviar"}
+            </button>
+            <button
+              type="button"
+              onClick={clearForm}
+              className="rounded-md border border-destructive text-destructive px-4 py-2 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            >
+              Limpar Tudo
             </button>
             <a href="/" className="rounded-md border px-4 py-2">Voltar ao dashboard</a>
           </div>

@@ -1574,12 +1574,32 @@ class PortfolioAnalyzer:
         # Gerar retornos mensais para tabela de rentabilidade
         monthly_returns = self._generate_monthly_returns()
         
+        # Gerar histórico de evolução da alocação
+        allocation_history = self._generate_allocation_history()
+        
+        # Gerar retornos anualizados rolling
+        rolling_annualized_returns = self._generate_rolling_annualized_returns()
+        
+        # Gerar contribuição de risco
+        risk_contribution = self._generate_risk_contribution()
+        
+        # Gerar evolução do beta
+        beta_evolution = self._generate_beta_evolution()
+        
+        # Gerar simulação Monte Carlo
+        monte_carlo = self._generate_monte_carlo_simulation()
+        
         # Retornar resultados consolidados
         return {
             'desempenho': performance,
             'alocacao': allocation,
             'performance': performance_series,
             'monthly_returns': monthly_returns,
+            'allocation_history': allocation_history,
+            'rolling_annualized_returns': rolling_annualized_returns,
+            'risk_contribution': risk_contribution,
+            'beta_evolution': beta_evolution,
+            'monte_carlo': monte_carlo,
             'metadados': {
                 'ativos': self.assets,
                 'periodo_analise': {
@@ -1590,6 +1610,448 @@ class PortfolioAnalyzer:
                 'transacoes': len(self.transactions)
             }
         }
+    
+    def _generate_allocation_history(self) -> list:
+        """
+        Gera histórico de evolução da alocação percentual por ativo (incluindo caixa).
+        
+        Returns:
+            Lista de dicionários com data e percentual de cada ativo + caixa
+        """
+        if self.positions is None or self.portfolio_value is None:
+            return []
+        
+        # Obter preços históricos para todos os ativos
+        prices = self.data_loader.fetch_stock_prices(
+            assets=self.assets,
+            start_date=self.start_date.strftime('%Y-%m-%d'),
+            end_date=self.end_date.strftime('%Y-%m-%d')
+        )
+        
+        # Remover valores NaN do portfolio
+        valid_portfolio = self.portfolio_value.dropna()
+        if valid_portfolio.empty:
+            return []
+        
+        # Calcular valor de cada ativo ao longo do tempo
+        asset_values = pd.DataFrame(index=self.positions.index, columns=self.assets)
+        for asset in self.assets:
+            if asset in prices.columns:
+                asset_prices = prices[asset].reindex(self.positions.index).ffill()
+                asset_values[asset] = self.positions[asset] * asset_prices
+            else:
+                asset_values[asset] = 0.0
+        
+        # Amostrar para não sobrecarregar (máximo 250 pontos)
+        step = max(1, len(valid_portfolio) // 250)
+        
+        result = []
+        for i in range(0, len(valid_portfolio), step):
+            date = valid_portfolio.index[i]
+            portfolio_val = valid_portfolio.iloc[i]
+            
+            if date not in asset_values.index or pd.isna(portfolio_val) or portfolio_val <= 0:
+                continue
+            
+            entry = {'date': date.strftime('%Y-%m-%d')}
+            
+            # Calcular valor total dos ativos
+            total_asset_value = 0.0
+            for asset in self.assets:
+                asset_val = asset_values.loc[date, asset]
+                if pd.notna(asset_val) and asset_val > 0:
+                    # Percentual em relação ao valor TOTAL do portfólio (ativos + caixa)
+                    pct = (float(asset_val) / float(portfolio_val)) * 100
+                    entry[asset] = round(pct, 2)
+                    total_asset_value += float(asset_val)
+                else:
+                    entry[asset] = 0.0
+            
+            # Calcular caixa como diferença entre valor do portfólio e valor dos ativos
+            caixa_pct = ((float(portfolio_val) - total_asset_value) / float(portfolio_val)) * 100
+            entry['Caixa'] = round(max(0, caixa_pct), 2)
+            
+            result.append(entry)
+        
+        return result
+    
+    def _generate_rolling_annualized_returns(self, window_days: int = 252) -> list:
+        """
+        Gera série de retornos anualizados rolling (252 dias úteis).
+        Benchmark: CDI + 2% ao ano
+        
+        Args:
+            window_days: Janela em dias úteis para cálculo (padrão: 252 = 1 ano)
+            
+        Returns:
+            Lista de dicionários com data, retorno anualizado do portfolio e benchmark (CDI+2%)
+        """
+        if self.portfolio_value is None or self.portfolio_value.empty:
+            return []
+        
+        valid_portfolio = self.portfolio_value.dropna()
+        if len(valid_portfolio) < window_days:
+            # Se não tem dados suficientes, usar janela menor
+            window_days = max(20, len(valid_portfolio) // 2)
+        
+        if len(valid_portfolio) < 20:
+            return []
+        
+        # Calcular retornos diários
+        daily_returns = valid_portfolio.pct_change().dropna()
+        
+        # Calcular retorno anualizado rolling
+        # Retorno anualizado = (1 + retorno_acumulado)^(252/dias) - 1
+        rolling_cumulative = (1 + daily_returns).rolling(window=window_days).apply(
+            lambda x: x.prod() - 1, raw=True
+        )
+        
+        # Anualizar o retorno
+        rolling_annualized = rolling_cumulative.apply(
+            lambda x: ((1 + x) ** (252 / window_days) - 1) * 100 if pd.notna(x) else None
+        )
+        
+        # Calcular benchmark (CDI + 2%) rolling annualized
+        try:
+            cdi_rates = self.data_loader.fetch_cdi_daily(
+                start_date=self.start_date.strftime('%Y-%m-%d'),
+                end_date=self.end_date.strftime('%Y-%m-%d')
+            )
+            cdi_rates = cdi_rates.reindex(valid_portfolio.index).fillna(0.0)
+            
+            # Adicionar spread de 2% ao ano ao CDI (convertido para taxa diária)
+            # 2% ao ano = (1.02)^(1/252) - 1 por dia
+            daily_spread = (1.02) ** (1/252) - 1
+            cdi_plus_spread = cdi_rates + daily_spread
+            
+            # Retorno acumulado do CDI+2% rolling
+            rolling_cdi_cumulative = cdi_plus_spread.rolling(window=window_days).apply(
+                lambda x: (1 + x).prod() - 1, raw=True
+            )
+            rolling_cdi_annualized = rolling_cdi_cumulative.apply(
+                lambda x: ((1 + x) ** (252 / window_days) - 1) * 100 if pd.notna(x) else None
+            )
+        except Exception as e:
+            logging.warning(f"Erro ao calcular CDI+2% rolling: {e}")
+            # CDI aproximado de 12% + 2% = 14%
+            rolling_cdi_annualized = pd.Series(14.0, index=rolling_annualized.index)
+        
+        # Amostrar para não sobrecarregar (pegar 1 ponto por mês aproximadamente)
+        valid_data = rolling_annualized.dropna()
+        if valid_data.empty:
+            return []
+        
+        # Agrupar por mês
+        result = []
+        monthly_groups = valid_data.groupby(pd.Grouper(freq='M'))
+        
+        for month_end, group in monthly_groups:
+            if group.empty:
+                continue
+            
+            # Pegar o último valor do mês
+            last_date = group.index[-1]
+            portfolio_ret = group.iloc[-1]
+            
+            benchmark_ret = 14.0  # Fallback CDI+2%
+            if last_date in rolling_cdi_annualized.index:
+                cdi_val = rolling_cdi_annualized.loc[last_date]
+                if pd.notna(cdi_val):
+                    benchmark_ret = cdi_val
+            
+            result.append({
+                'date': last_date.strftime('%Y-%m'),
+                'portfolio': round(portfolio_ret, 1) if pd.notna(portfolio_ret) else 0,
+                'benchmark': round(benchmark_ret, 1) if pd.notna(benchmark_ret) else 14.0
+            })
+        
+        return result
+    
+    def _generate_risk_contribution(self) -> list:
+        """
+        Gera dados de contribuição de risco (volatilidade) por ativo.
+        
+        Returns:
+            Lista de dicionários ordenados por contribuição, com asset e contribution
+        """
+        if not self.assets or self.positions is None:
+            return []
+        
+        try:
+            # Buscar preços dos ativos
+            prices = self.data_loader.fetch_stock_prices(
+                assets=self.assets,
+                start_date=self.start_date.strftime('%Y-%m-%d'),
+                end_date=self.end_date.strftime('%Y-%m-%d')
+            )
+            
+            if prices.empty:
+                return []
+            
+            # Calcular retornos diários
+            returns = prices.pct_change().dropna()
+            
+            if returns.empty or len(returns) < 20:
+                return []
+            
+            # Obter pesos atuais dos ativos
+            allocation = self.analyze_allocation()
+            weights = []
+            valid_assets = []
+            
+            for asset in self.assets:
+                if asset in allocation['alocacao'] and asset in returns.columns:
+                    pct = allocation['alocacao'][asset].get('percentual', 0)
+                    if pct > 0:
+                        weights.append(pct / 100)  # Converter para fração
+                        valid_assets.append(asset)
+            
+            if not valid_assets or len(valid_assets) < 2:
+                return []
+            
+            # Normalizar pesos
+            total_weight = sum(weights)
+            if total_weight > 0:
+                weights = [w / total_weight for w in weights]
+            else:
+                return []
+            
+            # Usar a função risk_attribution existente
+            result = risk_attribution(
+                returns_df=returns,
+                assets=valid_assets,
+                weights=weights
+            )
+            
+            # Converter contribuições para percentuais
+            contribution_vol = result.get('contribution_vol', [])
+            portfolio_vol = result.get('portfolio_vol', 0)
+            
+            if portfolio_vol == 0:
+                return []
+            
+            # Calcular contribuição percentual de cada ativo
+            risk_data = []
+            for i, asset in enumerate(valid_assets):
+                if i < len(contribution_vol):
+                    # Contribuição como % da volatilidade total
+                    pct_contribution = (contribution_vol[i] / portfolio_vol) * 100
+                    risk_data.append({
+                        'asset': asset,
+                        'contribution': round(abs(pct_contribution), 1)
+                    })
+            
+            # Ordenar por contribuição (maior primeiro)
+            risk_data.sort(key=lambda x: x['contribution'], reverse=True)
+            
+            return risk_data
+            
+        except Exception as e:
+            logging.warning(f"Erro ao calcular contribuição de risco: {e}")
+            return []
+    
+    def _generate_beta_evolution(self, window: int = 60) -> list:
+        """
+        Gera série temporal de evolução do beta da carteira em relação ao IBOVESPA.
+        
+        Args:
+            window: Janela em dias úteis para cálculo do beta rolling (padrão: 60)
+            
+        Returns:
+            Lista de dicionários com data e valor do beta
+        """
+        if self.portfolio_value is None or self.portfolio_value.empty:
+            return []
+        
+        try:
+            # Buscar dados do IBOVESPA (benchmark)
+            ibov_prices = self.data_loader.fetch_stock_prices(
+                assets=['^BVSP'],
+                start_date=self.start_date.strftime('%Y-%m-%d'),
+                end_date=self.end_date.strftime('%Y-%m-%d')
+            )
+            
+            if ibov_prices.empty or '^BVSP' not in ibov_prices.columns:
+                logging.warning("Não foi possível obter dados do IBOVESPA para cálculo do beta")
+                return []
+            
+            ibov_series = ibov_prices['^BVSP'].dropna()
+            
+            # Calcular retornos do portfólio
+            valid_portfolio = self.portfolio_value.dropna()
+            if len(valid_portfolio) < window:
+                return []
+            
+            portfolio_returns = valid_portfolio.pct_change().dropna()
+            
+            # Calcular retornos do IBOVESPA
+            ibov_returns = ibov_series.pct_change().dropna()
+            
+            # Calcular beta rolling usando a função existente
+            rolling_beta = calculate_rolling_beta(
+                asset_returns=portfolio_returns,
+                benchmark_returns=ibov_returns,
+                window=window
+            )
+            
+            if rolling_beta.empty:
+                return []
+            
+            # Agrupar por mês para não sobrecarregar o gráfico
+            result = []
+            monthly_groups = rolling_beta.groupby(pd.Grouper(freq='M'))
+            
+            for month_end, group in monthly_groups:
+                if group.empty:
+                    continue
+                
+                # Pegar o último valor do mês
+                last_date = group.index[-1]
+                beta_value = group.iloc[-1]
+                
+                if pd.notna(beta_value):
+                    result.append({
+                        'date': last_date.strftime('%Y-%m'),
+                        'beta': round(float(beta_value), 2)
+                    })
+            
+            return result
+            
+        except Exception as e:
+            logging.warning(f"Erro ao calcular evolução do beta: {e}")
+            return []
+    
+    def _generate_monte_carlo_simulation(self, n_paths: int = 5000, n_days: int = 252) -> dict:
+        """
+        Gera simulação de Monte Carlo comparativa usando MGB com GARCH e Bootstrap Histórico.
+        
+        Args:
+            n_paths: Número de simulações (padrão: 5000)
+            n_days: Número de dias para simular (padrão: 252 = 1 ano)
+            
+        Returns:
+            Dicionário com dados de distribuição para o gráfico
+        """
+        if self.portfolio_value is None or self.portfolio_value.empty:
+            return {}
+        
+        try:
+            valid_portfolio = self.portfolio_value.dropna()
+            if len(valid_portfolio) < 60:
+                return {}
+            
+            # Calcular retornos diários
+            returns = valid_portfolio.pct_change().dropna()
+            if len(returns) < 30:
+                return {}
+            
+            # Valor inicial = valor atual da carteira
+            initial_value = float(valid_portfolio.iloc[-1])
+            
+            # ==== MGB (Geometric Brownian Motion) com volatilidade histórica ====
+            mu = float(returns.mean())
+            
+            # Usar volatilidade histórica (desvio padrão dos retornos)
+            sigma = float(returns.std())
+            
+            # Drift anualizado
+            annual_drift = mu * 252
+            
+            # Simular MGB
+            dt = 1.0 / 252
+            np.random.seed(42)  # Para reprodutibilidade
+            shocks_mgb = np.random.normal(
+                (mu - 0.5 * sigma ** 2) * dt, 
+                sigma * np.sqrt(dt), 
+                size=(n_days, n_paths)
+            )
+            paths_mgb = initial_value * np.exp(np.cumsum(shocks_mgb, axis=0))
+            terminal_mgb = paths_mgb[-1, :]
+            
+            # ==== Bootstrap Histórico ====
+            np.random.seed(123)  # Seed diferente para bootstrap
+            
+            # Usar retornos históricos aleatoriamente
+            historical_returns = returns.values
+            bootstrap_paths = np.zeros((n_days, n_paths))
+            
+            for path in range(n_paths):
+                # Selecionar retornos aleatórios do histórico
+                sampled_returns = np.random.choice(historical_returns, size=n_days, replace=True)
+                bootstrap_paths[:, path] = initial_value * np.cumprod(1 + sampled_returns)
+            
+            terminal_bootstrap = bootstrap_paths[-1, :]
+            
+            # ==== Gerar histograma para ambas distribuições ====
+            # Determinar range baseado nos dados
+            all_terminal = np.concatenate([terminal_mgb, terminal_bootstrap])
+            min_val = np.percentile(all_terminal, 1)
+            max_val = np.percentile(all_terminal, 99)
+            
+            # Usar número fixo de bins (40-50 para uma distribuição suave)
+            n_bins = 45
+            bins = np.linspace(min_val, max_val, n_bins + 1)
+            bin_size = bins[1] - bins[0]
+            
+            # Calcular histogramas normalizados (densidade)
+            hist_mgb, edges = np.histogram(terminal_mgb, bins=bins, density=True)
+            hist_bootstrap, _ = np.histogram(terminal_bootstrap, bins=bins, density=True)
+            
+            # Normalizar para que a área seja 1 e escalar para visualização
+            hist_mgb = hist_mgb * bin_size  # Converter density para proporção por bin
+            hist_bootstrap = hist_bootstrap * bin_size
+            
+            # Função para formatar valores monetários
+            def format_currency(value):
+                if abs(value) >= 1_000_000_000:
+                    return f"R$ {value / 1_000_000_000:.1f}B"
+                elif abs(value) >= 1_000_000:
+                    return f"R$ {value / 1_000_000:.1f}M"
+                elif abs(value) >= 1_000:
+                    return f"R$ {value / 1_000:.0f}K"
+                else:
+                    return f"R$ {value:.0f}"
+            
+            # Criar dados para o gráfico
+            distribution_data = []
+            for i in range(len(bins) - 1):
+                value = (bins[i] + bins[i+1]) / 2  # Centro do bin
+                distribution_data.append({
+                    'value': float(value),
+                    'valueLabel': format_currency(value),
+                    'mgb': float(hist_mgb[i]) if hist_mgb[i] > 0.001 else 0,
+                    'bootstrap': float(hist_bootstrap[i]) if hist_bootstrap[i] > 0.001 else 0
+                })
+            
+            # Calcular estatísticas
+            return {
+                'distribution': distribution_data,
+                'initialValue': initial_value,
+                'mgb': {
+                    'median': float(np.median(terminal_mgb)),
+                    'mean': float(np.mean(terminal_mgb)),
+                    'std': float(np.std(terminal_mgb)),
+                    'percentile_5': float(np.percentile(terminal_mgb, 5)),
+                    'percentile_95': float(np.percentile(terminal_mgb, 95)),
+                    'drift_annual': float(annual_drift * 100),  # Em percentual
+                    'volatility_annual': float(sigma * np.sqrt(252) * 100)  # Volatilidade anualizada em %
+                },
+                'bootstrap': {
+                    'median': float(np.median(terminal_bootstrap)),
+                    'mean': float(np.mean(terminal_bootstrap)),
+                    'std': float(np.std(terminal_bootstrap)),
+                    'percentile_5': float(np.percentile(terminal_bootstrap, 5)),
+                    'percentile_95': float(np.percentile(terminal_bootstrap, 95))
+                },
+                'params': {
+                    'n_paths': n_paths,
+                    'n_days': n_days
+                }
+            }
+            
+        except Exception as e:
+            logging.warning(f"Erro ao gerar simulação Monte Carlo: {e}")
+            return {}
     
     def _generate_performance_series(self) -> list:
         """

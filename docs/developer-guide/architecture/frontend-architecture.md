@@ -84,6 +84,26 @@ O frontend implementa a interface de usuário para todas as funcionalidades ofer
 *   **Visualização de Análises:** Gráficos de fronteira eficiente, distribuição de retornos, e outras análises de risco.
 *   **Autenticação:** Página de login e gerenciamento de sessão do usuário.
 
+### 5.1. Gráficos Conectados à API (v0.4.0)
+
+Os seguintes componentes foram conectados aos dados reais da API:
+
+| Componente | Arquivo | Dados da API |
+|------------|---------|--------------|
+| Evolução da Alocação | `allocation-evolution.tsx` | `allocation_history` |
+| Contribuição de Risco | `risk-contribution.tsx` | `risk_contribution` |
+| Evolução do Beta | `beta-evolution.tsx` | `beta_evolution` |
+| Monte Carlo | `monte-carlo-distribution.tsx` | `monte_carlo` |
+
+**Contexto de Dados:**
+
+Todos os gráficos usam o hook `useDashboardData()` do contexto `@/lib/dashboard-data-context` para acessar os dados da análise. Isso garante:
+
+- ✅ Sincronização automática quando operações são enviadas
+- ✅ Dados consistentes entre todos os componentes
+- ✅ Sem chamadas duplicadas à API
+- ✅ Estado de loading/error centralizado
+
 ## 4. Configuração
 
 A configuração do frontend é gerenciada através de variáveis de ambiente. Crie um arquivo `.env.local` na raiz do diretório `packages/frontend/` (baseado no `.env.example`) para configurar a aplicação.
