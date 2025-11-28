@@ -46,13 +46,13 @@ export function AllocationChart() {
   }
 
   return (
-    <Card className="border-border">
+    <Card className="border-border hover:shadow-md transition-shadow">
       <CardHeader>
         <CardTitle className="text-foreground">Alocação de Ativos</CardTitle>
         <CardDescription className="text-muted-foreground">Distribuição por classe de ativo</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={380}>
           <PieChart>
             <Pie
               data={data}
@@ -60,7 +60,8 @@ export function AllocationChart() {
               cy="50%"
               labelLine={false}
               label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              outerRadius={100}
+              outerRadius={130}
+              innerRadius={50}
               fill="#8884d8"
               dataKey="value"
             >

@@ -24,36 +24,73 @@ A arquitetura do backend é modular e organizada da seguinte forma:
 packages/backend/
 ├── src/backend_projeto/
 │   ├── api/                  # Endpoints da API (roteadores)
-│   ├── core/                 # Lógica de negócio principal
+│   ├── domain/               # Lógica de negócio (DDD)
+│   │   ├── analysis.py       # Entry point de análise (re-exports)
+│   │   ├── risk_metrics.py   # VaR, ES, Drawdown
+│   │   ├── stress_testing.py # Testes de estresse
+│   │   ├── covariance.py     # Covariância, atribuição de risco
+│   │   ├── fama_french.py    # Modelos FF3 e FF5
+│   │   ├── risk_engine.py    # Orquestração de risco
+│   │   ├── portfolio_analyzer.py # Análise de portfólio
+│   │   ├── entities.py       # Entidades de domínio
+│   │   ├── value_objects.py  # Value Objects
+│   │   ├── services.py       # Serviços de domínio
+│   │   └── repositories.py   # Interfaces de repositório
+│   ├── infrastructure/       # Implementações concretas
+│   │   ├── data_handling.py  # Processamento de dados
+│   │   └── visualization/    # Geração de gráficos
+│   ├── application/          # Casos de uso
 │   ├── utils/                # Utilitários (config, logging)
 │   ├── cache/                # Lógica de cache
-│   └── main.py               # Ponto de entrada da aplicação FastAPI
+│   └── main.py               # Ponto de entrada FastAPI
 ├── tests/                    # Testes Pytest
-├── scripts/                  # Scripts de análise e demonstração
-├── .env.example              # Arquivo de exemplo para variáveis de ambiente
+├── scripts/                  # Scripts de análise
 ├── requirements.txt          # Dependências Python
-├── backend.Dockerfile        # Dockerfile para construir a imagem do backend
-└── docker-compose.yml        # Orquestração de containers Docker
+└── backend.Dockerfile        # Dockerfile
 ```
 
 ### 2.1. `src/backend_projeto/api/`
 
 Este diretório contém os roteadores do FastAPI, onde cada arquivo corresponde a uma categoria de endpoints (e.g., `risk_endpoints.py`, `optimization_endpoints.py`). Esta estrutura modular facilita a organização e manutenção do código, permitindo que cada arquivo de roteador defina um conjunto de operações relacionadas. Cada endpoint é tipado usando Pydantic para validação de entrada e serialização de saída, garantindo a robustez da API.
 
-### 2.2. `src/backend_projeto/core/`
+### 2.2. `src/backend_projeto/domain/`
 
-Aqui reside a lógica de negócio principal e os algoritmos financeiros complexos. Este módulo é responsável por:
-*   **Cálculos de Risco:** Implementação de métricas como Value at Risk (VaR), Expected Shortfall (ES), cálculo de drawdown, e testes de estresse.
-*   **Otimização de Portfólio:** Algoritmos para otimização de Markowitz, Black-Litterman, e construção da fronteira eficiente.
-*   **Modelos de Fatores:** Aplicação de modelos como CAPM (Capital Asset Pricing Model) e Fama-French para análise de fatores de risco.
-*   **Análise de Performance:** Cálculo de retornos, volatilidade, e outros indicadores de desempenho.
-*   **Processamento de Dados:** Funções para limpeza, transformação e agregação de dados financeiros.
+O coração da aplicação, contendo a lógica de negócio pura seguindo princípios de DDD:
 
-### 2.3. `src/backend_projeto/utils/`
+**Módulos de Análise Financeira (v1.6.0):**
+
+| Módulo | Responsabilidade |
+|--------|------------------|
+| `analysis.py` | Entry point - re-exporta funções para compatibilidade |
+| `risk_metrics.py` | VaR (paramétrico, histórico, EVT), ES, Drawdown |
+| `stress_testing.py` | Testes de estresse, backtesting de VaR |
+| `covariance.py` | Matriz Ledoit-Wolf, atribuição de risco, VaR incremental/marginal |
+| `fama_french.py` | Modelos Fama-French FF3 e FF5 |
+| `risk_engine.py` | Classe `RiskEngine` - orquestração de análises |
+| `portfolio_analyzer.py` | Classe `PortfolioAnalyzer` - análise completa de portfólio |
+
+**Componentes DDD:**
+
+| Componente | Arquivo | Descrição |
+|------------|---------|-----------|
+| **Entities** | `entities.py` | `Portfolio`, `Transaction`, `Position`, `User` |
+| **Value Objects** | `value_objects.py` | `Money`, `Percentage`, `Ticker`, `DateRange` |
+| **Services** | `services.py` | `RiskCalculationService`, `PortfolioOptimizationService` |
+| **Repositories** | `repositories.py` | Interfaces: `IPortfolioRepository`, `IMarketDataRepository` |
+| **Exceptions** | `exceptions.py` | `AppError`, `DataProviderError` |
+
+### 2.3. `src/backend_projeto/infrastructure/`
+
+Implementações concretas dos contratos do domínio:
+- **data_handling.py**: Processamento de arquivos de transação
+- **data_providers/**: APIs externas (yfinance, Alpha Vantage, Finnhub)
+- **visualization/**: Geração de gráficos
+
+### 2.4. `src/backend_projeto/utils/`
 
 Contém módulos utilitários para tarefas como carregamento de configurações (`config.py`), logging, e rate limiting.
 
-### 2.4. `src/backend_projeto/main.py`
+### 2.5. `src/backend_projeto/main.py`
 
 Este é o ponto de entrada da aplicação FastAPI. Ele inicializa a aplicação, inclui os roteadores da API, e configura os middlewares (CORS, rate limiting, etc.).
 

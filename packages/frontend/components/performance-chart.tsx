@@ -40,7 +40,7 @@ export function PerformanceChart() {
         <CardDescription className="text-muted-foreground">Comparação com benchmark (CDI + 2%)</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={350}>
+        <ResponsiveContainer width="100%" height={400} className="2xl:!h-[450px]">
           <AreaChart data={data}>
             <defs>
               <linearGradient id="colorPortfolio" x1="0" y1="0" x2="0" y2="1">

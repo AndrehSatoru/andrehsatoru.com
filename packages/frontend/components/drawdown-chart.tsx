@@ -62,13 +62,13 @@ export function DrawdownChart() {
   }
 
   return (
-    <Card className="border-border">
+    <Card className="border-border hover:shadow-md transition-shadow">
       <CardHeader>
         <CardTitle className="text-foreground">Drawdown</CardTitle>
         <CardDescription className="text-muted-foreground">Queda acumulada do pico (%)</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={280}>
           <AreaChart data={data}>
             <defs>
               <linearGradient id="drawdownGradient" x1="0" y1="0" x2="0" y2="1">

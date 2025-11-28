@@ -54,8 +54,8 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copiar arquivos públicos
-COPY --from=builder /app/packages/frontend/public ./public
+# Copiar arquivos públicos para a pasta correta do standalone
+COPY --from=builder /app/packages/frontend/public ./packages/frontend/public
 
 # Copiar standalone build
 COPY --from=builder --chown=nextjs:nodejs /app/packages/frontend/.next/standalone ./

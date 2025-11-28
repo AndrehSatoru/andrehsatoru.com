@@ -65,15 +65,15 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardTitle className="text-2xl">Entrar</CardTitle>
           <CardDescription>
-            Enter your username and password to access your account.
+            Digite seu usuário e senha para acessar sua conta.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Usuário</Label>
               <Input
                 id="username"
                 type="text"
@@ -84,7 +84,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
                 type="password"
@@ -96,15 +96,15 @@ export default function LoginPage() {
             </div>
             {error && <p className="text-sm text-red-500">{error.message}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
         </CardContent>
         <CardFooter>
           <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-            For development, you can use:
+            Para desenvolvimento, você pode usar:
             <br />
-            <strong>Username:</strong> testuser | <strong>Password:</strong> testpass
+            <strong>Usuário:</strong> testuser | <strong>Senha:</strong> testpass
           </p>
         </CardFooter>
       </Card>

@@ -63,18 +63,18 @@ export function MetricsGrid() {
   ]
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4 xl:gap-6">
       {metrics.map((metric) => {
         const Icon = metric.icon
         const isPositive = metric.trend === "up"
 
         return (
-          <Card key={metric.label} className="border-border">
-            <CardContent className="p-6">
+          <Card key={metric.label} className="border-border hover:shadow-md transition-shadow">
+            <CardContent className="p-6 xl:p-7">
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
-                  <p className="text-2xl font-bold tracking-tight text-foreground">{metric.value}</p>
+                  <p className="text-3xl xl:text-4xl font-bold tracking-tight text-foreground">{metric.value}</p>
                   {metric.subValue && (
                     <p className="text-sm text-muted-foreground">{metric.subValue}</p>
                   )}

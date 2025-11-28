@@ -118,7 +118,59 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
+  html {
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+  }
+  
   body {
     @apply bg-background text-foreground;
+    min-height: 100vh;
+  }
+  
+  /* Scrollbar personalizada para melhor UX */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 6px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 6px;
+    border: 2px solid hsl(var(--muted));
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+  
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: hsl(var(--border)) hsl(var(--muted));
+  }
+}
+
+/* Melhorias de UX para FHD e telas grandes */
+@media (min-width: 1536px) {
+  .recharts-responsive-container {
+    min-height: 320px;
+  }
+}
+
+/* Animações suaves para cards */
+@layer utilities {
+  .card-hover {
+    @apply transition-all duration-200 ease-in-out;
+  }
+  
+  .card-hover:hover {
+    @apply shadow-lg -translate-y-0.5;
   }
 }

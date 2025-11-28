@@ -1,5 +1,106 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.7.0] - 2025-11-28
+
+### 🚀 Novas Funcionalidades
+
+#### 6 Novas Análises Avançadas
+- ✨ **Análise CAPM**: Cálculo de Alpha, Beta, Sharpe, Treynor e R² por ativo e portfólio
+- ✨ **Otimização Markowitz**: Fronteira eficiente com portfólios ótimos (máximo Sharpe, mínima volatilidade, máximo retorno)
+- ✨ **Análise Fama-French 3 Fatores**: Exposição a MKT, SMB (tamanho) e HML (valor) por ativo
+- ✨ **VaR Backtest**: Validação do modelo VaR com teste de Kupiec e classificação Basel (verde/amarelo/vermelho)
+- ✨ **Risk Attribution Detalhada**: MCR, contribuição ao risco e benefício de diversificação por ativo
+- ✨ **Incremental VaR (IVaR)**: Impacto marginal de cada ativo no VaR do portfólio
+
+#### Simulação Monte Carlo Aprimorada
+- 📈 **100.000 simulações**: Aumentado de 5.000 para 100.000 paths para distribuição mais suave
+- 🧮 **Fórmula MGB corrigida**: Correção do drift que estava sendo dividido por 252 duas vezes
+- 📊 **50 bins**: Resolução aumentada de 30 para 50 bins no histograma
+- 📉 **Normalização em %**: Valores do eixo Y agora mostram percentual de simulações
+
+### 🔧 Melhorias
+
+#### Serialização JSON
+- ✅ **numpy.bool_ → bool**: Corrigido erro de serialização em `_generate_var_backtest()`
+
+#### Busca de Benchmark IBOVESPA
+- ✅ **CAPM corrigido**: Usando `fetch_stock_prices(['^BVSP'])` com cache em vez de `fetch_benchmark_data`
+
+### 📊 Novos Campos no Response
+
+| Campo | Descrição |
+|-------|-----------|
+| `capm_analysis` | Alpha, Beta, Sharpe, Treynor, R² por ativo e métricas do portfólio |
+| `markowitz_optimization` | Fronteira eficiente e portfólios ótimos com pesos sugeridos |
+| `fama_french` | Exposição aos 3 fatores FF por ativo e portfólio |
+| `var_backtest` | Resultado do backtest VaR com zona Basel e lista de exceções |
+| `risk_attribution_detailed` | MCR, contribuição ao risco, VaR e diversificação por ativo |
+| `incremental_var` | IVaR, MVaR, Component VaR e benefício de diversificação |
+
+---
+
+## [1.6.0] - 2025-11-28
+
+### 🏗️ Refatoração Arquitetural
+
+#### Reorganização do Módulo `analysis.py`
+O arquivo monolítico `analysis.py` (2242 linhas) foi reorganizado em módulos especializados para melhor manutenibilidade:
+
+| Módulo | Linhas | Responsabilidade |
+|--------|--------|------------------|
+| `analysis.py` | 128 | Entry point - re-exporta funções para compatibilidade |
+| `risk_metrics.py` | 222 | VaR, ES (paramétrico, histórico, EVT), Drawdown |
+| `stress_testing.py` | 140 | Testes de estresse, backtesting de VaR |
+| `covariance.py` | 260 | Matriz de covariância Ledoit-Wolf, atribuição de risco |
+| `fama_french.py` | 127 | Modelos Fama-French FF3 e FF5 |
+| `risk_engine.py` | 122 | Classe RiskEngine para orquestrar análises |
+| `portfolio_analyzer.py` | 1270 | Classe PortfolioAnalyzer (análise completa de portfólio) |
+
+#### Benefícios da Reorganização
+- ✅ **Modularidade**: Cada arquivo tem uma responsabilidade clara (Single Responsibility)
+- ✅ **Manutenibilidade**: Mais fácil encontrar, entender e modificar código
+- ✅ **Testabilidade**: Funções isoladas são mais fáceis de testar unitariamente
+- ✅ **Backward Compatibility**: O `analysis.py` continua funcionando como entry point
+- ✅ **Colaboração**: Equipes podem trabalhar em módulos diferentes sem conflitos
+
+### 🚀 Novas Funcionalidades
+
+#### Testes de Estresse Reais
+- ✨ **`_generate_stress_tests()`**: Implementado cálculo real de testes de estresse
+- 📊 **Cenários Históricos**: Crise 2008, COVID-19, Crise Subprime
+- 📈 **Cenários Hipotéticos**: Choque de Taxa +3%, Recessão Global, Crise Cambial
+- 🎯 **Impacto Personalizado**: Baseado na volatilidade e correlação do portfólio
+
+### 🔧 Melhorias
+
+#### Função `drawdown()`
+- 🐛 Corrigido erro quando o índice do DataFrame não é datetime
+- ✅ Agora funciona com índices numéricos e de datetime
+
+#### Testes Unitários
+- 🔧 Atualizados caminhos de mock nos testes do `RiskEngine`
+- ✅ 65 testes passando, 2 skipped (integração)
+
+### 📁 Estrutura de Arquivos Atualizada
+
+```
+packages/backend/src/backend_projeto/domain/
+├── analysis.py           # Entry point (re-exports)
+├── risk_metrics.py       # VaR, ES, Drawdown
+├── stress_testing.py     # Stress tests, Backtest VaR
+├── covariance.py         # Covariance, Risk Attribution
+├── fama_french.py        # FF3, FF5 models
+├── risk_engine.py        # RiskEngine class
+├── portfolio_analyzer.py # PortfolioAnalyzer class
+├── entities.py           # Domain entities
+├── value_objects.py      # Value objects
+├── services.py           # Domain services
+├── repositories.py       # Repository interfaces
+└── exceptions.py         # Domain exceptions
+```
+
+---
+
 ## [1.5.0] - 2025-11-27
 
 ### 🚀 Novas Funcionalidades

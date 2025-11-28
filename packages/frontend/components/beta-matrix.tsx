@@ -76,6 +76,31 @@ export function BetaMatrix() {
   const { analysisResult } = useDashboardData()
 
   const betaData = useMemo(() => {
+    if (!analysisResult?.results) {
+      return null
+    }
+
+    // Primeiro, tentar usar dados reais calculados pelo backend
+    const backendBetaMatrix = analysisResult.results.beta_matrix
+    
+    if (backendBetaMatrix && backendBetaMatrix.items && backendBetaMatrix.items.length > 0) {
+      // Usar dados reais do backend
+      const data = backendBetaMatrix.items.map((item: { asset: string; beta: number; r_squared: number; weight: number }) => ({
+        asset: item.asset.replace(".SA", ""),
+        beta: item.beta,
+        rSquared: item.r_squared,
+        weight: item.weight,
+      }))
+
+      return {
+        items: data,
+        avgBeta: backendBetaMatrix.avg_beta,
+        avgRSquared: backendBetaMatrix.avg_r_squared,
+        source: 'calculated' as const
+      }
+    }
+
+    // Fallback: usar dados hardcoded baseados em setor
     if (!analysisResult?.results?.alocacao?.alocacao) {
       return null
     }
@@ -90,7 +115,7 @@ export function BetaMatrix() {
       return null
     }
 
-    // Obter beta para cada ativo
+    // Obter beta para cada ativo (fallback para dados hardcoded)
     const data = assets.map(asset => {
       const ticker = asset.replace(".SA", "")
       const sectorData = sectorBetas[ticker]
@@ -123,6 +148,7 @@ export function BetaMatrix() {
       items: data,
       avgBeta,
       avgRSquared,
+      source: 'estimated' as const
     }
   }, [analysisResult])
 
@@ -144,7 +170,12 @@ export function BetaMatrix() {
     <Card>
       <CardHeader>
         <CardTitle>Matriz de Beta</CardTitle>
-        <CardDescription>Beta e R² de cada ativo em relação ao benchmark (Ibovespa)</CardDescription>
+        <CardDescription>
+          Beta e R² de cada ativo em relação ao benchmark (Ibovespa)
+          {betaData.source === 'estimated' && (
+            <span className="ml-2 text-amber-600">(valores estimados)</span>
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">

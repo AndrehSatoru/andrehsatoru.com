@@ -70,13 +70,13 @@ export function VolatilityChart() {
   }
 
   return (
-    <Card className="border-border">
+    <Card className="border-border hover:shadow-md transition-shadow">
       <CardHeader>
         <CardTitle className="text-foreground">Volatilidade Mensal</CardTitle>
         <CardDescription className="text-muted-foreground">Desvio padrão dos retornos (%)</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={280}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />

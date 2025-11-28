@@ -40,6 +40,36 @@ Para engenheiros de DevOps e administradores de sistema.
 
 ## ✨ Novidades Recentes
 
+### 📊 6 Novas Análises Avançadas (v1.7.0 / v0.6.0 - Nov 2025)
+- **Análise CAPM**: Alpha, Beta, Sharpe, Treynor e R² por ativo com gráfico scatter
+- **Otimização Markowitz**: Fronteira eficiente com 3 portfólios ótimos e pesos sugeridos
+- **Fama-French 3 Fatores**: Exposição a MKT, SMB (tamanho) e HML (valor)
+- **VaR Backtest**: Validação do modelo com teste de Kupiec e zonas Basel
+- **Risk Attribution Detalhada**: MCR, contribuição ao risco e benefício de diversificação
+- **Incremental VaR (IVaR)**: Impacto marginal de cada ativo no VaR do portfólio
+
+### 🎯 Simulação Monte Carlo Aprimorada (v1.7.0 - Nov 2025)
+- **100.000 simulações**: Distribuição mais suave e precisa
+- **Fórmula MGB corrigida**: Drift calculado corretamente
+- **Legendas explicativas**: Descrição dos métodos MGB e Bootstrap
+
+### 🎨 Melhorias de UX para FHD (v0.6.0 - Nov 2025)
+- **Container 1800px**: Melhor uso do espaço em telas grandes
+- **Header sticky**: Navegação fixa ao rolar
+- **Scrollbar visível**: Barra de rolagem sempre presente
+- **Legendas em todos os gráficos técnicos**: Explicações detalhadas
+
+### 🏗️ Refatoração Arquitetural (v1.6.0 - Nov 2025)
+- **Módulos especializados**: `analysis.py` (2242 linhas) reorganizado em 7 módulos focados
+- **Melhor manutenibilidade**: Cada módulo com responsabilidade única (SRP)
+- **Backward compatibility**: Entry point mantido para compatibilidade
+- **Novos módulos**: `risk_metrics.py`, `stress_testing.py`, `covariance.py`, `fama_french.py`, `risk_engine.py`, `portfolio_analyzer.py`
+
+### 📊 Testes de Estresse Reais (v1.6.0 - Nov 2025)
+- **Cenários históricos**: Crise 2008, COVID-19, Crise Subprime
+- **Cenários hipotéticos**: Choque de taxa, recessão global, crise cambial
+- **Impacto personalizado**: Baseado na volatilidade e correlação do portfólio
+
 ### 💵 Dividendos e Proventos (v1.4.0 - Nov 2025)
 - **Dividendos automáticos**: Sistema busca e contabiliza dividendos de todas as ações
 - **API Yahoo Finance direta**: Integração robusta para busca de proventos

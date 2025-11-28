@@ -38,40 +38,40 @@ export function RiskMetrics() {
   const diasAnalisados = desempenho["dias_analisados"] || 0
 
   return (
-    <Card className="border-border">
+    <Card className="border-border hover:shadow-md transition-shadow">
       <CardHeader>
         <CardTitle className="text-foreground">Métricas de Risco</CardTitle>
         <CardDescription className="text-muted-foreground">Indicadores ajustados ao risco</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-5">
         {riskMetrics.map((metric) => (
           <div key={metric.label} className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-foreground">{metric.label}</span>
-              <span className="text-sm font-bold text-foreground">
+              <span className="text-base font-bold text-foreground">
                 {metric.value.toFixed(2)}{metric.suffix}
               </span>
             </div>
-            <Progress value={Math.min((Math.abs(metric.value) / metric.max) * 100, 100)} className="h-2" />
+            <Progress value={Math.min((Math.abs(metric.value) / metric.max) * 100, 100)} className="h-2.5" />
           </div>
         ))}
 
-        <div className="mt-6 space-y-3 rounded-lg bg-muted p-4">
-          <div className="flex justify-between">
+        <div className="mt-6 space-y-4 rounded-xl bg-muted p-5">
+          <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Drawdown Máximo</span>
-            <span className="text-sm font-semibold text-destructive">
+            <span className="text-base font-semibold text-destructive">
               {maxDrawdown.toFixed(2)}%
             </span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Expected Shortfall (95%)</span>
-            <span className="text-sm font-semibold text-foreground">
+            <span className="text-base font-semibold text-foreground">
               {es95.toFixed(2)}%
             </span>
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Dias Analisados</span>
-            <span className="text-sm font-semibold text-foreground">{diasAnalisados}</span>
+            <span className="text-base font-semibold text-foreground">{diasAnalisados}</span>
           </div>
         </div>
       </CardContent>

@@ -1,5 +1,83 @@
 # Histórico de Mudanças - Frontend
 
+## [0.6.0] - 2025-11-28
+
+### 🚀 Novas Funcionalidades
+
+#### 6 Novos Componentes de Análise Avançada
+- ✨ **CAPMAnalysis**: Gráfico scatter Beta vs Alpha com tabela de métricas por ativo
+- ✨ **MarkowitzOptimization**: Fronteira eficiente com portfólios ótimos clicáveis
+- ✨ **FamaFrenchPanel**: Exposição aos 3 fatores com gráfico de barras agrupadas
+- ✨ **VarBacktest**: Série temporal de VaR vs retornos com exceções destacadas
+- ✨ **RiskAttributionDetailed**: Gráficos de contribuição ao risco (barras + pizza)
+- ✨ **IncrementalVarAnalysis**: Análise de IVaR com benefício de diversificação
+
+#### Legendas Explicativas
+- 📚 **CAPM**: Descrição de Alpha, Beta, Sharpe, Treynor e R²
+- 📚 **Markowitz**: Explicação de Fronteira Eficiente, Máximo Sharpe, Mínima Volatilidade
+- 📚 **Fama-French**: Descrição detalhada dos fatores MKT, SMB, HML e Alpha
+- 📚 **VaR Backtest**: Explicação das zonas Basel (verde/amarelo/vermelho)
+- 📚 **Risk Attribution**: MCR, contribuição ao risco e diversificação
+- 📚 **Incremental VaR**: VaR Individual, MVaR, IVaR e Component VaR
+- 📚 **Monte Carlo**: MGB, Bootstrap Histórico, Drift e interpretação
+
+### 🎨 Melhorias de UX
+
+#### Otimização para FHD 16:9
+- 📐 **Container 1800px**: Aumentado de 1280px para melhor uso do espaço em telas grandes
+- 📌 **Header sticky**: Cabeçalho fixo ao rolar a página
+- 📏 **Métricas maiores**: Fontes e espaçamentos aumentados no MetricsGrid
+- 📊 **Gráficos mais altos**: Performance, Allocation, Volatility e Drawdown com altura aumentada
+
+#### Scrollbar Visível
+- 🖱️ **Scrollbar sempre visível**: `overflow-y: scroll` no html
+- 📏 **Scrollbar 12px**: Largura aumentada para melhor visibilidade
+- 🎨 **Estilos personalizados**: Cores e bordas arredondadas
+- 🦊 **Suporte Firefox**: `scrollbar-width` e `scrollbar-color`
+
+#### Layout dos Gráficos de Distribuição
+- 📊 **Returns + Stress lado a lado**: Grid 2 colunas para melhor visualização
+- 📈 **Monte Carlo full width**: Ocupa toda a largura para mostrar mais detalhes
+
+### 🐛 Correções
+
+#### Null Safety
+- ✅ **toFixed em valores null**: Adicionado `(value ?? 0).toFixed()` em todos os componentes
+- ✅ **Evita crashes**: Componentes não quebram mais quando API retorna dados parciais
+
+#### Monte Carlo
+- ✅ **Eixo X numérico**: Mudado de categórico para numérico para ReferenceLine funcionar
+- ✅ **Linha pontilhada**: Valor inicial agora aparece como linha vertical no gráfico
+- ✅ **Import CardDescription**: Corrigido import faltando
+
+### 🌐 Internacionalização
+
+#### Página de Login em Português
+- 🇧🇷 **Título**: "Acesse sua conta"
+- 🇧🇷 **Labels**: "Usuário", "Senha", "Lembrar-me"
+- 🇧🇷 **Botão**: "Entrar"
+- 🇧🇷 **Links**: "Esqueceu a senha?", "Criar conta"
+
+---
+
+## [0.5.0] - 2025-11-28
+
+### 🚀 Novas Funcionalidades
+
+#### Testes de Estresse Reais
+- ✨ **Dados da API**: Gráfico `StressTestChart` agora conectado ao `stress_tests` do backend
+- 📊 **Cenários Históricos**: Crise 2008, COVID-19, Crise Subprime com impactos reais
+- 📈 **Cenários Hipotéticos**: Choque de Taxa, Recessão Global, Crise Cambial
+- 🎯 **Impacto Personalizado**: Valores calculados com base na volatilidade do portfólio
+
+### 🔧 Melhorias
+
+#### Componentes Atualizados
+- 🔄 **stress-test-chart.tsx**: Conectado à API, fallback para mock se dados indisponíveis
+- ✅ **Tipagem**: Props interface atualizada para aceitar dados opcionais da API
+
+---
+
 ## [0.4.0] - 2025-11-27
 
 ### 🚀 Novas Funcionalidades

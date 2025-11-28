@@ -21,6 +21,12 @@ import { BetaMatrix } from "@/components/beta-matrix"
 import { MonteCarloDistribution } from "@/components/monte-carlo-distribution"
 import { BetaEvolution } from "@/components/beta-evolution"
 import { ProfitabilityTable } from "@/components/profitability-table"
+import { FamaFrenchPanel } from "@/components/fama-french-panel"
+import { MarkowitzOptimization } from "@/components/markowitz-optimization"
+import { VarBacktest } from "@/components/var-backtest"
+import { RiskAttributionDetailed } from "@/components/risk-attribution-detailed"
+import { CAPMAnalysis } from "@/components/capm-analysis"
+import { IncrementalVarAnalysis } from "@/components/incremental-var-analysis"
 import Link from "next/link"
 import withAuth from "@/components/withAuth"
 
@@ -29,33 +35,33 @@ function DashboardPage() {
     <div className="min-h-screen bg-background">
       <DashboardHeader />
 
-      <main className="container mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-[1800px] mx-auto px-6 py-8 space-y-8 2xl:px-8">
         <div className="flex justify-end">
-          <Link href="/enviar" className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm">
+          <Link href="/enviar" className="rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium shadow-sm hover:bg-primary/90 transition-colors">
             Enviar Operações
           </Link>
         </div>
         <MetricsGrid />
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
           <PerformanceChart />
           <AllocationChart />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:gap-8">
           <RiskMetrics />
           <VolatilityChart />
           <DrawdownChart />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
           <VarChart />
           <CVarChart />
         </div>
 
         <EfficientFrontier />
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
           <CorrelationMatrix />
           <BetaMatrix />
         </div>
@@ -68,12 +74,35 @@ function DashboardPage() {
 
         <BetaEvolution />
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        {/* Distribuição e Stress Test lado a lado */}
+        <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
           <ReturnsDistribution />
           <StressTestChart />
         </div>
 
+        {/* Monte Carlo em largura total */}
         <MonteCarloDistribution />
+
+        {/* Novos Componentes de Análise Avançada */}
+        <div className="pt-10 border-t border-border">
+          <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+            <span className="text-3xl">📊</span>
+            <span>Análise Avançada</span>
+          </h2>
+        </div>
+
+        <FamaFrenchPanel />
+
+        <CAPMAnalysis />
+
+        <MarkowitzOptimization />
+
+        <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
+          <RiskAttributionDetailed />
+          <IncrementalVarAnalysis />
+        </div>
+
+        <VarBacktest />
 
         <ProfitabilityTable />
 

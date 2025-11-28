@@ -154,6 +154,6 @@ Guia rápido para encontrar informações na documentação do projeto.
 
 ---
 
-**Última atualização**: 25 de novembro de 2025
+**Última atualização**: 28 de novembro de 2025
 
 Não encontrou o que procura? [Abra uma issue](https://github.com/AndrehSatoru/andrehsatoru.com/issues) 🙋‍♂️

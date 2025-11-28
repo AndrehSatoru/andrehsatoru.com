@@ -429,11 +429,18 @@ class DataProvider(ABC):
                                  or None if the data is empty or the ticker is not found.
         """
         try:
-            data = pdr.get_data_yahoo(ticker, start=start_date, end=end_date, timeout=self.timeout)
-            if not data.empty and 'Adj Close' in data.columns:
-                return data['Adj Close']
-            elif not data.empty and ticker in data.columns: # For single series like USDBRL=X
-                return data[ticker]
+            # Use yfinance directly instead of pandas_datareader
+            data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+            if not data.empty:
+                # Handle both old and new yfinance column formats
+                if 'Adj Close' in data.columns:
+                    return data['Adj Close']
+                elif ('Adj Close', ticker) in data.columns:
+                    return data[('Adj Close', ticker)]
+                elif 'Close' in data.columns:
+                    return data['Close']
+                elif ('Close', ticker) in data.columns:
+                    return data[('Close', ticker)]
             return None
         except Exception as e:
             logging.warning(f"Could not fetch benchmark data for {ticker} from YFinance: {e}")

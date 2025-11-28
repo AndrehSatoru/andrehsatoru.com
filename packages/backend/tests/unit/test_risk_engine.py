@@ -81,7 +81,7 @@ class TestRiskEngine:
         # Verifica se a soma dos pesos é aproximadamente 1
         assert abs(sum(weights) - 1.0) < 1e-10
 
-    @patch('backend_projeto.domain.analysis.var_historical')
+    @patch('backend_projeto.domain.risk_engine.var_historical')
     def test_compute_var_historical(self, mock_var, risk_engine, sample_prices):
         """Testa o cálculo do VaR pelo método histórico."""
         # Configuração
@@ -105,7 +105,7 @@ class TestRiskEngine:
         assert result['method'] == 'historical'
         mock_var.assert_called_once()
 
-    @patch('backend_projeto.domain.analysis.es_historical')
+    @patch('backend_projeto.domain.risk_engine.es_historical')
     def test_compute_es_historical(self, mock_es, risk_engine, sample_prices):
         """Testa o cálculo do ES pelo método histórico."""
         # Configuração
@@ -134,7 +134,7 @@ class TestRiskEngine:
         # Configuração
         risk_engine._load_prices = MagicMock(return_value=sample_prices)
         
-    @patch('backend_projeto.domain.analysis.var_parametric')
+    @patch('backend_projeto.domain.risk_engine.var_parametric')
     def test_compare_methods(self, mock_var, risk_engine, sample_prices):
         """Testa a comparação de diferentes métodos de cálculo de risco."""
         # Configuração

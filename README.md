@@ -2,9 +2,40 @@
 
 Uma plataforma full-stack para análise de risco, otimização de portfólio e análise técnica de investimentos.
 
-## ✨ Novidade: Rendimento do CDI no Caixa
+## ✨ Novidades
 
-🎉 **Versão 1.3.0** - Agora o caixa não investido rende CDI automaticamente!
+### 📊 Versão 1.7.0 / 0.6.0 - 6 Novas Análises Avançadas
+
+Novos componentes de análise profissional para gestão de portfólio:
+
+| Análise | Descrição |
+|---------|-----------|
+| **CAPM** | Alpha, Beta, Sharpe, Treynor e R² por ativo |
+| **Markowitz** | Fronteira eficiente com portfólios ótimos |
+| **Fama-French** | Exposição aos 3 fatores (MKT, SMB, HML) |
+| **VaR Backtest** | Validação do modelo com zonas Basel |
+| **Risk Attribution** | MCR e contribuição ao risco por ativo |
+| **Incremental VaR** | Impacto marginal de cada ativo no VaR |
+
+Também incluído:
+- 🎯 **Monte Carlo com 100k simulações** para distribuição mais suave
+- 📚 **Legendas explicativas** em todos os gráficos técnicos
+- 🎨 **UX otimizada para FHD 16:9** com container 1800px
+
+### 🏗️ Versão 1.6.0 - Refatoração Arquitetural
+
+O módulo `analysis.py` foi reorganizado de um arquivo monolítico (2242 linhas) em módulos especializados:
+
+| Módulo | Responsabilidade |
+|--------|------------------|
+| `risk_metrics.py` | VaR, ES, Drawdown |
+| `stress_testing.py` | Testes de estresse, backtesting |
+| `covariance.py` | Matriz de covariância, atribuição de risco |
+| `fama_french.py` | Modelos FF3 e FF5 |
+| `risk_engine.py` | Orquestração de análises |
+| `portfolio_analyzer.py` | Análise completa de portfólio |
+
+### 💰 Versão 1.3.0 - Rendimento do CDI no Caixa
 
 - 💰 **Dados Reais**: Integração com Banco Central do Brasil
 - 📈 **Rendimento Diário**: Juros compostos aplicados dia-a-dia

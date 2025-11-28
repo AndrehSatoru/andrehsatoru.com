@@ -9,12 +9,12 @@ export function DashboardHeader() {
   const { period, setPeriod } = usePeriod()
 
   return (
-    <header className="border-b border-border bg-card">
-      <div className="container mx-auto px-4 py-4">
+    <header className="border-b border-border bg-card sticky top-0 z-50 backdrop-blur-sm bg-card/95">
+      <div className="max-w-[1800px] mx-auto px-6 py-5 2xl:px-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <TrendingUp className="h-5 w-5 text-primary-foreground" />
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg">
+              <TrendingUp className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">Gestão de Portfólio</h1>
@@ -22,7 +22,7 @@ export function DashboardHeader() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <Select value={period} onValueChange={(value) => setPeriod(value as PeriodType)}>
               <SelectTrigger className="w-[140px]">
                 <Calendar className="mr-2 h-4 w-4" />

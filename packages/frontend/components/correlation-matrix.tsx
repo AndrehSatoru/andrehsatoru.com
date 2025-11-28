@@ -43,6 +43,26 @@ export function CorrelationMatrix() {
   const { analysisResult } = useDashboardData()
 
   const matrixData = useMemo(() => {
+    if (!analysisResult?.results) {
+      return null
+    }
+
+    // Primeiro, tentar usar dados reais calculados pelo backend
+    const backendCorrelation = analysisResult.results.correlation_matrix
+    
+    if (backendCorrelation && backendCorrelation.matrix && backendCorrelation.matrix.length > 0) {
+      // Usar dados reais do backend
+      return {
+        assets: backendCorrelation.assets,
+        matrix: backendCorrelation.matrix,
+        avgCorrelation: backendCorrelation.avg_correlation,
+        maxCorrelation: backendCorrelation.max_correlation,
+        minCorrelation: backendCorrelation.min_correlation,
+        source: 'calculated' as const
+      }
+    }
+
+    // Fallback: calcular baseado em setores (estimativa)
     if (!analysisResult?.results?.alocacao?.alocacao) {
       return null
     }
@@ -86,6 +106,7 @@ export function CorrelationMatrix() {
       "TAEE11": "utilidades",
       "VIVT3": "telecom",
       "TIMS3": "telecom",
+      "PRIO3": "commodities",
     }
 
     // Calcular correlação baseada em setor (simplificação)
@@ -131,6 +152,7 @@ export function CorrelationMatrix() {
       avgCorrelation: count > 0 ? sum / count : 0,
       maxCorrelation: max === -Infinity ? 0 : max,
       minCorrelation: min === Infinity ? 0 : min,
+      source: 'estimated' as const
     }
   }, [analysisResult])
 
@@ -154,7 +176,12 @@ export function CorrelationMatrix() {
     <Card>
       <CardHeader>
         <CardTitle>Matriz de Correlação</CardTitle>
-        <CardDescription>Correlação entre os retornos dos ativos da carteira</CardDescription>
+        <CardDescription>
+          Correlação entre os retornos dos ativos da carteira
+          {matrixData.source === 'estimated' && (
+            <span className="ml-2 text-amber-600">(valores estimados)</span>
+          )}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">

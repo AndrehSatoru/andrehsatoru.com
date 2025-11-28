@@ -55,6 +55,46 @@ O coração da aplicação, contendo a lógica de negócio pura:
 | **Domain Services** | `services.py` | Lógica cross-entity: `RiskCalculationService`, `PortfolioOptimizationService` |
 | **Exceptions** | `exceptions.py` | Exceções de domínio: `AppError`, `DataProviderError` |
 
+#### Módulos de Análise Financeira (v1.6.0)
+
+O módulo `analysis.py` foi reorganizado em submódulos especializados:
+
+| Módulo | Linhas | Responsabilidade |
+|--------|--------|------------------|
+| `analysis.py` | ~130 | Entry point - re-exporta funções para compatibilidade retroativa |
+| `risk_metrics.py` | ~220 | VaR (paramétrico, histórico, EVT), ES, Drawdown |
+| `stress_testing.py` | ~140 | Testes de estresse, backtesting de VaR (Kupiec, Christoffersen) |
+| `covariance.py` | ~260 | Matriz de covariância Ledoit-Wolf, atribuição de risco, VaR incremental/marginal |
+| `fama_french.py` | ~130 | Modelos Fama-French FF3 e FF5 |
+| `risk_engine.py` | ~120 | Classe `RiskEngine` para orquestrar análises de risco |
+| `portfolio_analyzer.py` | ~1270 | Classe `PortfolioAnalyzer` para análise completa de portfólio |
+
+**Diagrama de Dependências dos Módulos:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    analysis.py                          │
+│              (Entry Point / Re-exports)                 │
+└─────────────────────┬───────────────────────────────────┘
+                      │ imports from
+        ┌─────────────┼─────────────┬─────────────┐
+        ▼             ▼             ▼             ▼
+┌───────────┐  ┌──────────────┐  ┌─────────┐  ┌───────────┐
+│risk_metrics│  │stress_testing│  │covariance│  │fama_french│
+└───────────┘  └──────────────┘  └─────────┘  └───────────┘
+        │             │             │
+        └─────────────┼─────────────┘
+                      ▼
+              ┌─────────────┐
+              │ risk_engine │
+              └─────────────┘
+                      │
+                      ▼
+           ┌────────────────────┐
+           │ portfolio_analyzer │
+           └────────────────────┘
+```
+
 ### 2.2. Application Layer (`application/`)
 
 Orquestra os casos de uso, coordenando Domain e Infrastructure:

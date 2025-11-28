@@ -142,11 +142,27 @@ export function EfficientFrontier() {
     const annualReturn = (desempenho.retorno_total_pct || (avgReturn * 252 * 100))
     const annualVol = dailyVol * Math.sqrt(252) * 100
 
-    // Obter ativos individuais
+    // Obter estatísticas dos ativos do backend (dados reais)
+    const backendAssetStats = analysisResult.results.asset_stats
+    
+    // Obter ativos individuais - usar dados do backend se disponíveis
     const individualAssets = Object.keys(alocacaoData)
       .filter(a => a !== "Caixa" && alocacaoData[a]?.percentual > 0)
       .map(asset => {
         const ticker = asset.replace(".SA", "")
+        
+        // Primeiro tentar dados reais do backend
+        const backendStats = backendAssetStats?.find((s: { asset: string }) => s.asset === ticker)
+        if (backendStats) {
+          return {
+            name: ticker,
+            volatility: backendStats.volatility,
+            return: backendStats.return,
+            type: "asset",
+          }
+        }
+        
+        // Fallback para dados hardcoded
         const stats = assetStats[ticker] || { volatility: 30, return: 10 }
         return {
           name: ticker,
