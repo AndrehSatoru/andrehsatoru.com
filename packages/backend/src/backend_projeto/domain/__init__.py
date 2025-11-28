@@ -1,5 +1,11 @@
 # Domain module exports
+# Domain-Driven Design structure
 
+# NOTE: DDD components (value_objects, entities, repositories, services) 
+# are imported directly when needed to avoid circular imports.
+# Example: from backend_projeto.domain.value_objects import Money
+
+# Legacy exports (for backward compatibility - these have existing dependencies)
 from .analysis import (
     _as_weights,
     compute_returns,

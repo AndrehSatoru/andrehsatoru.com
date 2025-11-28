@@ -18,45 +18,98 @@ O backend é construído com **FastAPI**, um framework web Python moderno e de a
 
 ## 2. Arquitetura
 
-A arquitetura do backend é modular e organizada da seguinte forma:
+A arquitetura do backend segue os princípios de **Clean Architecture** e **Domain-Driven Design (DDD)**, organizando o código em camadas bem definidas:
 
 ```
 packages/backend/
 ├── src/backend_projeto/
-│   ├── api/                  # Endpoints da API (roteadores)
-│   ├── core/                 # Lógica de negócio principal
-│   ├── utils/                # Utilitários (config, logging)
-│   ├── cache/                # Lógica de cache
-│   └── main.py               # Ponto de entrada da aplicação FastAPI
-├── tests/                    # Testes Pytest
-├── scripts/                  # Scripts de análise e demonstração
-├── .env.example              # Arquivo de exemplo para variáveis de ambiente
-├── requirements.txt          # Dependências Python
-├── backend.Dockerfile        # Dockerfile para construir a imagem do backend
-└── docker-compose.yml        # Orquestração de containers Docker
+│   ├── api/                  # Interface Layer (Controllers/Endpoints)
+│   ├── application/          # Application Layer (Use Cases)
+│   ├── domain/               # Domain Layer (Core Business Logic)
+│   │   ├── entities.py       # Entities (Portfolio, Transaction, User)
+│   │   ├── value_objects.py  # Value Objects (Money, Percentage, Ticker)
+│   │   ├── repositories.py   # Repository Interfaces (abstrações)
+│   │   ├── services.py       # Domain Services (RiskCalculation, Optimization)
+│   │   ├── exceptions.py     # Domain Exceptions
+│   │   ├── analysis.py       # Legacy analysis functions
+│   │   └── models/           # Pydantic DTOs
+│   ├── infrastructure/       # Infrastructure Layer
+│   │   ├── data_providers/   # External APIs (yfinance, BCB)
+│   │   └── visualization/    # Chart generation
+│   ├── cache/                # Caching implementation
+│   ├── utils/                # Cross-cutting concerns
+│   └── main.py               # FastAPI app entry point
+├── tests/                    # Pytest tests
+└── requirements.txt          # Python dependencies
 ```
 
-### 2.1. `src/backend_projeto/api/`
+### 2.1. Domain Layer (`domain/`)
 
-Este diretório contém os roteadores do FastAPI, onde cada arquivo corresponde a uma categoria de endpoints (e.g., `risk_endpoints.py`, `optimization_endpoints.py`). Esta estrutura modular facilita a organização e manutenção do código, permitindo que cada arquivo de roteador defina um conjunto de operações relacionadas. Cada endpoint é tipado usando Pydantic para validação de entrada e serialização de saída, garantindo a robustez da API.
+O coração da aplicação, contendo a lógica de negócio pura:
 
-### 2.2. `src/backend_projeto/core/`
+| Componente | Arquivo | Descrição |
+|------------|---------|-----------|
+| **Value Objects** | `value_objects.py` | Objetos imutáveis: `Money`, `Percentage`, `Ticker`, `DateRange`, `RiskMetrics` |
+| **Entities** | `entities.py` | Objetos com identidade: `Portfolio`, `Transaction`, `Position`, `User` |
+| **Repository Interfaces** | `repositories.py` | Contratos para persistência: `IPortfolioRepository`, `IMarketDataRepository` |
+| **Domain Services** | `services.py` | Lógica cross-entity: `RiskCalculationService`, `PortfolioOptimizationService` |
+| **Exceptions** | `exceptions.py` | Exceções de domínio: `AppError`, `DataProviderError` |
 
-Aqui reside a lógica de negócio principal e os algoritmos financeiros complexos. Este módulo é responsável por:
-*   **Cálculos de Risco:** Implementação de métricas como Value at Risk (VaR), Expected Shortfall (ES), cálculo de drawdown, e testes de estresse.
-*   **Otimização de Portfólio:** Algoritmos para otimização de Markowitz, Black-Litterman, e construção da fronteira eficiente.
-*   **Modelos de Fatores:** Aplicação de modelos como CAPM (Capital Asset Pricing Model) e Fama-French para análise de fatores de risco.
-*   **Análise de Performance:** Cálculo de retornos, volatilidade, e outros indicadores de desempenho.
-*   **Processamento de Dados:** Funções para limpeza, transformação e agregação de dados financeiros.
-*   **Rendimento do CDI:** Integração com BCB para buscar taxas CDI e aplicar rendimento diário ao caixa não investido.
+### 2.2. Application Layer (`application/`)
 
-### 2.3. `src/backend_projeto/utils/`
+Orquestra os casos de uso, coordenando Domain e Infrastructure:
 
-Contém módulos utilitários para tarefas como carregamento de configurações (`config.py`), logging, e rate limiting.
+| Arquivo | Responsabilidade |
+|---------|------------------|
+| `auth.py` | Autenticação e autorização |
+| `dashboard_generator.py` | Geração de dados para dashboard |
+| `portfolio_simulation.py` | Simulações de portfólio |
 
-### 2.4. `src/backend_projeto/main.py`
+### 2.3. Infrastructure Layer (`infrastructure/`)
 
-Este é o ponto de entrada da aplicação FastAPI. Ele inicializa a aplicação, inclui os roteadores da API, e configura os middlewares (CORS, rate limiting, etc.).
+Implementações concretas dos contratos definidos no Domain:
+
+| Diretório | Responsabilidade |
+|-----------|------------------|
+| `data_providers/` | APIs externas (Alpha Vantage, Finnhub, yfinance) |
+| `data_handling.py` | Processamento de arquivos de transação |
+| `visualization/` | Geração de gráficos |
+
+### 2.4. API Layer (`api/`)
+
+Controllers FastAPI que expõem os endpoints:
+
+| Arquivo | Endpoints |
+|---------|-----------|
+| `transaction_endpoints.py` | `/processar-operacoes`, `/portfolio/*` |
+| `risk_endpoints.py` | `/var`, `/cvar`, `/risk/*` |
+| `optimization_endpoints.py` | `/frontier`, `/optimize/*` |
+| `analysis_endpoints.py` | `/analysis/*` |
+
+### 2.5. Diagrama de Dependências
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      API Layer                          │
+│              (FastAPI Controllers)                      │
+└─────────────────────┬───────────────────────────────────┘
+                      │ depends on
+┌─────────────────────▼───────────────────────────────────┐
+│                 Application Layer                       │
+│                  (Use Cases)                            │
+└─────────────────────┬───────────────────────────────────┘
+                      │ depends on
+┌─────────────────────▼───────────────────────────────────┐
+│                   Domain Layer                          │
+│    (Entities, Value Objects, Services, Interfaces)      │
+└─────────────────────────────────────────────────────────┘
+                      ▲
+                      │ implements
+┌─────────────────────┴───────────────────────────────────┐
+│               Infrastructure Layer                      │
+│        (Repositories, External APIs, Cache)             │
+└─────────────────────────────────────────────────────────┘
+```
 
 ## 3. Definição e Geração do Cliente da API
 
