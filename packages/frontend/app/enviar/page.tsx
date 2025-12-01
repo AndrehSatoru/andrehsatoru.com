@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useDashboardData } from "@/lib/dashboard-data-context"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 // Tipos de erro para melhor categorização
 type ErrorType = "validation" | "network" | "server" | "unknown"
@@ -61,7 +62,7 @@ function clearStoredFormData() {
 
 function formatCurrency(value: number | string): string {
   const numValue = typeof value === "string" ? parseFloat(value) : value
-  if (isNaN(numValue)) return ""
+  if (isNaN(numValue) || numValue === 0) return ""
   return numValue.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
@@ -70,8 +71,8 @@ function formatCurrency(value: number | string): string {
   })
 }
 
-function parseCurrency(value: string): number | "" {
-  if (!value) return ""
+function parseCurrencyToNumber(value: string): number {
+  if (!value) return 0
   // Remove "R$", espaços e pontos de milhar, troca vírgula por ponto
   const cleaned = value
     .replace(/R\$\s?/g, "")
@@ -79,7 +80,78 @@ function parseCurrency(value: string): number | "" {
     .replace(",", ".")
     .trim()
   const parsed = parseFloat(cleaned)
-  return isNaN(parsed) ? "" : parsed
+  return isNaN(parsed) ? 0 : parsed
+}
+
+// Componente de input de moeda que permite digitação livre
+function CurrencyInput({
+  value,
+  onChange,
+  placeholder = "R$ 0,00",
+  className = "",
+}: {
+  value: number | string
+  onChange: (value: number | "") => void
+  placeholder?: string
+  className?: string
+}) {
+  const [displayValue, setDisplayValue] = useState<string>("")
+  const [isFocused, setIsFocused] = useState(false)
+
+  // Atualiza o valor exibido quando o valor externo muda (e não está focado)
+  useEffect(() => {
+    if (!isFocused) {
+      const numValue = typeof value === "string" ? parseFloat(value) : value
+      if (isNaN(numValue) || numValue === 0 || value === "") {
+        setDisplayValue("")
+      } else {
+        setDisplayValue(formatCurrency(numValue))
+      }
+    }
+  }, [value, isFocused])
+
+  const handleFocus = () => {
+    setIsFocused(true)
+    // Ao focar, mostra o valor numérico puro para fácil edição
+    const numValue = typeof value === "string" ? parseFloat(value) : value
+    if (!isNaN(numValue) && numValue !== 0) {
+      setDisplayValue(numValue.toString().replace(".", ","))
+    } else {
+      setDisplayValue("")
+    }
+  }
+
+  const handleBlur = () => {
+    setIsFocused(false)
+    // Ao sair do campo, parseia e formata
+    const parsed = parseCurrencyToNumber(displayValue)
+    if (parsed > 0) {
+      setDisplayValue(formatCurrency(parsed))
+      onChange(parsed)
+    } else {
+      setDisplayValue("")
+      onChange("")
+    }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value
+    // Permite apenas números, vírgula e ponto
+    const sanitized = rawValue.replace(/[^0-9,.]/g, "")
+    setDisplayValue(sanitized)
+  }
+
+  return (
+    <input
+      type="text"
+      value={displayValue}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      className={className}
+      placeholder={placeholder}
+    />
+  )
 }
 
 export default function EnviarOperacoesPage() {
@@ -347,13 +419,9 @@ export default function EnviarOperacoesPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium mb-1">Valor inicial</label>
-              <input
-                type="text"
-                value={valorInicial ? formatCurrency(valorInicial) : ""}
-                onChange={(e) => {
-                  const parsed = parseCurrency(e.target.value)
-                  setValorInicial(parsed === "" ? "" : String(parsed))
-                }}
+              <CurrencyInput
+                value={valorInicial}
+                onChange={(val) => setValorInicial(val === "" ? "" : String(val))}
                 className="w-full rounded-md border px-3 py-2 bg-background"
                 placeholder="R$ 0,00"
               />
@@ -420,13 +488,9 @@ export default function EnviarOperacoesPage() {
 
                   <div>
                     <label className="block text-sm font-medium mb-1">Valor</label>
-                    <input
-                      type="text"
-                      value={op.valor === "" ? "" : formatCurrency(op.valor)}
-                      onChange={(e) => {
-                        const parsed = parseCurrency(e.target.value)
-                        updateOperacao(index, "valor", parsed)
-                      }}
+                    <CurrencyInput
+                      value={op.valor}
+                      onChange={(val) => updateOperacao(index, "valor", val)}
                       className="w-full rounded-md border px-3 py-2 bg-background"
                       placeholder="R$ 0,00"
                     />
@@ -499,7 +563,7 @@ export default function EnviarOperacoesPage() {
             >
               Limpar Tudo
             </button>
-            <a href="/" className="rounded-md border px-4 py-2">Voltar ao dashboard</a>
+            <Link href="/" className="rounded-md border px-4 py-2 inline-flex items-center justify-center hover:bg-muted transition-colors">Voltar ao dashboard</Link>
           </div>
         </form>
       </div>
