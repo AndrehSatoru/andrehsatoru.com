@@ -4,16 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import { useDashboardData } from "@/lib/dashboard-data-context"
 import { Empty } from "./ui/empty"
-
-const COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-  "hsl(var(--chart-6))",
-  "hsl(var(--chart-7))",
-]
+import { CHART_COLORS } from "@/lib/colors"
 
 export function AllocationChart() {
   const { analysisResult } = useDashboardData()
@@ -28,7 +19,7 @@ export function AllocationChart() {
     valorTotal: info?.valor_total || 0,
     quantidade: info?.quantidade || 0,
     precoUnitario: info?.preco_unitario || 0,
-    color: COLORS[index % COLORS.length],
+    color: CHART_COLORS[index % CHART_COLORS.length],
   }))
 
   if (!analysisResult || data.length === 0) {
@@ -45,6 +36,37 @@ export function AllocationChart() {
     )
   }
 
+  // Custom tooltip component para melhor visualização
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload
+      return (
+        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[200px]">
+          <p className="font-bold text-gray-900 text-base mb-2">{data.name}</p>
+          <div className="space-y-1">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Alocação:</span>
+              <span className="font-semibold text-gray-900">{data.value.toFixed(2)}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Valor:</span>
+              <span className="font-semibold text-gray-900">
+                R$ {data.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            {data.quantidade > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Quantidade:</span>
+                <span className="font-semibold text-gray-900">{data.quantidade.toLocaleString('pt-BR')}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
+
   return (
     <Card className="border-border hover:shadow-md transition-shadow">
       <CardHeader>
@@ -53,34 +75,24 @@ export function AllocationChart() {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={380}>
-          <PieChart>
+          <PieChart margin={{ top: 20, right: 80, bottom: 20, left: 80 }}>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              labelLine={false}
+              labelLine={true}
               label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              outerRadius={130}
-              innerRadius={50}
+              outerRadius={120}
+              innerRadius={45}
               fill="#8884d8"
               dataKey="value"
+              paddingAngle={2}
             >
               {data.map((entry: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
+                <Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />
               ))}
             </Pie>
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "8px",
-                color: "hsl(var(--foreground))",
-              }}
-              formatter={(value: number, name: string, props: any) => [
-                `${value.toFixed(2)}% (R$ ${props.payload.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`,
-                props.payload.name
-              ]}
-            />
+            <Tooltip content={<CustomTooltip />} />
           </PieChart>
         </ResponsiveContainer>
       </CardContent>
