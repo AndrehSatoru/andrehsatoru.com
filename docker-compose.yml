@@ -62,13 +62,13 @@ services:
       context: .
       dockerfile: packages/frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_API_URL: http://72.60.48.86:8000
     container_name: portfolio_frontend
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://72.60.48.86:8000
       - INTERNAL_API_URL=http://portfolio_backend:8000
     depends_on:
       backend:
