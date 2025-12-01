@@ -79,12 +79,12 @@ services:
 
   # Serviço Nginx (Reverse Proxy)
   nginx:
-    image: nginx:alpine
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     container_name: portfolio_nginx
     ports:
       - "8080:80"
-    volumes:
-      - ./nginx:/etc/nginx/conf.d:ro
     depends_on:
       - frontend
       - backend
