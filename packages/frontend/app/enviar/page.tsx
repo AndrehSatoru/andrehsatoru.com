@@ -4,6 +4,15 @@ import { useState, useEffect, useCallback } from "react"
 import { useDashboardData } from "@/lib/dashboard-data-context"
 import { useRouter } from "next/navigation"
 
+// Tipos de erro para melhor categorização
+type ErrorType = "validation" | "network" | "server" | "unknown"
+
+interface FormError {
+  type: ErrorType
+  message: string
+  details?: string[]
+}
+
 type Operacao = {
   data: string
   ticker: string
@@ -50,6 +59,29 @@ function clearStoredFormData() {
   }
 }
 
+function formatCurrency(value: number | string): string {
+  const numValue = typeof value === "string" ? parseFloat(value) : value
+  if (isNaN(numValue)) return ""
+  return numValue.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+function parseCurrency(value: string): number | "" {
+  if (!value) return ""
+  // Remove "R$", espaços e pontos de milhar, troca vírgula por ponto
+  const cleaned = value
+    .replace(/R\$\s?/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".")
+    .trim()
+  const parsed = parseFloat(cleaned)
+  return isNaN(parsed) ? "" : parsed
+}
+
 export default function EnviarOperacoesPage() {
   const [valorInicial, setValorInicial] = useState<string>("")
   const [dataInicial, setDataInicial] = useState<string>("")
@@ -57,10 +89,30 @@ export default function EnviarOperacoesPage() {
     { data: "", ticker: "", tipo: "compra", valor: "" },
   ])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FormError | null>(null)
   const [isHydrated, setIsHydrated] = useState(false)
   const { setAnalysisResult } = useDashboardData()
   const router = useRouter()
+
+  // Helper para criar erros de validação
+  const createValidationError = (message: string, details?: string[]): FormError => ({
+    type: "validation",
+    message,
+    details,
+  })
+
+  // Helper para criar erros de rede
+  const createNetworkError = (message: string): FormError => ({
+    type: "network",
+    message,
+  })
+
+  // Helper para criar erros de servidor
+  const createServerError = (message: string, details?: string[]): FormError => ({
+    type: "server",
+    message,
+    details,
+  })
 
   // Carregar dados salvos do localStorage na inicialização
   useEffect(() => {
@@ -110,20 +162,60 @@ export default function EnviarOperacoesPage() {
     e.preventDefault()
     setError(null)
 
-    // Validação mínima no client
+    // Validações detalhadas
+    const validationErrors: string[] = []
+
+    // Validar data inicial
     if (!dataInicial) {
-      setError("Informe a data inicial")
-      return
-    }
-    if (operacoes.length === 0) {
-      setError("Inclua ao menos uma operação")
-      return
-    }
-    for (const op of operacoes) {
-      if (!op.data || !op.ticker || op.valor === "") {
-        setError("Preencha todos os campos de todas as operações")
-        return
+      validationErrors.push("Data inicial é obrigatória")
+    } else {
+      const dataInicialDate = new Date(dataInicial)
+      const hoje = new Date()
+      if (isNaN(dataInicialDate.getTime())) {
+        validationErrors.push("Data inicial inválida")
+      } else if (dataInicialDate > hoje) {
+        validationErrors.push("Data inicial não pode ser no futuro")
       }
+    }
+
+    // Validar operações
+    if (operacoes.length === 0) {
+      validationErrors.push("Inclua ao menos uma operação")
+    } else {
+      operacoes.forEach((op, index) => {
+        const opNum = index + 1
+        if (!op.data) {
+          validationErrors.push(`Operação ${opNum}: Data é obrigatória`)
+        } else {
+          const opDate = new Date(op.data)
+          if (isNaN(opDate.getTime())) {
+            validationErrors.push(`Operação ${opNum}: Data inválida`)
+          } else if (dataInicial && opDate < new Date(dataInicial)) {
+            validationErrors.push(`Operação ${opNum}: Data não pode ser anterior à data inicial`)
+          }
+        }
+        if (!op.ticker || op.ticker.trim().length === 0) {
+          validationErrors.push(`Operação ${opNum}: Ticker é obrigatório`)
+        } else if (!/^[A-Z0-9]{4,6}$/.test(op.ticker.trim())) {
+          validationErrors.push(`Operação ${opNum}: Ticker "${op.ticker}" parece inválido (ex: PETR4, VALE3)`)
+        }
+        if (op.valor === "" || op.valor === 0) {
+          validationErrors.push(`Operação ${opNum}: Valor é obrigatório e deve ser maior que zero`)
+        } else if (typeof op.valor === "number" && op.valor < 0) {
+          validationErrors.push(`Operação ${opNum}: Valor não pode ser negativo`)
+        }
+      })
+    }
+
+    // Se houver erros de validação, exibir todos
+    if (validationErrors.length > 0) {
+      setError(createValidationError(
+        validationErrors.length === 1 
+          ? validationErrors[0] 
+          : "Corrija os seguintes erros:",
+        validationErrors.length > 1 ? validationErrors : undefined
+      ))
+      return
     }
 
     const payload = {
@@ -139,20 +231,108 @@ export default function EnviarOperacoesPage() {
 
     setLoading(true)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout
+
       const resp = await fetch("/api/enviar-operacoes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       })
-      const data = await resp.json().catch(() => ({}))
-      if (!resp.ok) {
-        setError(data?.message || "Erro ao enviar")
-      } else {
-        setAnalysisResult(data)
-        router.push("/")
+
+      clearTimeout(timeoutId)
+
+      // Tentar parsear resposta JSON
+      let data: any = {}
+      try {
+        const text = await resp.text()
+        if (text) {
+          data = JSON.parse(text)
+        }
+      } catch (parseError) {
+        console.error("Erro ao parsear resposta:", parseError)
       }
-    } catch (err: any) {
-      setError(String(err?.message || err))
+
+      if (!resp.ok) {
+        // Tratar diferentes códigos de status
+        switch (resp.status) {
+          case 400:
+            setError(createValidationError(
+              data?.message || "Dados inválidos enviados ao servidor",
+              data?.errors ? Object.values(data.errors).flat() as string[] : undefined
+            ))
+            break
+          case 401:
+          case 403:
+            setError(createServerError("Acesso não autorizado. Faça login novamente."))
+            break
+          case 404:
+            setError(createServerError("Serviço não encontrado. Verifique se o servidor está ativo."))
+            break
+          case 422:
+            const zodErrors = data?.errors?.fieldErrors
+            const errorMessages = zodErrors 
+              ? Object.entries(zodErrors).map(([field, msgs]) => `${field}: ${(msgs as string[]).join(", ")}`)
+              : undefined
+            setError(createValidationError(
+              data?.message || "Erro de validação no servidor",
+              errorMessages
+            ))
+            break
+          case 500:
+            setError(createServerError(
+              "Erro interno do servidor. Tente novamente em alguns minutos.",
+              data?.detail ? [data.detail] : undefined
+            ))
+            break
+          case 502:
+          case 503:
+          case 504:
+            setError(createServerError(
+              "Servidor temporariamente indisponível. Tente novamente em alguns minutos."
+            ))
+            break
+          default:
+            setError(createServerError(
+              data?.message || `Erro inesperado (código ${resp.status})`
+            ))
+        }
+        return
+      }
+
+      // Sucesso
+      setAnalysisResult(data)
+      router.push("/")
+
+    } catch (err: unknown) {
+      // Tratar diferentes tipos de erro
+      if (err instanceof Error) {
+        if (err.name === "AbortError") {
+          setError(createNetworkError(
+            "A requisição demorou muito e foi cancelada. Verifique sua conexão e tente novamente."
+          ))
+        } else if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+          setError(createNetworkError(
+            "Não foi possível conectar ao servidor. Verifique sua conexão com a internet."
+          ))
+        } else if (err.message.includes("CORS")) {
+          setError(createNetworkError(
+            "Erro de configuração do servidor (CORS). Contate o suporte."
+          ))
+        } else {
+          setError({
+            type: "unknown",
+            message: "Ocorreu um erro inesperado",
+            details: [err.message],
+          })
+        }
+      } else {
+        setError({
+          type: "unknown",
+          message: "Ocorreu um erro desconhecido. Tente novamente.",
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -168,12 +348,14 @@ export default function EnviarOperacoesPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Valor inicial</label>
               <input
-                type="number"
-                step="0.01"
-                value={valorInicial}
-                onChange={(e) => setValorInicial(e.target.value)}
+                type="text"
+                value={valorInicial ? formatCurrency(valorInicial) : ""}
+                onChange={(e) => {
+                  const parsed = parseCurrency(e.target.value)
+                  setValorInicial(parsed === "" ? "" : String(parsed))
+                }}
                 className="w-full rounded-md border px-3 py-2 bg-background"
-                placeholder="0.00"
+                placeholder="R$ 0,00"
               />
             </div>
 
@@ -231,23 +413,22 @@ export default function EnviarOperacoesPage() {
                       onChange={(e) => updateOperacao(index, "tipo", e.target.value as Operacao["tipo"])}
                       className="w-full rounded-md border px-3 py-2 bg-background"
                     >
-                      <option value="compra">compra</option>
-                      <option value="venda">venda</option>
+                      <option value="compra">Compra</option>
+                      <option value="venda">Venda</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium mb-1">Valor</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={op.valor === "" ? "" : op.valor}
+                      type="text"
+                      value={op.valor === "" ? "" : formatCurrency(op.valor)}
                       onChange={(e) => {
-                        const v = e.target.value
-                        updateOperacao(index, "valor", v === "" ? "" : parseFloat(v))
+                        const parsed = parseCurrency(e.target.value)
+                        updateOperacao(index, "valor", parsed)
                       }}
                       className="w-full rounded-md border px-3 py-2 bg-background"
-                      placeholder="0.00"
+                      placeholder="R$ 0,00"
                     />
                   </div>
 
@@ -267,8 +448,39 @@ export default function EnviarOperacoesPage() {
           </div>
 
           {error && (
-            <div className="rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">
-              {error}
+            <div className={`rounded-md border px-4 py-3 text-sm ${
+              error.type === "validation" 
+                ? "border-yellow-300 bg-yellow-50 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200"
+                : error.type === "network"
+                ? "border-orange-300 bg-orange-50 text-orange-800 dark:border-orange-700 dark:bg-orange-950 dark:text-orange-200"
+                : "border-red-300 bg-red-50 text-red-700 dark:border-red-700 dark:bg-red-950 dark:text-red-200"
+            }`}>
+              <div className="flex items-start gap-2">
+                <span className="flex-shrink-0 mt-0.5">
+                  {error.type === "validation" && "⚠️"}
+                  {error.type === "network" && "🌐"}
+                  {error.type === "server" && "🔧"}
+                  {error.type === "unknown" && "❌"}
+                </span>
+                <div className="flex-1">
+                  <p className="font-medium">{error.message}</p>
+                  {error.details && error.details.length > 0 && (
+                    <ul className="mt-2 list-disc list-inside space-y-1 text-sm opacity-90">
+                      {error.details.map((detail, idx) => (
+                        <li key={idx}>{detail}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="flex-shrink-0 text-current opacity-60 hover:opacity-100"
+                  aria-label="Fechar mensagem de erro"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           )}
 

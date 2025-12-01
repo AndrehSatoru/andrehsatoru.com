@@ -14,6 +14,7 @@ import {
 } from "recharts"
 import { useDashboardData } from "@/lib/dashboard-data-context"
 import { useMemo } from "react"
+import { SEMANTIC_COLORS } from "@/lib/colors"
 
 export function DrawdownChart() {
   const { analysisResult } = useDashboardData()
@@ -68,12 +69,12 @@ export function DrawdownChart() {
         <CardDescription className="text-muted-foreground">Queda acumulada do pico (%)</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={280}>
-          <AreaChart data={data}>
+        <ResponsiveContainer width="100%" height={380}>
+          <AreaChart data={data} margin={{ top: 10, right: 60, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="drawdownGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.05} />
+                <stop offset="5%" stopColor={SEMANTIC_COLORS.error.DEFAULT} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={SEMANTIC_COLORS.error.DEFAULT} stopOpacity={0.05} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -104,29 +105,31 @@ export function DrawdownChart() {
             <Area
               type="monotone"
               dataKey="drawdown"
-              stroke="hsl(var(--destructive))"
+              stroke={SEMANTIC_COLORS.error.DEFAULT}
               strokeWidth={2}
               fill="url(#drawdownGradient)"
             />
             <Brush
               dataKey="date"
-              height={50}
-              stroke="hsl(var(--destructive))"
-              fill="hsl(var(--background))"
-              fillOpacity={0.3}
-              travellerWidth={12}
+              height={40}
+              stroke="hsl(var(--border))"
+              fill="#f5f5f5"
+              fillOpacity={1}
+              travellerWidth={10}
+              startIndex={0}
+              endIndex={data.length - 1}
               tickFormatter={(value) => {
                 const date = new Date(value)
-                return `${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear().toString().slice(2)}`
+                return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
               }}
             >
               <AreaChart data={data}>
                 <Area
                   type="monotone"
                   dataKey="drawdown"
-                  stroke="hsl(var(--destructive))"
-                  fill="hsl(var(--destructive))"
-                  fillOpacity={0.2}
+                  stroke={SEMANTIC_COLORS.error.DEFAULT}
+                  fill={SEMANTIC_COLORS.error.DEFAULT}
+                  fillOpacity={0.3}
                   strokeWidth={1}
                 />
               </AreaChart>
