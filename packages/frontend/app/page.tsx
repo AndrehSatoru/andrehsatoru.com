@@ -1,10 +1,8 @@
 'use client';
 
 import { DashboardHeader } from "@/components/dashboard-header"
-import { MetricsGrid } from "@/components/metrics-grid"
 import { PerformanceChart } from "@/components/performance-chart"
 import { AllocationChart } from "@/components/allocation-chart"
-import { RiskMetrics } from "@/components/risk-metrics"
 import { VolatilityChart } from "@/components/volatility-chart"
 import { AssetsTable } from "@/components/assets-table"
 import { DrawdownChart } from "@/components/drawdown-chart"
@@ -27,6 +25,8 @@ import { VarBacktest } from "@/components/var-backtest"
 import { RiskAttributionDetailed } from "@/components/risk-attribution-detailed"
 import { CAPMAnalysis } from "@/components/capm-analysis"
 import { IncrementalVarAnalysis } from "@/components/incremental-var-analysis"
+import { PortfolioSummary } from "@/components/portfolio-summary"
+import { LineChart } from "lucide-react"
 import Link from "next/link"
 import withAuth from "@/components/withAuth"
 
@@ -41,15 +41,15 @@ function DashboardPage() {
             Enviar Operações
           </Link>
         </div>
-        <MetricsGrid />
+        
+        <PortfolioSummary />
 
         <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
           <PerformanceChart />
           <AllocationChart />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:gap-8">
-          <RiskMetrics />
+        <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
           <VolatilityChart />
           <DrawdownChart />
         </div>
@@ -86,7 +86,7 @@ function DashboardPage() {
         {/* Novos Componentes de Análise Avançada */}
         <div className="pt-10 border-t border-border">
           <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-            <span className="text-3xl">📊</span>
+            <LineChart className="h-8 w-8 text-primary" />
             <span>Análise Avançada</span>
           </h2>
         </div>

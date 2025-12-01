@@ -1449,7 +1449,7 @@ class PortfolioAnalyzer:
         Gera série temporal de performance para gráficos.
         
         Returns:
-            Lista de dicionários com data, valor do portfólio e benchmark
+            Lista de dicionários com data, valor do portfólio, benchmark e ibovespa
         """
         if self.portfolio_value is None or self.portfolio_value.empty:
             return []
@@ -1471,6 +1471,27 @@ class PortfolioAnalyzer:
         for i in range(1, len(valid_portfolio)):
             benchmark_values.append(benchmark_values[-1] * (1 + daily_rate))
         
+        # Buscar dados do Ibovespa
+        ibov_series = None
+        try:
+            ibov_prices = self.data_loader.fetch_stock_prices(
+                assets=['^BVSP'],
+                start_date=self.start_date.strftime('%Y-%m-%d'),
+                end_date=self.end_date.strftime('%Y-%m-%d')
+            )
+            if not ibov_prices.empty and '^BVSP' in ibov_prices.columns:
+                ibov_series = ibov_prices['^BVSP'].dropna()
+                # Normalizar para começar no mesmo valor do portfólio
+                if len(ibov_series) > 0:
+                    ibov_initial = ibov_series.iloc[0]
+                    ibov_series = ibov_series / ibov_initial * initial_value
+                    # Converter o índice para string de data para facilitar a busca
+                    ibov_dict = {d.strftime('%Y-%m-%d'): v for d, v in ibov_series.items()}
+                    logging.info(f"Ibovespa: {len(ibov_dict)} pontos carregados")
+        except Exception as e:
+            logging.warning(f"Não foi possível obter dados do Ibovespa: {e}")
+            ibov_dict = {}
+        
         # Criar lista de dados para o gráfico (amostrar para não sobrecarregar)
         # Pegar no máximo 250 pontos para o gráfico
         step = max(1, len(valid_portfolio) // 250)
@@ -1482,11 +1503,21 @@ class PortfolioAnalyzer:
             # Pular se ainda for NaN
             if pd.isna(portfolio_val):
                 continue
-            result.append({
-                'date': date.strftime('%Y-%m-%d'),
+            
+            date_str = date.strftime('%Y-%m-%d')
+            data_point = {
+                'date': date_str,
                 'portfolio': round(float(portfolio_val), 2),
                 'benchmark': round(float(benchmark_values[i]), 2)
-            })
+            }
+            
+            # Adicionar Ibovespa se disponível (usando dict para busca mais rápida)
+            if ibov_series is not None and date_str in ibov_dict:
+                ibov_val = ibov_dict[date_str]
+                if not pd.isna(ibov_val):
+                    data_point['ibovespa'] = round(float(ibov_val), 2)
+            
+            result.append(data_point)
         
         # Garantir que o último ponto está incluído
         if len(valid_portfolio) > 0:
@@ -1495,11 +1526,20 @@ class PortfolioAnalyzer:
                 date = valid_portfolio.index[last_idx]
                 portfolio_val = valid_portfolio.iloc[last_idx]
                 if not pd.isna(portfolio_val):
-                    result.append({
-                        'date': date.strftime('%Y-%m-%d'),
+                    date_str = date.strftime('%Y-%m-%d')
+                    data_point = {
+                        'date': date_str,
                         'portfolio': round(float(portfolio_val), 2),
                         'benchmark': round(float(benchmark_values[last_idx]), 2)
-                    })
+                    }
+                    
+                    # Adicionar Ibovespa se disponível
+                    if ibov_series is not None and date_str in ibov_dict:
+                        ibov_val = ibov_dict[date_str]
+                        if not pd.isna(ibov_val):
+                            data_point['ibovespa'] = round(float(ibov_val), 2)
+                    
+                    result.append(data_point)
         
         return result
 
