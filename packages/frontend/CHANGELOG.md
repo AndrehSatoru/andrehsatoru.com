@@ -1,5 +1,42 @@
 # Histórico de Mudanças - Frontend
 
+## [0.7.0] - 2025-12-01
+
+### 🚀 Novas Funcionalidades
+
+#### Página de Envio de Operações Melhorada
+- ✨ **CurrencyInput**: Componente de input de moeda com formatação inteligente
+- 💰 **Formatação Brasileira**: Valores exibidos como R$ 100.000,00
+- ✏️ **Edição Fluida**: Ao focar, mostra valor numérico simples; ao sair, formata
+- 🏷️ **Labels Capitalizados**: "Compra" e "Venda" em vez de "compra" e "venda"
+
+#### Sistema de Erros Tipados
+- 🎯 **Tipos de Erro**: validation, network, server, unknown
+- 📋 **Mensagens Específicas**: Erros listados por operação (ex: "Operação 2: Ticker é obrigatório")
+- 🎨 **UI Colorida**: Amarelo (validação), Laranja (rede), Vermelho (servidor)
+- 🌙 **Dark Mode**: Suporte completo para tema escuro nos alertas
+- ❌ **Botão Fechar**: Permite dispensar mensagens de erro
+
+### 🔧 Melhorias
+
+#### Validações Detalhadas
+- ✅ **Data inicial**: Não pode ser no futuro
+- ✅ **Data operação**: Não pode ser anterior à data inicial
+- ✅ **Ticker**: Validação de formato (4-6 caracteres alfanuméricos)
+- ✅ **Valor**: Não pode ser zero ou negativo
+
+#### Tratamento HTTP
+- 📡 **Códigos tratados**: 400, 401, 403, 404, 422, 500, 502, 503, 504
+- ⏱️ **Timeout 60s**: AbortController para cancelar requisições longas
+- 🔄 **Erros de Rede**: Mensagens claras para falhas de conexão
+
+### 🐛 Correções
+
+- 🔗 **Botão Voltar**: Substituído `<a>` por `<Link>` do Next.js para navegação correta
+- 🎨 **Hover Effect**: Adicionado efeito hover no botão "Voltar ao dashboard"
+
+---
+
 ## [0.6.0] - 2025-11-28
 
 ### 🚀 Novas Funcionalidades
