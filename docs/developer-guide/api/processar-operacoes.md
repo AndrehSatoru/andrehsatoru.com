@@ -293,18 +293,29 @@ WARNING: Não foi possível buscar preço para XYZ123 em 2019-10-10. Usando valo
 
 ### Validação de Dados
 
-O sistema valida:
+O sistema valida (v0.7.0):
 - ✅ Formato de datas (YYYY-MM-DD)
-- ✅ Tickers válidos (não vazios)
-- ✅ Valores numéricos positivos
+- ✅ Data inicial não pode ser no futuro
+- ✅ Data de operação não pode ser anterior à data inicial
+- ✅ Tickers válidos (4-6 caracteres alfanuméricos, ex: PETR4, VALE3)
+- ✅ Valores numéricos positivos (não podem ser zero ou negativos)
 - ✅ Tipo de operação ("compra" ou "venda")
+- ✅ Mensagens de erro específicas por operação (ex: "Operação 2: Ticker é obrigatório")
 
-## 🚀 Performance
+### Tratamento de Erros HTTP
 
-- **Busca paralela**: Cotações são buscadas para todos os ativos simultaneamente
-- **Cache**: YFinance mantém cache de cotações já buscadas
-- **Timeout**: 30 segundos por requisição ao YFinance
-- **Retry**: 3 tentativas com backoff exponencial
+O frontend trata os seguintes códigos de status:
+- **400**: Dados inválidos enviados ao servidor
+- **401/403**: Acesso não autorizado
+- **404**: Serviço não encontrado
+- **422**: Erros de validação Zod
+- **500**: Erro interno do servidor
+- **502/503/504**: Servidor temporariamente indisponível
+
+### Timeout e Retry
+
+- **Frontend**: Timeout de 60 segundos com AbortController
+- **Backend**: 30 segundos por requisição ao YFinance, 3 tentativas com backoff exponencial
 
 ## 💰 Rendimento do CDI no Caixa
 
