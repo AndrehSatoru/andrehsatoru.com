@@ -200,7 +200,7 @@ export function CVarChart() {
               strokeWidth={2}
               name="Quebras do CVaR (95%)"
             />
-            <Bar dataKey="returns" name="Retorno Diário" radius={[2, 2, 0, 0]} minPointSize={1}>
+            <Bar dataKey="returns" name="Retorno Diário" radius={[2, 2, 0, 0]}>
               {chartData.data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.returns >= 0 ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)"} />
               ))}

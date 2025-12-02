@@ -182,7 +182,7 @@ export function VarChart() {
               dot={false}
               name="VaR 95% (Rolling 252d)"
             />
-            <Bar dataKey="returns" name="Retorno Monetário Diário" radius={[2, 2, 0, 0]} minPointSize={1}>
+            <Bar dataKey="returns" name="Retorno Monetário Diário" radius={[2, 2, 0, 0]}>
               {chartData.data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.returns >= 0 ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)"} />
               ))}
