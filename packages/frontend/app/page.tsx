@@ -54,17 +54,14 @@ function DashboardPage() {
           <DrawdownChart />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
-          <VarChart />
-          <CVarChart />
-        </div>
+        <VarChart />
+        <CVarChart />
 
         <EfficientFrontier />
 
-        <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
-          <CorrelationMatrix />
-          <BetaMatrix />
-        </div>
+        <CorrelationMatrix />
+        
+        <BetaMatrix />
 
         <AllocationEvolution />
 

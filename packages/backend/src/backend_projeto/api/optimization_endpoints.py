@@ -74,14 +74,16 @@ def frontier_data(
     config: Settings = Depends(get_config),
 ) -> FrontierDataResponse:
     """
-    Generates Markowitz efficient frontier data points.
+    Generates Markowitz efficient frontier data points using proper optimization.
 
-    This endpoint simulates random portfolios to plot the efficient frontier,
-    returning data points (return, volatility, Sharpe ratio, weights) rather than an image.
+    This endpoint calculates the true efficient frontier by minimizing variance
+    for each target return level, returning data points (return, volatility, 
+    Sharpe ratio, weights).
 
     Args:
         req (FrontierRequest): Request body containing assets, start date, end date,
-                               number of samples, long-only constraint, max weight, and risk-free rate.
+                               number of samples (points on frontier), long-only constraint, 
+                               max weight, and risk-free rate.
         loader (YFinanceProvider): Dependency injection for the data loader.
         config (Settings): Dependency injection for application settings.
 
@@ -92,26 +94,104 @@ def frontier_data(
         HTTPException: 422 if fewer than 2 assets are provided.
     """
     import numpy as np
+    from scipy.optimize import minimize
+    
     prices = loader.fetch_stock_prices(req.assets, req.start_date, req.end_date)
-    rets = compute_returns(prices)[req.assets].dropna()
+    
+    # Filtrar apenas ativos que existem nos dados de preços
+    available_assets = [a for a in req.assets if a in prices.columns]
+    if len(available_assets) < 2:
+        raise HTTPException(
+            status_code=422, 
+            detail=f"São necessários pelo menos 2 ativos válidos. Ativos disponíveis: {available_assets}"
+        )
+    
+    rets = compute_returns(prices)[available_assets].dropna()
     if rets.shape[1] < 2:
         raise HTTPException(status_code=422, detail="São necessários pelo menos 2 ativos")
+    
+    # Calcular retornos médios e matriz de covariância anualizados
     mu = (rets.mean() * config.DIAS_UTEIS_ANO).values
     cov = (rets.cov() * config.DIAS_UTEIS_ANO).values
-    n = len(req.assets)
-    points: list[FrontierPoint] = []
-    i = 0
+    n = len(available_assets)
+    
+    # Funções auxiliares
+    def portfolio_volatility(weights):
+        return np.sqrt(np.dot(weights.T, np.dot(cov, weights)))
+    
+    def portfolio_return(weights):
+        return np.dot(weights, mu)
+    
+    # Definir bounds (long-only = pesos >= 0)
     maxw = 1.0 if req.max_weight is None else float(req.max_weight)
-    while i < req.n_samples:
-        w = np.random.dirichlet(np.ones(n))
-        if req.long_only and req.max_weight is not None and w.max() > maxw:
-            continue
-        ret = float(w @ mu)
-        vol = float(np.sqrt(max(w @ cov @ w, 0.0)))
-        sharpe = (ret - req.rf) / (vol + 1e-12)
-        weights_map = {req.assets[j]: float(w[j]) for j in range(n)}
-        points.append(FrontierPoint(ret_annual=ret, vol_annual=vol, sharpe=sharpe, weights=weights_map))
-        i += 1
+    if req.long_only:
+        bounds = tuple((0, maxw) for _ in range(n))
+    else:
+        bounds = tuple((-1, 1) for _ in range(n))
+    
+    # Restrição: soma dos pesos = 1
+    constraints_base = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
+    
+    # 1. Encontrar portfólio de mínima volatilidade
+    init_weights = np.ones(n) / n
+    min_vol_result = minimize(
+        portfolio_volatility,
+        init_weights,
+        method='SLSQP',
+        bounds=bounds,
+        constraints=constraints_base,
+        options={'ftol': 1e-10, 'maxiter': 1000}
+    )
+    min_vol = portfolio_volatility(min_vol_result.x)
+    min_vol_ret = portfolio_return(min_vol_result.x)
+    
+    # 2. Encontrar portfólio de máximo retorno
+    max_ret_result = minimize(
+        lambda w: -portfolio_return(w),
+        init_weights,
+        method='SLSQP',
+        bounds=bounds,
+        constraints=constraints_base,
+        options={'ftol': 1e-10, 'maxiter': 1000}
+    )
+    max_ret = portfolio_return(max_ret_result.x)
+    
+    # 3. Gerar pontos na fronteira eficiente
+    # Usar número fixo de pontos para uma curva suave (30-50 pontos é ideal)
+    num_points = 40
+    target_returns = np.linspace(min_vol_ret, max_ret, num_points)
+    
+    points: list[FrontierPoint] = []
+    last_weights = init_weights.copy()
+    
+    for target_ret in target_returns:
+        # Restrições: soma = 1 e retorno = target
+        constraints_with_return = [
+            {'type': 'eq', 'fun': lambda w: np.sum(w) - 1},
+            {'type': 'eq', 'fun': lambda w, r=target_ret: portfolio_return(w) - r}
+        ]
+        
+        result = minimize(
+            portfolio_volatility,
+            last_weights,
+            method='SLSQP',
+            bounds=bounds,
+            constraints=constraints_with_return,
+            options={'ftol': 1e-10, 'maxiter': 1000}
+        )
+        
+        if result.success:
+            weights = result.x
+            vol = float(portfolio_volatility(weights))
+            ret = float(portfolio_return(weights))
+            sharpe = (ret - req.rf) / (vol + 1e-12)
+            weights_map = {available_assets[j]: float(weights[j]) for j in range(n)}
+            points.append(FrontierPoint(ret_annual=ret, vol_annual=vol, sharpe=sharpe, weights=weights_map))
+            last_weights = weights.copy()
+    
+    # Ordenar por volatilidade
+    points.sort(key=lambda p: p.vol_annual)
+    
     return FrontierDataResponse(points=points)
 
 

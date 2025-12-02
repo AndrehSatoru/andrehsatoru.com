@@ -1,5 +1,28 @@
 # Histórico de Mudanças - Frontend
 
+## [0.8.0] - 2025-12-02
+
+### 🚀 Melhorias
+
+#### Gráfico de Evolução da Alocação Percentual
+- 📊 **Correção completa**: Gráfico agora preenche corretamente de 0% a 100%
+- 🔢 **Normalização manual**: Dados convertidos para frações (0-1) com soma exata = 1
+- 📐 **Eixo Y fixo**: Domain [0, 1] com ticks em 0%, 25%, 50%, 75%, 100%
+- 🎨 **Scroll bar padronizado**: Brush com altura de 40px e estilo consistente
+- 📏 **Layout otimizado**: Margem superior zerada e linhas verticais removidas
+
+#### Timeout de API Aumentado
+- ⏱️ **Timeout 120s**: Aumentado de 30s para 120s para operações longas
+- 🔄 **Processamento robusto**: Suporte a portfólios maiores sem timeout
+
+### 🐛 Correções
+
+- 🐛 **stackOffset**: Removido `stackOffset="expand"` que não funcionava corretamente
+- 🐛 **Dados normalizados**: Ajuste do último ativo para garantir soma = 1 (correção de ponto flutuante)
+- 🐛 **allowDataOverflow**: Adicionado para evitar clipping de dados
+
+---
+
 ## [0.7.0] - 2025-12-01
 
 ### 🚀 Novas Funcionalidades

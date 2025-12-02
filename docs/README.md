@@ -40,6 +40,12 @@ Para engenheiros de DevOps e administradores de sistema.
 
 ## ✨ Novidades Recentes
 
+### 📊 Correções de Gráficos e Performance (v0.8.0 - Dez 2025)
+- **Gráfico de Alocação corrigido**: Evolução percentual agora preenche corretamente de 0% a 100%
+- **Normalização robusta**: Dados convertidos para frações com soma exata = 1
+- **Timeout aumentado**: API timeout aumentado de 30s para 120s para portfólios grandes
+- **Scroll bar padronizado**: Brush consistente em todos os gráficos de evolução temporal
+
 ### 💰 Melhorias na Página de Operações (v0.7.0 - Dez 2025)
 - **Formatação de moeda brasileira**: Valores exibidos no formato R$ 100.000,00 com separadores corretos
 - **Componente CurrencyInput**: Input inteligente que permite digitação livre e formata ao sair do campo

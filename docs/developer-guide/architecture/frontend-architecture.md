@@ -104,6 +104,26 @@ Todos os gráficos usam o hook `useDashboardData()` do contexto `@/lib/dashboard
 - ✅ Sem chamadas duplicadas à API
 - ✅ Estado de loading/error centralizado
 
+### 5.2. Gráfico de Evolução da Alocação (v0.8.0)
+
+O componente `allocation-evolution.tsx` exibe a evolução percentual da alocação da carteira ao longo do tempo usando um gráfico de áreas empilhadas (stacked area chart).
+
+**Características técnicas:**
+
+- **Normalização manual**: Dados convertidos para frações 0-1, com ajuste do último ativo para garantir soma exata = 1
+- **stackOffset="none"**: Empilhamento simples sem transformação automática
+- **Domain fixo [0, 1]**: Eixo Y sempre mostra 0% a 100%
+- **Brush interativo**: Scroll bar para navegação temporal com altura de 40px
+- **Tooltip ordenado**: Ativos ordenados por percentual decrescente
+
+**Fluxo de dados:**
+```
+allocation_history (API) 
+  → normalização (rawValue / total)
+  → ajuste soma=1 (último ativo = 1 - runningSum)
+  → AreaChart com stackId="1"
+```
+
 ## 4. Configuração
 
 A configuração do frontend é gerenciada através de variáveis de ambiente. Crie um arquivo `.env.local` na raiz do diretório `packages/frontend/` (baseado no `.env.example`) para configurar a aplicação.
