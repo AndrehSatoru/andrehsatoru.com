@@ -239,41 +239,16 @@ export function CorrelationMatrix() {
           </div>
         </div>
 
-        {/* Legenda - Estilo padronizado com CVaR */}
+        {/* Legenda - Apenas estatísticas */}
         <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-lg bg-muted/50 border border-border px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-red-500" />
-            <span className="text-sm text-muted-foreground">Negativa</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-orange-400" />
-            <span className="text-sm text-muted-foreground">Fraca</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-amber-200 border border-amber-300" />
-            <span className="text-sm text-muted-foreground">Baixa</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-lime-400" />
-            <span className="text-sm text-muted-foreground">Moderada</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-green-500" />
-            <span className="text-sm text-muted-foreground">Alta</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded bg-emerald-700" />
-            <span className="text-sm text-muted-foreground">Muito Alta</span>
-          </div>
-          <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-2">
             <span className="text-sm"><span className="text-muted-foreground">Média:</span> <span className="font-semibold">{avgCorrelation.toFixed(2)}</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm"><span className="text-muted-foreground">Maior:</span> <span className="font-semibold text-emerald-600">{maxCorrelation.toFixed(2)}</span></span>
+            <span className="text-sm"><span className="text-muted-foreground">Menor:</span> <span className="font-semibold text-amber-600">{minCorrelation.toFixed(2)}</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm"><span className="text-muted-foreground">Menor:</span> <span className="font-semibold text-amber-600">{minCorrelation.toFixed(2)}</span></span>
+            <span className="text-sm"><span className="text-muted-foreground">Maior:</span> <span className="font-semibold text-emerald-600">{maxCorrelation.toFixed(2)}</span></span>
           </div>
         </div>
       </CardContent>

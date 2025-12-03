@@ -171,7 +171,11 @@ export function CVarChart() {
               }}
               labelFormatter={(label) => {
                 const date = new Date(label)
-                return date.toLocaleDateString("pt-BR")
+                return date.toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric"
+                })
               }}
             />
             {/* Linha VaR 95% Rolling */}

@@ -46,7 +46,7 @@ function DashboardPage() {
 
         <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
           <PerformanceChart />
-          <AllocationChart />
+          <RollingReturns />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
@@ -54,18 +54,19 @@ function DashboardPage() {
           <DrawdownChart />
         </div>
 
+        <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
+          <CorrelationMatrix />
+          <AllocationChart />
+        </div>
+
         <VarChart />
         <CVarChart />
 
         <EfficientFrontier />
-
-        <CorrelationMatrix />
         
         <BetaMatrix />
 
         <AllocationEvolution />
-
-        <RollingReturns />
 
         <RiskContribution />
 

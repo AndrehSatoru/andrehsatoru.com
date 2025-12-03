@@ -114,7 +114,7 @@ export function VolatilityChart() {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={380}>
-          <AreaChart data={data} margin={{ top: 10, right: 60, left: 0, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="portfolioVolGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={PORTFOLIO_COLOR} stopOpacity={0.3} />
@@ -150,7 +150,11 @@ export function VolatilityChart() {
               }}
               labelFormatter={(value) => {
                 const date = new Date(value)
-                return date.toLocaleDateString("pt-BR")
+                return date.toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric"
+                })
               }}
               formatter={(value: number, name: string) => {
                 const label = name === "portfolio" ? "Carteira" : "Ibovespa"

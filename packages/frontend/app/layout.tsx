@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Criado por Andreh Satoru",
   generator: "AndrehSatoru",
   icons: {
-    icon: "/placeholder-logo.svg",
+    icon: "/favicon.svg",
   },
 }
 

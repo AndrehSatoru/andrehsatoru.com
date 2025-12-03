@@ -139,7 +139,11 @@ export function VarBacktest() {
                 dataKey="date" 
                 tickFormatter={(date) => {
                   const d = new Date(date)
-                  return `${d.getDate()}/${d.getMonth() + 1}`
+                  return d.toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric"
+                  })
                 }}
               />
               <YAxis 
@@ -148,11 +152,17 @@ export function VarBacktest() {
               />
               <Tooltip 
                 content={({ payload, label }) => {
-                  if (!payload || payload.length === 0) return null
+                  if (!payload || payload.length === 0 || !label) return null
                   const data = payload[0].payload
+                  const date = new Date(label)
+                  const formattedDate = date.toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric"
+                  })
                   return (
                     <div className="bg-card border rounded-lg p-3 shadow-lg">
-                      <p className="font-semibold">{label}</p>
+                      <p className="font-semibold">{formattedDate}</p>
                       <p className="text-sm text-red-600">VaR 99%: {data.var?.toFixed(2)}%</p>
                       <p className={`text-sm ${data.return < data.var ? 'text-red-600 font-bold' : 'text-blue-600'}`}>
                         Retorno: {data.return?.toFixed(2)}%
