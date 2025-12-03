@@ -67,7 +67,40 @@ O módulo `analysis.py` foi reorganizado em submódulos especializados:
 | `covariance.py` | ~260 | Matriz de covariância Ledoit-Wolf, atribuição de risco, VaR incremental/marginal |
 | `fama_french.py` | ~130 | Modelos Fama-French FF3 e FF5 |
 | `risk_engine.py` | ~120 | Classe `RiskEngine` para orquestrar análises de risco |
-| `portfolio_analyzer.py` | ~1270 | Classe `PortfolioAnalyzer` para análise completa de portfólio |
+| `portfolio_analyzer.py` | ~2700 | Classe `PortfolioAnalyzer` para análise completa de portfólio |
+
+#### Análises de Correlação Avançadas (v1.8.0)
+
+O `portfolio_analyzer.py` inclui métodos para análise de correlação além do Pearson tradicional:
+
+| Método | Descrição |
+|--------|-----------|
+| `_generate_correlation_matrix()` | Matriz de correlação de Pearson (linear) |
+| `_generate_distance_correlation_matrix()` | Distance Correlation (dCor) para dependências não-lineares |
+| `_generate_tmfg_graph()` | TMFG (Triangulated Maximally Filtered Graph) |
+
+**Distance Correlation (dCor):**
+
+```python
+# Fórmula: dCor(X,Y) = dCov(X,Y) / sqrt(dVar(X) * dVar(Y))
+# Propriedades:
+# - dCor ∈ [0, 1] (sempre positivo)
+# - dCor = 0 ⟺ X e Y são estatisticamente independentes
+# - Detecta dependências não-lineares que Pearson ignora
+```
+
+**TMFG (Triangulated Maximally Filtered Graph):**
+
+```python
+# Algoritmo:
+# 1. Constrói tetraedro inicial com 4 ativos mais correlacionados
+# 2. Adiciona ativos restantes conectando aos 2 vizinhos mais próximos
+# 3. Resultado: grafo planar com 3n-6 arestas para n ativos
+# 4. Detecta comunidades com algoritmo Louvain
+# 5. Calcula centralidade (degree, betweenness) por ativo
+```
+
+Dependências adicionadas: `networkx==3.2.1`
 
 **Diagrama de Dependências dos Módulos:**
 

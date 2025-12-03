@@ -124,6 +124,46 @@ allocation_history (API)
   → AreaChart com stackId="1"
 ```
 
+### 5.3. Matrizes de Correlação (v0.9.0)
+
+O dashboard inclui duas matrizes de correlação complementares:
+
+| Componente | Arquivo | Tipo de Correlação |
+|------------|---------|-------------------|
+| Matriz de Correlação | `correlation-matrix.tsx` | Pearson (linear) |
+| Matriz de Correlação de Distância | `distance-correlation-matrix.tsx` | Distance Correlation (não-linear) |
+
+**Escala de Cores Padronizada:**
+- 🟢 Verde escuro: Correlação baixa (0.0-0.2) - boa diversificação
+- 🟡 Amarelo: Correlação moderada (0.4-0.6)
+- 🔴 Vermelho: Correlação alta (0.8-1.0) - risco de concentração
+
+**Distance Correlation (dCor):**
+- Detecta dependências não-lineares que Pearson não captura
+- Valor 0 = independência estatística completa
+- Valor 1 = dependência perfeita (linear ou não-linear)
+
+### 5.4. TMFG Graph (v0.9.0)
+
+O componente `tmfg-graph.tsx` visualiza a rede de correlações significativas entre ativos usando o algoritmo TMFG (Triangulated Maximally Filtered Graph).
+
+**Características técnicas:**
+
+- **Layout force-directed**: Algoritmo de posicionamento baseado em forças (repulsão entre nós, atração nas arestas)
+- **SVG puro**: Sem dependências externas de bibliotecas de grafos
+- **Detecção de clusters**: Comunidades identificadas por cores diferentes (algoritmo Louvain)
+- **Tamanho dos nós**: Proporcional à centralidade (degree centrality)
+
+**Interatividade:**
+- Hover em nós: Mostra peso na carteira, cluster, centralidade e betweenness
+- Hover em arestas: Mostra correlação entre os dois ativos
+- Destaque visual de conexões ao passar o mouse
+
+**Métricas exibidas:**
+- Número de ativos e conexões
+- Número de clusters detectados
+- Hub central (ativo mais conectado)
+
 ## 4. Configuração
 
 A configuração do frontend é gerenciada através de variáveis de ambiente. Crie um arquivo `.env.local` na raiz do diretório `packages/frontend/` (baseado no `.env.example`) para configurar a aplicação.

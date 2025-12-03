@@ -1,5 +1,35 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.8.0] - 2025-12-03
+
+### 🚀 Novas Funcionalidades
+
+#### Distance Correlation Matrix
+- ✨ **Método `_generate_distance_correlation_matrix()`**: Calcula correlação de distância entre todos os pares de ativos
+- 📊 **dCor (Székely et al.)**: Mede dependência estatística não-linear (0 = independência, 1 = dependência)
+- 🔢 **Fórmula**: $dCor(X,Y) = \frac{dCov(X,Y)}{\sqrt{dVar(X) \cdot dVar(Y)}}$
+- 📈 **Estatísticas**: Retorna média, mínimo e máximo da matriz
+
+#### TMFG (Triangulated Maximally Filtered Graph)
+- ✨ **Método `_generate_tmfg_graph()`**: Constrói grafo planar triangulado das correlações
+- 🔗 **Algoritmo de Tumminello**: Filtra conexões mantendo apenas as mais significativas
+- 🎯 **Detecção de comunidades**: Usa algoritmo Louvain para identificar clusters de ativos
+- 📏 **Métricas de centralidade**: Degree centrality e betweenness centrality por ativo
+- 📦 **networkx**: Adicionado ao requirements.txt para análise de grafos
+
+### 📊 Novos Campos no Response
+
+| Campo | Descrição |
+|-------|-----------|
+| `distance_correlation_matrix` | Matriz dCor com assets, matrix, avg/min/max |
+| `tmfg_graph` | Nós (id, group, degree, betweenness, weight) e arestas (source, target, correlation) |
+
+### 🔧 Dependências
+
+- ➕ **networkx==3.2.1**: Biblioteca para análise de redes e grafos
+
+---
+
 ## [1.7.0] - 2025-11-28
 
 ### 🚀 Novas Funcionalidades

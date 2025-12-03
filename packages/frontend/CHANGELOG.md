@@ -1,5 +1,37 @@
 # Histórico de Mudanças - Frontend
 
+## [0.9.0] - 2025-12-03
+
+### 🚀 Novas Funcionalidades
+
+#### Matriz de Correlação de Distância (Distance Correlation)
+- ✨ **Novo componente**: `distance-correlation-matrix.tsx` para análise de dependência não-linear
+- 📊 **dCor (Distance Correlation)**: Detecta relações que a correlação de Pearson não captura
+- 🎨 **Escala de cores**: Verde (baixa dependência) → Vermelho (alta dependência)
+- 📈 **Estatísticas**: Média, mínimo e máximo da matriz
+
+#### TMFG (Triangulated Maximally Filtered Graph)
+- ✨ **Novo componente**: `tmfg-graph.tsx` para visualização de rede de correlações
+- 🔗 **Grafo interativo**: Visualização force-directed com SVG puro
+- 🎯 **Detecção de clusters**: Comunidades detectadas com algoritmo Louvain
+- 📏 **Métricas de centralidade**: Degree centrality e betweenness centrality
+- 🖱️ **Interatividade**: Hover em nós mostra detalhes (peso, cluster, centralidade)
+- 📊 **Estatísticas**: Número de ativos, conexões, clusters e hub central
+
+### 🔧 Melhorias
+
+#### Padronização Visual
+- 🎨 **Cores padronizadas**: Matrizes de correlação agora usam mesma escala (verde=baixo, vermelho=alto)
+- 📐 **Layout lado a lado**: Alocação de Ativos e TMFG Graph na mesma linha
+- 🏷️ **Títulos atualizados**: Descrições mais claras para todas as matrizes
+
+#### Componentes Atualizados
+- 📊 **Matriz de Correlação**: Agora usa valor absoluto para considerar correlações negativas
+- 🥧 **Alocação de Ativos**: Centralizado no card
+- 📈 **Beta Evolution**: Padronização de estilo
+
+---
+
 ## [0.8.0] - 2025-12-02
 
 ### 🚀 Melhorias
