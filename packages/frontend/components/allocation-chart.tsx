@@ -73,7 +73,7 @@ export function AllocationChart() {
         <CardTitle className="text-foreground">Alocação de Ativos</CardTitle>
         <CardDescription className="text-muted-foreground">Distribuição por classe de ativo</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex justify-center items-center">
         <ResponsiveContainer width="100%" height={380}>
           <PieChart margin={{ top: 10, right: 100, bottom: 10, left: 100 }}>
             <Pie

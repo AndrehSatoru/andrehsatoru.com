@@ -1,9 +1,10 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Brush } from "recharts"
 import { useDashboardData } from "@/lib/dashboard-data-context"
 import { useMemo } from "react"
+import { DASHBOARD_COLORS } from "@/lib/colors"
 
 interface BetaDataPoint {
   date: string
@@ -63,7 +64,7 @@ export function BetaEvolution() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-balance">Evolução do Beta da Carteira</CardTitle>
+          <CardTitle className="text-foreground text-lg">Evolução do Beta da Carteira</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-[400px] items-center justify-center text-muted-foreground">
@@ -77,39 +78,53 @@ export function BetaEvolution() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-balance">Evolução do Beta da Carteira</CardTitle>
+        <CardTitle className="text-foreground text-lg">Evolução do Beta da Carteira</CardTitle>
+        <p className="text-muted-foreground text-sm">Beta em janela móvel de 60 dias</p>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 grid grid-cols-4 gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Beta Atual</p>
-            <p className="text-2xl font-bold">{stats.currentBeta.toFixed(2)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Beta Médio</p>
-            <p className="text-2xl font-bold">{stats.avgBeta.toFixed(2)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Beta Mínimo</p>
-            <p className="text-2xl font-bold text-green-600">{stats.minBeta.toFixed(2)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Beta Máximo</p>
-            <p className="text-2xl font-bold text-red-600">{stats.maxBeta.toFixed(2)}</p>
-          </div>
-        </div>
-
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="date" stroke="#6b7280" tick={{ fill: "#6b7280" }} />
-              <YAxis stroke="#6b7280" tick={{ fill: "#6b7280" }} domain={yDomain} />
+            <AreaChart data={data} margin={{ top: 10, right: 80, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="betaGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={DASHBOARD_COLORS.portfolio} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={DASHBOARD_COLORS.portfolio} stopOpacity={0.05} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
+              <XAxis 
+                dataKey="date" 
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => {
+                  const date = new Date(value)
+                  return `${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear().toString().slice(2)}`
+                }}
+              />
+              <YAxis 
+                stroke="hsl(var(--muted-foreground))"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                domain={yDomain}
+              />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  border: "1px solid #e5e7eb",
+                  backgroundColor: "white",
+                  border: "1px solid hsl(var(--border))",
                   borderRadius: "8px",
+                  color: "hsl(var(--foreground))",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                }}
+                labelFormatter={(value) => {
+                  const date = new Date(value)
+                  return date.toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric"
+                  })
                 }}
                 formatter={(value: number) => [value.toFixed(2), "Beta"]}
               />
@@ -117,7 +132,7 @@ export function BetaEvolution() {
                 y={1.0}
                 stroke="#9ca3af"
                 strokeDasharray="5 5"
-                label={{ value: "Mercado (1.0)", position: "right", fill: "#6b7280", fontSize: 11 }}
+                label={{ value: "Mercado", position: "right", fill: "#6b7280", fontSize: 11 }}
               />
               <ReferenceLine
                 y={stats.avgBeta}
@@ -125,24 +140,55 @@ export function BetaEvolution() {
                 strokeDasharray="8 4"
                 label={{ value: `Média (${stats.avgBeta.toFixed(2)})`, position: "left", fill: "#f59e0b", fontSize: 11 }}
               />
-              <Line
+              <Area
                 type="monotone"
                 dataKey="beta"
-                stroke="#2563eb"
-                strokeWidth={3}
-                dot={{ fill: "#2563eb", r: 4 }}
-                activeDot={{ r: 6 }}
+                stroke={DASHBOARD_COLORS.portfolio}
+                strokeWidth={2}
+                fill="url(#betaGradient)"
+                dot={false}
+                activeDot={{ r: 5 }}
               />
-            </LineChart>
+              <Brush
+                dataKey="date"
+                height={40}
+                stroke="hsl(var(--border))"
+                fill="#f5f5f5"
+                fillOpacity={1}
+                travellerWidth={10}
+                startIndex={0}
+                endIndex={data.length - 1}
+                tickFormatter={(value) => {
+                  const date = new Date(value)
+                  return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
+                }}
+              >
+                <AreaChart data={data}>
+                  <Area
+                    type="monotone"
+                    dataKey="beta"
+                    stroke={DASHBOARD_COLORS.portfolio}
+                    fill={DASHBOARD_COLORS.portfolio}
+                    fillOpacity={0.3}
+                    strokeWidth={1}
+                  />
+                </AreaChart>
+              </Brush>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="mt-4 rounded-lg bg-muted p-4">
-          <p className="text-sm text-muted-foreground">
-            <strong>Interpretação:</strong> Beta mede a sensibilidade da carteira em relação ao mercado. Beta = 1.0
-            significa que a carteira se move igual ao mercado. Beta {">"} 1.0 indica maior volatilidade, enquanto Beta{" "}
-            {"<"} 1.0 indica menor volatilidade que o mercado.
-          </p>
+        {/* Legenda - Estilo padronizado */}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-lg bg-muted/50 border border-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm"><span className="text-muted-foreground">Média:</span> <span className="font-semibold">{stats.avgBeta.toFixed(2)}</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm"><span className="text-muted-foreground">Mínimo:</span> <span className="font-semibold text-green-600">{stats.minBeta.toFixed(2)}</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm"><span className="text-muted-foreground">Máximo:</span> <span className="font-semibold text-red-600">{stats.maxBeta.toFixed(2)}</span></span>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -5,30 +5,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useDashboardData } from "@/lib/dashboard-data-context"
 
 // Função para determinar a cor baseada na correlação
-// Paleta: Vermelho (negativa) -> Laranja -> Amarelo (neutra) -> Verde claro -> Verde escuro (alta)
+// Paleta: Verde (baixa correlação = boa diversificação) -> Amarelo -> Vermelho (alta correlação)
 const getCorrelationColor = (value: number) => {
-  // Correlações negativas: tons de vermelho
-  if (value <= -0.6) return "bg-red-600 text-white"
-  if (value <= -0.4) return "bg-red-500 text-white"
-  if (value <= -0.2) return "bg-red-400 text-white"
-  if (value < 0) return "bg-orange-400 text-slate-900"
+  // Valor absoluto para considerar correlações negativas como também significativas
+  const absValue = Math.abs(value)
   
-  // Correlações baixas/neutras: tons de amarelo/âmbar
-  if (value < 0.2) return "bg-amber-200 text-slate-900"
-  if (value < 0.3) return "bg-yellow-300 text-slate-900"
+  // Correlação muito baixa (boa diversificação)
+  if (absValue < 0.2) return "bg-emerald-600 text-white"
+  if (absValue < 0.3) return "bg-emerald-500 text-white"
+  if (absValue < 0.4) return "bg-green-400 text-slate-900"
   
-  // Correlações moderadas: tons de verde claro
-  if (value < 0.4) return "bg-lime-300 text-slate-900"
-  if (value < 0.5) return "bg-lime-400 text-slate-900"
-  if (value < 0.6) return "bg-green-400 text-slate-900"
+  // Correlação moderada
+  if (absValue < 0.5) return "bg-lime-400 text-slate-900"
+  if (absValue < 0.6) return "bg-yellow-300 text-slate-900"
+  if (absValue < 0.7) return "bg-amber-300 text-slate-900"
   
-  // Correlações altas: tons de verde escuro
-  if (value < 0.7) return "bg-green-500 text-white"
-  if (value < 0.8) return "bg-emerald-500 text-white"
-  if (value < 0.9) return "bg-emerald-600 text-white"
+  // Correlação alta (ruim para diversificação)
+  if (absValue < 0.8) return "bg-orange-400 text-slate-900"
+  if (absValue < 0.9) return "bg-red-500 text-white"
   
   // Correlação muito alta (>=0.9, incluindo 1.0 da diagonal)
-  return "bg-emerald-700 text-white"
+  return "bg-red-600 text-white"
 }
 
 // Função para calcular correlação de Pearson
@@ -174,7 +171,7 @@ export function CorrelationMatrix() {
       <Card>
         <CardHeader>
           <CardTitle>Matriz de Correlação</CardTitle>
-          <CardDescription>Correlação entre os retornos dos ativos da carteira</CardDescription>
+          <CardDescription>Correlação linear entre os ativos da carteira</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
           <p className="text-muted-foreground text-sm">Envie operações para visualizar a matriz de correlação</p>
@@ -190,7 +187,7 @@ export function CorrelationMatrix() {
       <CardHeader>
         <CardTitle>Matriz de Correlação</CardTitle>
         <CardDescription>
-          Correlação entre os retornos dos ativos da carteira
+          Correlação linear entre os ativos da carteira
           {matrixData.source === 'estimated' && (
             <span className="ml-2 text-amber-600">(valores estimados)</span>
           )}

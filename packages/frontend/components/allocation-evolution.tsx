@@ -131,7 +131,7 @@ export function AllocationEvolution() {
     return (
       <Card className="col-span-full">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">Evolução da Alocação Percentual da Carteira</CardTitle>
+          <CardTitle className="text-foreground text-lg">Evolução da Alocação Percentual da Carteira</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[400px]">
           <p className="text-muted-foreground text-sm">Envie operações para visualizar a evolução da alocação</p>
@@ -143,7 +143,7 @@ export function AllocationEvolution() {
   return (
     <Card className="col-span-full">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">Evolução da Alocação Percentual da Carteira</CardTitle>
+        <CardTitle className="text-foreground text-lg">Evolução da Alocação Percentual da Carteira</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={550}>
@@ -151,14 +151,20 @@ export function AllocationEvolution() {
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
             <XAxis
               dataKey="date"
-              className="text-xs"
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
               tickFormatter={(value) => {
                 const date = new Date(value)
-                return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}`
+                return `${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear().toString().slice(2)}`
               }}
             />
             <YAxis
-              className="text-xs"
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
               domain={[0, 1]}
               ticks={[0, 0.25, 0.5, 0.75, 1]}
               tickFormatter={(value) => `${Math.round(value * 100)}%`}
