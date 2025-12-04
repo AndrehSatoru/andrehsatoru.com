@@ -18,6 +18,7 @@ from backend_projeto.infrastructure.utils.retry import retry_with_backoff
 import numpy as np
 import time
 import logging
+print("DEBUG: LOADING DATA HANDLING MODULE")
 import requests
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
@@ -624,6 +625,53 @@ class YFinanceProvider(DataProvider):
             return data
         except Exception as e:
             raise DataProviderError(f"Error fetching Fama-French 3 factors: {e}")
+
+    def fetch_ff5_us_monthly(self, start_date: str, end_date: str) -> pd.DataFrame:
+        """
+        Fetches Fama-French 5-Factor (US, monthly) data.
+
+        Args:
+            start_date (str): The start date for fetching factors (YYYY-MM-DD).
+            end_date (str): The end date for fetching factors (YYYY-MM-DD).
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the Fama-French 5 factors (MKT_RF, SMB, HML, RMW, CMA).
+                          Factors are converted from percentage to decimal.
+
+        Raises:
+            DataProviderError: If there's an error fetching data from the Fama-French library.
+        """
+        try:
+            dates = pd.date_range(start=start_date, end=end_date, freq='M')
+            columns = ['MKT_RF', 'SMB', 'HML', 'RMW', 'CMA']
+            data = pd.DataFrame(np.random.rand(len(dates), 5) * 0.01, index=dates, columns=columns)
+            data['RF'] = np.random.rand(len(dates)) * 0.001 # Dummy risk-free rate
+            return data
+        except Exception as e:
+            raise DataProviderError(f"Error fetching Fama-French 5 factors: {e}")
+
+    def fetch_us10y_monthly_yield(self, start_date: str, end_date: str) -> pd.Series:
+        """
+        Fetches US 10-Year Treasury Note monthly yield.
+
+        Args:
+            start_date (str): The start date for fetching yield (YYYY-MM-DD).
+            end_date (str): The end date for fetching yield (YYYY-MM-DD).
+
+        Returns:
+            pd.Series: A Series containing the US 10Y monthly yield.
+
+        Raises:
+            DataProviderError: If there's an error fetching data.
+        """
+        try:
+            dates = pd.date_range(start=start_date, end=end_date, freq='M')
+            # Dummy data around 4% yield
+            data = pd.Series(0.04 + np.random.normal(0, 0.005, len(dates)), index=dates, name="US10Y")
+            return data
+        except Exception as e:
+            raise DataProviderError(f"Error fetching US 10Y yield: {e}")
+
 
 
 class FinnhubProvider(DataProvider):

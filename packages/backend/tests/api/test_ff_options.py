@@ -3,14 +3,14 @@ from fastapi.testclient import TestClient
 import pandas as pd
 import numpy as np
 
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 client = TestClient(app)
 
 
 def _dummy_ff3_monthly():
-    # 24 meses (finais de mês)
-    idx = pd.date_range(start="2022-01-31", periods=24, freq="M")
+    # 36 meses (finais de mês) - cover 2023-2025 range
+    idx = pd.date_range(start="2023-01-31", periods=36, freq="M")
     df = pd.DataFrame({
         "MKT_RF": np.random.normal(0.005, 0.02, len(idx)),
         "SMB":    np.random.normal(0.001, 0.01, len(idx)),
@@ -21,8 +21,8 @@ def _dummy_ff3_monthly():
 
 
 def _dummy_prices_brl():
-    # 24 meses de dados diários
-    idx = pd.date_range(start="2022-01-01", periods=504, freq="B")
+    # dados diários cobrindo 2023-2025
+    idx = pd.date_range(start="2023-01-01", periods=750, freq="B")
     # crescente suave para evitar retornos nulos
     return pd.DataFrame({"AAA.SA": 50 + np.linspace(0, 5.0, len(idx))}, index=idx)
 

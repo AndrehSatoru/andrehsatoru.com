@@ -215,3 +215,101 @@ class OptimizationEngine:
         Returns:
             Dict: A dictionary containing the adjusted portfolio weights and expected returns.
         """
+        from scipy.optimize import minimize
+        
+        # Load prices and calculate returns
+        prices = self.load_prices(assets, start_date, end_date)
+        rets = _returns_from_prices(prices)
+        
+        n = len(assets)
+        mu = rets.mean().values * self.config.DIAS_UTEIS_ANO
+        cov = rets.cov().values * self.config.DIAS_UTEIS_ANO
+        
+        # Market cap weights (equilibrium weights)
+        caps = np.array([market_caps.get(a, 1e9) for a in assets])
+        w_mkt = caps / caps.sum()
+        
+        # Risk aversion coefficient (delta)
+        delta = 2.5  # typical value
+        
+        # Implied equilibrium returns (pi)
+        pi = delta * cov @ w_mkt
+        
+        # If no views, use equilibrium returns
+        if not views:
+            # Optimize using equilibrium returns
+            def objective(w):
+                port_ret = w @ pi
+                port_vol = np.sqrt(w @ cov @ w)
+                return -port_ret / port_vol if port_vol > 0 else 0
+            
+            constraints = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
+            bounds = [(0, 1) for _ in range(n)]
+            x0 = w_mkt
+            result = minimize(objective, x0, method='SLSQP', bounds=bounds, constraints=constraints)
+            w_opt = result.x
+            
+            port_ret = float(w_opt @ pi)
+            port_vol = float(np.sqrt(w_opt @ cov @ w_opt))
+            sharpe = port_ret / port_vol if port_vol > 0 else 0
+            
+            return {
+                'weights': {a: float(w_opt[i]) for i, a in enumerate(assets)},
+                'expected_return': port_ret,
+                'volatility': port_vol,
+                'sharpe': sharpe
+            }
+        
+        # With views: Apply Black-Litterman formula
+        # P: picking matrix (which assets are in each view)
+        # Q: view returns
+        # Omega: uncertainty in views
+        k = len(views)
+        P = np.zeros((k, n))
+        Q = np.zeros(k)
+        omega_diag = []
+        
+        for i, view in enumerate(views):
+            view_assets = view.get('assets', [])
+            view_weights = view.get('weights', [1.0 / len(view_assets)] * len(view_assets))
+            view_return = view.get('view', 0)
+            confidence = view.get('confidence', 0.5)
+            
+            for va, vw in zip(view_assets, view_weights):
+                if va in assets:
+                    P[i, assets.index(va)] = vw
+            Q[i] = view_return
+            # Omega diagonal: lower confidence = higher uncertainty
+            omega_diag.append((1 - confidence) * 0.1)  # scale factor
+        
+        Omega = np.diag(omega_diag) if omega_diag else np.eye(k) * 0.05
+        
+        # Black-Litterman posterior expected returns
+        tau_cov = tau * cov
+        M1 = np.linalg.inv(tau_cov)
+        M2 = P.T @ np.linalg.inv(Omega) @ P
+        
+        bl_mu = np.linalg.inv(M1 + M2) @ (M1 @ pi + P.T @ np.linalg.inv(Omega) @ Q)
+        
+        # Optimize using BL expected returns
+        def objective(w):
+            port_ret = w @ bl_mu
+            port_vol = np.sqrt(w @ cov @ w)
+            return -port_ret / port_vol if port_vol > 0 else 0
+        
+        constraints = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
+        bounds = [(0, 1) for _ in range(n)]
+        x0 = w_mkt
+        result = minimize(objective, x0, method='SLSQP', bounds=bounds, constraints=constraints)
+        w_opt = result.x
+        
+        port_ret = float(w_opt @ bl_mu)
+        port_vol = float(np.sqrt(w_opt @ cov @ w_opt))
+        sharpe = port_ret / port_vol if port_vol > 0 else 0
+        
+        return {
+            'weights': {a: float(w_opt[i]) for i, a in enumerate(assets)},
+            'expected_return': port_ret,
+            'volatility': port_vol,
+            'sharpe': sharpe
+        }

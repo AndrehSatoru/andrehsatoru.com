@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 import pandas as pd
 from io import BytesIO
 
-from src.backend_projeto.main import app 
+from backend_projeto.main import app 
 
 client = TestClient(app)
 
@@ -15,8 +15,8 @@ def dummy_excel_file():
     df = pd.DataFrame({
         'Data': ['2024-01-05'],
         'Ativo': ['PETR4.SA'],
-        'Tipo': ['COMPRA'],
-        'Valor': [10000.00]
+        'Quantidade': [100],
+        'Preco': [100.00]
     })
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:

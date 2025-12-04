@@ -12,6 +12,8 @@ from .deps import get_loader
 from backend_projeto.infrastructure.data_handling import YFinanceProvider
 from backend_projeto.domain.technical_analysis import moving_averages, macd
 from backend_projeto.api.helpers import _convert_prices_to_usd
+import numpy as np
+import pandas as pd
 
 router = APIRouter(
     tags=["Technical Analysis"],
@@ -46,6 +48,7 @@ def ta_moving_averages(req: TAMovingAveragesRequest, loader: YFinanceProvider = 
         ta_df = ta_df[available]
     
     ta_df = ta_df.sort_index()
+    ta_df = ta_df.astype(object).where(pd.notnull(ta_df), None)
     return PricesResponse(
         columns=[str(c) for c in ta_df.columns],
         index=[idx.strftime('%Y-%m-%d') if hasattr(idx, 'strftime') else str(idx) for idx in ta_df.index],
@@ -76,6 +79,7 @@ def ta_macd(req: TAMacdRequest, loader: YFinanceProvider = Depends(get_loader)) 
         ta_df = ta_df[available]
     
     ta_df = ta_df.sort_index()
+    ta_df = ta_df.astype(object).where(pd.notnull(ta_df), None)
     return PricesResponse(
         columns=[str(c) for c in ta_df.columns],
         index=[idx.strftime('%Y-%m-%d') if hasattr(idx, 'strftime') else str(idx) for idx in ta_df.index],

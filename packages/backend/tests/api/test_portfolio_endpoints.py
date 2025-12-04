@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture(scope="module")
 def client():
-    from src.backend_projeto.main import app
+    from backend_projeto.main import app
     return TestClient(app)
 
 def test_portfolio_weights_series(client: TestClient):

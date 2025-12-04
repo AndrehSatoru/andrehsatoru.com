@@ -40,11 +40,11 @@ async def run_analysis(transactions_file: Optional[UploadFile] = File(None)) -> 
         df = pd.read_excel(BytesIO(contents))
         
         # Validar o formato do arquivo
-        required_columns = ['Data', 'Ativo', 'Tipo']
+        required_columns = ['Data', 'Ativo', 'Quantidade', 'Preco']
         if not all(col in df.columns for col in required_columns):
             raise HTTPException(
                 status_code=400, 
-                detail="Invalid file format. Required columns: Data, Ativo, Tipo"
+                detail=f"Invalid file format. Required columns: {', '.join(required_columns)}"
             )
         
         # Executar análise

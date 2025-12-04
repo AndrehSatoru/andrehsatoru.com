@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 # app FastAPI
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 client = TestClient(app)
 

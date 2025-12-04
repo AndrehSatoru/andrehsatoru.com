@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 import pandas as pd
 import numpy as np
 
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 client = TestClient(app)
 
@@ -51,6 +51,7 @@ def test_relvar_sp500_alias_normalized(monkeypatch_aliases):
         "weights": [0.5, 0.5],
         "alpha": 0.95,
         "method": "historical",
+        "benchmark": "sp500"
     }
     r = client.post("/api/v1/risk/relvar", json=payload)
     assert r.status_code == 200

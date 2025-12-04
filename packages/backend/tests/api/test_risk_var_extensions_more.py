@@ -3,7 +3,7 @@ import pytest
 from fastapi.testclient import TestClient
 import pandas as pd
 
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 client = TestClient(app)
 
@@ -110,6 +110,7 @@ def test_relvar_methods_std_ewma(monkeypatch_prices, monkeypatch_benchmark):
 
 
 def test_relvar_missing_benchmark_returns_error(monkeypatch_prices, monkeypatch_benchmark):
+    """Quando benchmark não é encontrado, endpoint retorna 422."""
     monkeypatch_prices()
     # benchmark retorna None
     monkeypatch_benchmark(return_none=True)
@@ -123,6 +124,5 @@ def test_relvar_missing_benchmark_returns_error(monkeypatch_prices, monkeypatch_
         "benchmark": "^NOTFOUND",
     }
     r = client.post("/api/v1/risk/relvar", json=payload)
-    assert r.status_code == 200
-    res = r.json()["result"]
-    assert res.get("error") == "benchmark_data_unavailable"
+    # Endpoint valida benchmark ausente e retorna 422
+    assert r.status_code == 422

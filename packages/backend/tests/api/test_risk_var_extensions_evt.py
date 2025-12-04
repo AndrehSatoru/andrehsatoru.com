@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 import pandas as pd
 
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 client = TestClient(app)
 
@@ -38,7 +38,10 @@ def monkeypatch_data(monkeypatch):
             return (evt_value, {"mocked": True, "alpha": alpha})
         monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_stock_prices", fake_prices, raising=True)
         monkeypatch.setattr("backend_projeto.infrastructure.data_handling.YFinanceProvider.fetch_benchmark_data", fake_bench, raising=True)
-        monkeypatch.setattr("src.backend_projeto.core.analysis.var_evt", fake_var_evt, raising=True)
+        # Mock em risk_metrics para iVaR e mVaR
+        monkeypatch.setattr("backend_projeto.domain.risk_metrics.var_evt", fake_var_evt, raising=True)
+        # Mock em covariance para RelVaR (usa import direto)
+        monkeypatch.setattr("backend_projeto.domain.covariance.var_evt", fake_var_evt, raising=True)
     return _patch
 
 

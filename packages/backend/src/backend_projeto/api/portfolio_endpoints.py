@@ -13,6 +13,7 @@ from backend_projeto.domain.models import (
     MonthlyReturnsResponse,
     MonthlyReturnRow,
 )
+from backend_projeto.domain.constants import CDI_PROXIES, MONTH_MAP
 from .deps import get_loader
 from backend_projeto.infrastructure.data_handling import YFinanceProvider
 import pandas as pd
@@ -50,18 +51,18 @@ def _get_cdi_monthly_returns(loader: YFinanceProvider, start_date: str, end_date
     """Fetch CDI monthly returns. Uses a proxy if direct CDI is not available."""
     try:
         # Try to fetch IMAB11 or FIXA11 as CDI proxy
-        cdi_proxies = ['^IRX']  # 13-week Treasury Bill rate as proxy
-        for proxy in cdi_proxies:
+        for proxy in CDI_PROXIES:
             try:
                 cdi_prices = loader.fetch_stock_prices([proxy], start_date, end_date)
                 if not cdi_prices.empty:
                     cdi_monthly = cdi_prices.resample('M').last().pct_change().dropna() * 100
                     return cdi_monthly.iloc[:, 0] if isinstance(cdi_monthly, pd.DataFrame) else cdi_monthly
             except Exception:
+                logging.warning(f"Failed to fetch data for CDI proxy: {proxy}", exc_info=False)
                 continue
         return pd.Series(dtype=float)
     except Exception as e:
-        logging.warning(f"Could not fetch CDI proxy: {e}")
+        logging.error(f"Critical error fetching CDI proxy: {e}", exc_info=True)
         return pd.Series(dtype=float)
 
 
@@ -109,8 +110,6 @@ def get_monthly_returns(
         cdi_returns = _get_cdi_monthly_returns(loader, req.start_date, req.end_date)
         
         # Build response data
-        month_map = {1: 'jan', 2: 'fev', 3: 'mar', 4: 'abr', 5: 'mai', 6: 'jun',
-                     7: 'jul', 8: 'ago', 9: 'set', 10: 'out', 11: 'nov', 12: 'dez'}
         
         years = sorted(set(monthly_returns.dropna().index.year))
         result_data: List[MonthlyReturnRow] = []
@@ -127,7 +126,7 @@ def get_monthly_returns(
             year_cdi_acum = 1.0
             
             for month in range(1, 13):
-                month_key = month_map[month]
+                month_key = MONTH_MAP[month]
                 if month_key == 'set':
                     month_key = 'set_'
                 
