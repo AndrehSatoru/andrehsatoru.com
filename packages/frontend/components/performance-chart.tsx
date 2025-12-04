@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Brush } from "recharts"
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Brush } from "recharts"
 import { usePeriod, filterDataByPeriod } from "@/lib/period-context"
 import { useDashboardData } from "@/lib/dashboard-data-context"
 import { Empty } from "./ui/empty"
@@ -50,7 +50,7 @@ export function PerformanceChart() {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={380}>
-          <AreaChart data={data} margin={{ top: 10, right: 60, left: 0, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorPortfolio" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={DASHBOARD_COLORS.portfolio} stopOpacity={0.3} />
@@ -88,7 +88,7 @@ export function PerformanceChart() {
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: "hsl(var(--card))",
+                backgroundColor: "white",
                 border: "1px solid hsl(var(--border))",
                 borderRadius: "8px",
                 color: "hsl(var(--foreground))",
@@ -96,20 +96,15 @@ export function PerformanceChart() {
               }}
               labelFormatter={(value) => {
                 const date = new Date(value)
-                return date.toLocaleDateString("pt-BR")
+                return date.toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric"
+                })
               }}
               formatter={(value: number, name: string) => {
                 const label = name === "portfolio" ? "Portfólio" : "Benchmark"
                 return [`R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, label]
-              }}
-            />
-            <Legend 
-              verticalAlign="bottom"
-              height={36}
-              formatter={(value) => {
-                if (value === "portfolio") return "Portfólio"
-                if (value === "benchmark") return "Benchmark (CDI + 2%)"
-                return value
               }}
             />
             <Area

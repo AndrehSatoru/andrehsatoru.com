@@ -73,17 +73,17 @@ export function AllocationChart() {
         <CardTitle className="text-foreground">Alocação de Ativos</CardTitle>
         <CardDescription className="text-muted-foreground">Distribuição por classe de ativo</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex justify-center items-center">
         <ResponsiveContainer width="100%" height={380}>
-          <PieChart margin={{ top: 20, right: 80, bottom: 20, left: 80 }}>
+          <PieChart margin={{ top: 10, right: 100, bottom: 10, left: 100 }}>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
               labelLine={true}
               label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-              outerRadius={120}
-              innerRadius={45}
+              outerRadius={140}
+              innerRadius={55}
               fill="#8884d8"
               dataKey="value"
               paddingAngle={2}

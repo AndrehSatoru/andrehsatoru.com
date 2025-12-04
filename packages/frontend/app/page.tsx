@@ -12,9 +12,10 @@ import { ReturnsDistribution } from "@/components/returns-distribution"
 import { StressTestChart } from "@/components/stress-test-chart"
 import { EfficientFrontier } from "@/components/efficient-frontier"
 import { CorrelationMatrix } from "@/components/correlation-matrix"
+import { DistanceCorrelationMatrix } from "@/components/distance-correlation-matrix"
+import { TMFGGraph } from "@/components/tmfg-graph"
 import { AllocationEvolution } from "@/components/allocation-evolution"
 import { RollingReturns } from "@/components/rolling-returns"
-import { RiskContribution } from "@/components/risk-contribution"
 import { BetaMatrix } from "@/components/beta-matrix"
 import { MonteCarloDistribution } from "@/components/monte-carlo-distribution"
 import { BetaEvolution } from "@/components/beta-evolution"
@@ -46,7 +47,7 @@ function DashboardPage() {
 
         <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
           <PerformanceChart />
-          <AllocationChart />
+          <RollingReturns />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
@@ -55,24 +56,25 @@ function DashboardPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
-          <VarChart />
-          <CVarChart />
+          <CorrelationMatrix />
+          <DistanceCorrelationMatrix />
         </div>
-
-        <EfficientFrontier />
 
         <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">
-          <CorrelationMatrix />
-          <BetaMatrix />
+          <AllocationChart />
+          <TMFGGraph />
         </div>
+
+        <BetaMatrix />
 
         <AllocationEvolution />
 
-        <RollingReturns />
-
-        <RiskContribution />
-
         <BetaEvolution />
+
+        <VarChart />
+        <CVarChart />
+
+        <EfficientFrontier />
 
         {/* Distribuição e Stress Test lado a lado */}
         <div className="grid gap-6 lg:grid-cols-2 xl:gap-8">

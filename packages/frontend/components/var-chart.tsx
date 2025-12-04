@@ -101,9 +101,9 @@ export function VarChart() {
     return (
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="text-foreground">Retorno Monetário Diário vs. VaR Histórico Diário</CardTitle>
+          <CardTitle className="text-foreground">VaR (Value at Risk)</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Retornos diários da carteira comparados aos limites de VaR
+            Perda máxima esperada
           </CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[400px]">
@@ -116,13 +116,13 @@ export function VarChart() {
   return (
     <Card className="border-border">
       <CardHeader>
-        <CardTitle className="text-foreground">Retorno Monetário Diário vs. VaR Histórico Diário</CardTitle>
+        <CardTitle className="text-foreground">VaR (Value at Risk)</CardTitle>
         <CardDescription className="text-muted-foreground">
-          Retornos diários da carteira comparados aos limites de VaR
+          Perda máxima esperada
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={450}>
           <ComposedChart data={chartData.data}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
             <XAxis
@@ -148,19 +148,84 @@ export function VarChart() {
               }}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(var(--popover))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "8px",
-              }}
-              labelStyle={{ color: "hsl(var(--popover-foreground))" }}
-              formatter={(value: number, name: string) => {
-                const formatted = `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                return [formatted, name]
-              }}
-              labelFormatter={(label) => {
+              content={({ active, payload, label }) => {
+                if (!active || !payload || payload.length === 0) return null
+                
                 const date = new Date(label)
-                return date.toLocaleDateString("pt-BR")
+                const formattedDate = date.toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric"
+                })
+                
+                const returnsData = payload.find((p: any) => p.dataKey === "returns")
+                const var95Data = payload.find((p: any) => p.dataKey === "var95")
+                const var99Data = payload.find((p: any) => p.dataKey === "var99")
+                const violationData = payload.find((p: any) => p.dataKey === "violation")
+                
+                const formatCurrency = (value: number) => {
+                  return `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                }
+                
+                const returns = returnsData?.value as number
+                const isPositive = returns >= 0
+                
+                return (
+                  <div className="rounded-lg border border-border bg-popover p-3 shadow-lg min-w-[260px]">
+                    <div className="mb-3 pb-2 border-b border-border">
+                      <p className="font-semibold text-popover-foreground text-base">{formattedDate}</p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {/* Retorno Diário */}
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-3 w-3 rounded-sm ${isPositive ? 'bg-green-600' : 'bg-red-500'}`} />
+                          <span className="text-sm text-muted-foreground">Retorno Diário</span>
+                        </div>
+                        <span className={`text-sm font-semibold ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
+                          {formatCurrency(returns)}
+                        </span>
+                      </div>
+                      
+                      {/* VaR 95% */}
+                      {var95Data && (
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            <div className="h-[3px] w-3 rounded-full" style={{ background: 'repeating-linear-gradient(90deg, #f97316, #f97316 2px, transparent 2px, transparent 4px)' }} />
+                            <span className="text-sm text-muted-foreground">VaR 95%</span>
+                          </div>
+                          <span className="text-sm font-semibold text-orange-500">
+                            {formatCurrency(var95Data.value as number)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* VaR 99% */}
+                      {var99Data && (
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            <div className="h-[3px] w-3 rounded-full bg-red-600" />
+                            <span className="text-sm text-muted-foreground">VaR 99%</span>
+                          </div>
+                          <span className="text-sm font-semibold text-red-600">
+                            {formatCurrency(var99Data.value as number)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Violação */}
+                      {violationData?.value != null && (
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <div className="flex items-center gap-2 text-yellow-600">
+                            <div className="h-3 w-3 rounded-full bg-yellow-500 ring-1 ring-black/20" />
+                            <span className="text-sm font-semibold">⚠️ Quebra do VaR 99%</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
               }}
             />
             {/* Linha VaR 99% Rolling */}
@@ -196,46 +261,31 @@ export function VarChart() {
             />
           </ComposedChart>
         </ResponsiveContainer>
-        <div className="mt-4 grid grid-cols-4 gap-4 rounded-lg bg-muted p-4">
-          <div>
-            <p className="text-xs text-muted-foreground">VaR 99% Atual</p>
-            <p className="text-lg font-bold text-red-600">{formatValue(chartData.var99)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">VaR 95% Atual</p>
-            <p className="text-lg font-bold text-orange-500">{formatValue(chartData.var95)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Quebras VaR 99%</p>
-            <p className="text-lg font-bold text-yellow-500">{chartData.violationCount}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Taxa de Violação</p>
-            <p className="text-lg font-bold text-foreground">
-              {((chartData.violationCount / chartData.data.length) * 100).toFixed(2)}%
-            </p>
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-lg bg-muted/50 border border-border px-4 py-3">
+          {/* Métricas com valores */}
           <div className="flex items-center gap-2">
-            <div className="h-0.5 w-8 bg-red-600" />
-            <span className="text-muted-foreground">VaR 99% (Rolling 252d)</span>
+            <div className="h-[3px] w-6 rounded-full bg-red-600" />
+            <span className="text-sm"><span className="text-muted-foreground">VaR 99%:</span> <span className="font-semibold text-red-600">{formatValue(chartData.var99)}</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-0.5 w-8 bg-orange-500" style={{ borderStyle: 'dashed', borderWidth: '2px', borderColor: '#f97316' }} />
-            <span className="text-muted-foreground">VaR 95% (Rolling 252d)</span>
+            <div className="h-[3px] w-6 rounded-full" style={{ background: 'repeating-linear-gradient(90deg, #f97316, #f97316 3px, transparent 3px, transparent 6px)' }} />
+            <span className="text-sm"><span className="text-muted-foreground">VaR 95%:</span> <span className="font-semibold text-orange-500">{formatValue(chartData.var95)}</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-yellow-500 ring-2 ring-black" />
-            <span className="text-muted-foreground">Quebras do VaR (99%): {chartData.violationCount}</span>
+            <div className="h-3 w-3 rounded-full bg-yellow-500 ring-1 ring-black/20" />
+            <span className="text-sm"><span className="text-muted-foreground">Quebras:</span> <span className="font-semibold text-yellow-600">{chartData.violationCount}</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-8 bg-green-600" />
-            <span className="text-muted-foreground">Retorno Positivo</span>
+            <span className="text-sm"><span className="text-muted-foreground">Taxa Violação:</span> <span className="font-semibold text-foreground">{((chartData.violationCount / chartData.data.length) * 100).toFixed(2)}%</span></span>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-4 rounded-sm bg-green-600" />
+            <span className="text-sm text-muted-foreground">Positivo</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-8 bg-red-500" />
-            <span className="text-muted-foreground">Retorno Negativo</span>
+            <div className="h-3 w-4 rounded-sm bg-red-500" />
+            <span className="text-sm text-muted-foreground">Negativo</span>
           </div>
         </div>
       </CardContent>

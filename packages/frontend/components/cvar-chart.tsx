@@ -131,7 +131,7 @@ export function CVarChart() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={450}>
           <ComposedChart data={chartData.data}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
             <XAxis
@@ -171,7 +171,11 @@ export function CVarChart() {
               }}
               labelFormatter={(label) => {
                 const date = new Date(label)
-                return date.toLocaleDateString("pt-BR")
+                return date.toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric"
+                })
               }}
             />
             {/* Linha VaR 95% Rolling */}
@@ -207,46 +211,31 @@ export function CVarChart() {
             </Bar>
           </ComposedChart>
         </ResponsiveContainer>
-        <div className="mt-4 grid grid-cols-4 gap-4 rounded-lg bg-muted p-4">
-          <div>
-            <p className="text-xs text-muted-foreground">VaR 95% Atual</p>
-            <p className="text-lg font-bold text-orange-500">{formatValue(chartData.var95)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">CVaR 95% Atual</p>
-            <p className="text-lg font-bold text-red-600">{formatValue(chartData.cvar95)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Quebras CVaR 95%</p>
-            <p className="text-lg font-bold text-yellow-500">{chartData.violationCount}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Diferença CVaR/VaR</p>
-            <p className="text-lg font-bold text-amber-600">
-              {chartData.diffPercent > 0 ? "+" : ""}{chartData.diffPercent.toFixed(0)}%
-            </p>
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-lg bg-muted/50 border border-border px-4 py-3">
+          {/* Métricas com valores */}
           <div className="flex items-center gap-2">
-            <div className="h-0.5 w-8 bg-orange-500" style={{ borderStyle: 'dashed', borderWidth: '2px', borderColor: '#f97316' }} />
-            <span className="text-muted-foreground">VaR 95% (Rolling 252d)</span>
+            <div className="h-[3px] w-6 rounded-full" style={{ background: 'repeating-linear-gradient(90deg, #f97316, #f97316 3px, transparent 3px, transparent 6px)' }} />
+            <span className="text-sm"><span className="text-muted-foreground">VaR 95%:</span> <span className="font-semibold text-orange-500">{formatValue(chartData.var95)}</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-0.5 w-8 bg-red-600" />
-            <span className="text-muted-foreground">CVaR 95% (Rolling 252d)</span>
+            <div className="h-[3px] w-6 rounded-full bg-red-600" />
+            <span className="text-sm"><span className="text-muted-foreground">CVaR 95%:</span> <span className="font-semibold text-red-600">{formatValue(chartData.cvar95)}</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-yellow-500 ring-2 ring-black" />
-            <span className="text-muted-foreground">Quebras do CVaR: {chartData.violationCount}</span>
+            <div className="h-3 w-3 rounded-full bg-yellow-500 ring-1 ring-black/20" />
+            <span className="text-sm"><span className="text-muted-foreground">Quebras:</span> <span className="font-semibold text-yellow-600">{chartData.violationCount}</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-8 bg-green-600" />
-            <span className="text-muted-foreground">Retorno Positivo</span>
+            <span className="text-sm"><span className="text-muted-foreground">Dif. CVaR/VaR:</span> <span className="font-semibold text-amber-600">{chartData.diffPercent > 0 ? "+" : ""}{chartData.diffPercent.toFixed(0)}%</span></span>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-4 rounded-sm bg-green-600" />
+            <span className="text-sm text-muted-foreground">Positivo</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-3 w-8 bg-red-500" />
-            <span className="text-muted-foreground">Retorno Negativo</span>
+            <div className="h-3 w-4 rounded-sm bg-red-500" />
+            <span className="text-sm text-muted-foreground">Negativo</span>
           </div>
         </div>
       </CardContent>

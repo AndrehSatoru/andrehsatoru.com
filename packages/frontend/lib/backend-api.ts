@@ -10,7 +10,7 @@ const isServer = typeof window === 'undefined';
 const API_BASE_URL = isServer 
   ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
   : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
-const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000', 10);
+const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '120000', 10); // 2 minutes timeout
 
 // Create a Zodios instance
 export const apiClient = new Zodios(endpoints, {

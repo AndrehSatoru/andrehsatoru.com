@@ -70,7 +70,7 @@ export function DrawdownChart() {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={380}>
-          <AreaChart data={data} margin={{ top: 10, right: 60, left: 0, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="drawdownGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={SEMANTIC_COLORS.error.DEFAULT} stopOpacity={0.3} />
@@ -81,23 +81,36 @@ export function DrawdownChart() {
             <XAxis
               dataKey="date"
               stroke="hsl(var(--muted-foreground))"
-              fontSize={12}
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
               tickFormatter={(value) => {
                 const date = new Date(value)
                 return `${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear().toString().slice(2)}`
               }}
             />
-            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <YAxis
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => `${value}%`}
+            />
             <Tooltip
               contentStyle={{
-                backgroundColor: "hsl(var(--card))",
+                backgroundColor: "white",
                 border: "1px solid hsl(var(--border))",
                 borderRadius: "8px",
                 color: "hsl(var(--foreground))",
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
               }}
               labelFormatter={(value) => {
                 const date = new Date(value)
-                return date.toLocaleDateString("pt-BR")
+                return date.toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric"
+                })
               }}
               formatter={(value: number) => [`${value}%`, "Drawdown"]}
             />

@@ -35,24 +35,29 @@ export function AllocationEvolution() {
       // Criar mapa de dados originais para o tooltip (com percentuais reais)
       const originalDataMap: Record<string, Record<string, number>> = {}
       
-      // Normalizar dados para frações (0 a 1) que somam exatamente 1
+      // Normalizar manualmente para frações 0-1
+      // Cada valor é dividido pelo total para que a soma seja sempre 1
       const normalizedData = allocationHistory.map((entry: Record<string, any>) => {
         const newEntry: Record<string, any> = { date: entry.date }
-        const total = assetKeys.reduce((sum, key) => sum + (Number(entry[key]) || 0), 0)
         const origEntry: Record<string, number> = {}
+        const total = assetKeys.reduce((sum, key) => sum + (Number(entry[key]) || 0), 0)
         
-        if (total > 0) {
-          assetKeys.forEach(key => {
-            const fraction = (Number(entry[key]) || 0) / total
-            newEntry[key] = fraction  // 0 a 1 (fração)
-            origEntry[key] = fraction * 100  // 0 a 100 (percentual para tooltip)
-          })
-        } else {
-          assetKeys.forEach(key => {
-            newEntry[key] = 0
-            origEntry[key] = 0
-          })
-        }
+        // Primeiro passo: calcular frações
+        let runningSum = 0
+        assetKeys.forEach((key, index) => {
+          const rawValue = Number(entry[key]) || 0
+          let fraction = total > 0 ? rawValue / total : 0
+          
+          // No último ativo, ajustar para garantir soma exata de 1
+          if (index === assetKeys.length - 1 && total > 0) {
+            fraction = Math.max(0, 1 - runningSum)
+          }
+          
+          newEntry[key] = fraction
+          runningSum += fraction
+          // Guardar percentual para tooltip
+          origEntry[key] = fraction * 100
+        })
         
         originalDataMap[entry.date] = origEntry
         return newEntry
@@ -126,7 +131,7 @@ export function AllocationEvolution() {
     return (
       <Card className="col-span-full">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold">Evolução da Alocação Percentual da Carteira</CardTitle>
+          <CardTitle className="text-foreground text-lg">Evolução da Alocação Percentual da Carteira</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[400px]">
           <p className="text-muted-foreground text-sm">Envie operações para visualizar a evolução da alocação</p>
@@ -138,27 +143,33 @@ export function AllocationEvolution() {
   return (
     <Card className="col-span-full">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold">Evolução da Alocação Percentual da Carteira</CardTitle>
+        <CardTitle className="text-foreground text-lg">Evolução da Alocação Percentual da Carteira</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={550}>
-          <AreaChart data={filteredData} stackOffset="none" margin={{ top: 5, right: 120, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+          <AreaChart data={filteredData} stackOffset="none" margin={{ top: 0, right: 120, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" vertical={false} />
             <XAxis
               dataKey="date"
-              className="text-xs"
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
               tickFormatter={(value) => {
                 const date = new Date(value)
-                return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}`
+                return `${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear().toString().slice(2)}`
               }}
             />
             <YAxis
-              className="text-xs"
-              type="number"
-              domain={[() => 0, () => 1]}
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              domain={[0, 1]}
               ticks={[0, 0.25, 0.5, 0.75, 1]}
-              allowDataOverflow={true}
               tickFormatter={(value) => `${Math.round(value * 100)}%`}
+              allowDataOverflow={true}
+              scale="linear"
             />
             <Tooltip
               content={({ active, payload }) => {
@@ -224,19 +235,22 @@ export function AllocationEvolution() {
                 stackId="1"
                 stroke={asset.color}
                 fill={asset.color}
+                fillOpacity={1}
                 strokeWidth={0.5}
               />
             ))}
             <Brush
               dataKey="date"
-              height={50}
-              stroke="hsl(var(--primary))"
-              fill="hsl(var(--background))"
-              fillOpacity={0.3}
-              travellerWidth={12}
+              height={40}
+              stroke="hsl(var(--border))"
+              fill="#f5f5f5"
+              fillOpacity={1}
+              travellerWidth={10}
+              startIndex={0}
+              endIndex={filteredData.length - 1}
               tickFormatter={(value) => {
                 const date = new Date(value)
-                return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}`
+                return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}/${date.getFullYear()}`
               }}
             >
               <AreaChart data={filteredData} stackOffset="none">
@@ -248,7 +262,7 @@ export function AllocationEvolution() {
                     stackId="1"
                     stroke="none"
                     fill={asset.color}
-                    fillOpacity={0.6}
+                    fillOpacity={0.5}
                   />
                 ))}
               </AreaChart>

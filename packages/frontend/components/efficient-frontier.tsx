@@ -1,124 +1,288 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
+  ComposedChart,
+  Line,
   Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend,
   ResponsiveContainer,
   Label,
-  Line,
-  ComposedChart,
+  ZAxis,
+  ReferenceLine,
 } from "recharts"
 import { useDashboardData } from "@/lib/dashboard-data-context"
 
-// Volatilidades e retornos típicos por ativo (dados históricos do mercado brasileiro)
-const assetStats: { [key: string]: { volatility: number; return: number } } = {
-  "PETR4": { volatility: 42, return: 35 },
-  "PETR3": { volatility: 44, return: 32 },
-  "VALE3": { volatility: 38, return: 28 },
-  "ITUB4": { volatility: 28, return: 18 },
-  "ITUB3": { volatility: 29, return: 17 },
-  "BBDC4": { volatility: 30, return: 15 },
-  "BBDC3": { volatility: 31, return: 14 },
-  "BBAS3": { volatility: 32, return: 20 },
-  "SANB11": { volatility: 28, return: 12 },
-  "B3SA3": { volatility: 35, return: 22 },
-  "ABEV3": { volatility: 22, return: 8 },
-  "WEGE3": { volatility: 32, return: 45 },
-  "RENT3": { volatility: 35, return: 25 },
-  "LREN3": { volatility: 38, return: 18 },
-  "MGLU3": { volatility: 65, return: -30 },
-  "VVAR3": { volatility: 70, return: -45 },
-  "SUZB3": { volatility: 35, return: 22 },
-  "JBSS3": { volatility: 40, return: 30 },
-  "BRFS3": { volatility: 38, return: 5 },
-  "GGBR4": { volatility: 45, return: 25 },
-  "CSNA3": { volatility: 50, return: 20 },
-  "USIM5": { volatility: 55, return: 15 },
-  "CPLE6": { volatility: 25, return: 18 },
-  "ELET3": { volatility: 35, return: 25 },
-  "ELET6": { volatility: 34, return: 24 },
-  "CMIG4": { volatility: 30, return: 20 },
-  "TAEE11": { volatility: 20, return: 15 },
-  "SBSP3": { volatility: 22, return: 12 },
-  "VIVT3": { volatility: 20, return: 10 },
-  "TIMS3": { volatility: 25, return: 12 },
-  "HAPV3": { volatility: 45, return: -10 },
-  "RDOR3": { volatility: 35, return: 5 },
-  "FLRY3": { volatility: 30, return: 8 },
-  "EMBR3": { volatility: 45, return: 35 },
-  "AZUL4": { volatility: 60, return: -20 },
-  "GOLL4": { volatility: 65, return: -35 },
-  "CVCB3": { volatility: 55, return: -25 },
-  "RAIL3": { volatility: 30, return: 18 },
-  "CCRO3": { volatility: 28, return: 12 },
-  "EQTL3": { volatility: 25, return: 15 },
-  "ENGI11": { volatility: 22, return: 14 },
+// Interface para os pontos da fronteira retornados pelo backend
+interface FrontierPoint {
+  ret_annual: number
+  vol_annual: number
+  sharpe: number
+  weights: Record<string, number>
 }
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload
+    
+    // Definir nome baseado no tipo
+    let displayName = data.name || "Ponto"
+    let colorClass = "text-foreground"
+    
+    if (data.type === "current") {
+      displayName = "◆ Carteira Atual"
+      colorClass = "text-red-500"
+    } else if (data.type === "maxSharpe") {
+      displayName = "★ Máximo Sharpe"
+      colorClass = "text-amber-500"
+    } else if (data.type === "minVar") {
+      displayName = "● Mínima Volatilidade"
+      colorClass = "text-yellow-600"
+    } else if (data.type === "asset") {
+      displayName = `■ ${data.name}`
+      colorClass = "text-gray-500"
+    } else if (data.type === "frontier") {
+      displayName = "— Fronteira Eficiente"
+      colorClass = "text-gray-800 dark:text-gray-200"
+    } else if (data.type === "cal") {
+      displayName = "- - Capital Allocation Line"
+      colorClass = "text-orange-500"
+    }
+    
     return (
-      <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
-        <p className="font-semibold text-sm mb-1 text-foreground">{data.name || "Fronteira Eficiente"}</p>
-        <p className="text-xs text-muted-foreground">
-          Retorno: <span className="text-foreground font-medium">{data.return?.toFixed(1)}%</span>
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Volatilidade: <span className="text-foreground font-medium">{data.volatility?.toFixed(1)}%</span>
-        </p>
-        {data.sharpe && <p className="text-xs text-amber-500 mt-1">Sharpe Ratio: {data.sharpe.toFixed(2)}</p>}
+      <div className="bg-card border-2 border-border rounded-lg p-3 shadow-2xl min-w-[200px]">
+        <p className={`font-bold text-sm mb-2 pb-2 border-b border-border ${colorClass}`}>{displayName}</p>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Retorno Anual:</span>
+            <span className="text-sm font-bold text-green-600">{data.return?.toFixed(2)}%</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Volatilidade:</span>
+            <span className="text-sm font-bold text-orange-500">{data.volatility?.toFixed(2)}%</span>
+          </div>
+          {data.sharpe !== undefined && data.sharpe !== null && (
+            <div className="flex justify-between items-center pt-2 border-t border-border">
+              <span className="text-xs text-muted-foreground">Sharpe Ratio:</span>
+              <span className="text-sm font-bold text-amber-500">{data.sharpe.toFixed(3)}</span>
+            </div>
+          )}
+        </div>
       </div>
     )
   }
   return null
 }
 
-const CustomShape = (props: any) => {
+// Componente de shape com área de hover maior para melhor interatividade
+const DiamondShape = (props: any) => {
   const { cx, cy, payload } = props
-  const size = 8
+  if (cx === undefined || cy === undefined) return null
+  return (
+    <g style={{ cursor: 'pointer' }}>
+      {/* Área invisível maior para capturar hover */}
+      <circle cx={cx} cy={cy} r={20} fill="transparent" />
+      <polygon
+        points={`${cx},${cy-14} ${cx+14},${cy} ${cx},${cy+14} ${cx-14},${cy}`}
+        fill="#EF4444"
+        stroke="#991B1B"
+        strokeWidth={2}
+      />
+    </g>
+  )
+}
 
-  if (payload.type === "maxSharpe") {
-    return (
-      <g>
-        <path
-          d={`M ${cx} ${cy - size} L ${cx + size * 0.3} ${cy - size * 0.3} L ${cx + size} ${cy} L ${cx + size * 0.3} ${cy + size * 0.3} L ${cx} ${cy + size} L ${cx - size * 0.3} ${cy + size * 0.3} L ${cx - size} ${cy} L ${cx - size * 0.3} ${cy - size * 0.3} Z`}
-          fill="#FCD34D"
-          stroke="#000"
-          strokeWidth="2"
-        />
-      </g>
-    )
-  } else if (payload.type === "minVar") {
-    return <circle cx={cx} cy={cy} r={size} fill="#FCD34D" stroke="#000" strokeWidth="2" />
-  } else if (payload.type === "current") {
-    return (
-      <g>
-        <path
-          d={`M ${cx} ${cy - size} L ${cx + size} ${cy} L ${cx} ${cy + size} L ${cx - size} ${cy} Z`}
-          fill="#EF4444"
-          stroke="#000"
-          strokeWidth="2"
-        />
-      </g>
-    )
-  } else if (payload.type === "asset") {
-    return <rect x={cx - size / 2} y={cy - size / 2} width={size} height={size} fill="#9CA3AF" />
-  }
+const StarShape = (props: any) => {
+  const { cx, cy } = props
+  if (cx === undefined || cy === undefined) return null
+  const size = 14
+  return (
+    <g style={{ cursor: 'pointer' }}>
+      {/* Área invisível maior para capturar hover */}
+      <circle cx={cx} cy={cy} r={20} fill="transparent" />
+      <polygon
+        points={`${cx},${cy-size} ${cx+size*0.4},${cy-size*0.4} ${cx+size},${cy} ${cx+size*0.4},${cy+size*0.4} ${cx},${cy+size} ${cx-size*0.4},${cy+size*0.4} ${cx-size},${cy} ${cx-size*0.4},${cy-size*0.4}`}
+        fill="#FCD34D"
+        stroke="#92400E"
+        strokeWidth={2}
+      />
+    </g>
+  )
+}
 
-  return <circle cx={cx} cy={cy} r={3} fill="#9CA3AF" />
+const CircleShape = (props: any) => {
+  const { cx, cy } = props
+  if (cx === undefined || cy === undefined) return null
+  return (
+    <g style={{ cursor: 'pointer' }}>
+      {/* Área invisível maior para capturar hover */}
+      <circle cx={cx} cy={cy} r={20} fill="transparent" />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={12}
+        fill="#FCD34D"
+        stroke="#92400E"
+        strokeWidth={2}
+      />
+    </g>
+  )
+}
+
+const SquareShape = (props: any) => {
+  const { cx, cy } = props
+  if (cx === undefined || cy === undefined) return null
+  return (
+    <g style={{ cursor: 'pointer' }}>
+      {/* Área invisível maior para capturar hover */}
+      <circle cx={cx} cy={cy} r={15} fill="transparent" />
+      <rect
+        x={cx - 7}
+        y={cy - 7}
+        width={14}
+        height={14}
+        fill="#9CA3AF"
+        stroke="#4B5563"
+        strokeWidth={1.5}
+      />
+    </g>
+  )
+}
+
+// Custom Tooltip Component que segue o mouse
+interface TooltipData {
+  x: number
+  y: number
+  data: any
+}
+
+// Interface para dados do gráfico
+interface ChartData {
+  frontierData: Array<{ volatility: number; return: number; sharpe: number; type: string }>
+  calData: Array<{ volatility: number; return: number; type: string }>
+  individualAssets: Array<{ name: string; volatility: number; return: number; sharpe: number; type: string }>
+  currentPortfolio: { name: string; volatility: number; return: number; sharpe: number; type: string }
+  maxSharpe: { name: string; volatility: number; return: number; sharpe: number; type: string }
+  minVar: { name: string; volatility: number; return: number; sharpe?: number; type: string }
+  domainX: [number, number]
+  domainY: [number, number]
+  riskFreeRatePct: number // CDI em percentual para exibição
 }
 
 export function EfficientFrontier() {
   const { analysisResult } = useDashboardData()
+  const [activeTooltip, setActiveTooltip] = useState<TooltipData | null>(null)
+  const [frontierPoints, setFrontierPoints] = useState<FrontierPoint[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const chartData = useMemo(() => {
+  // Taxa livre de risco - obter CDI do backend (benchmark mais recente), fallback para 12%
+  const rollingReturns = analysisResult?.results?.rolling_annualized_returns
+  const lastBenchmark = Array.isArray(rollingReturns) && rollingReturns.length > 0 
+    ? rollingReturns[rollingReturns.length - 1]?.benchmark 
+    : null
+  // O benchmark é CDI+2%, então subtraímos 2% para ter apenas o CDI
+  const riskFreeRate = lastBenchmark ? (lastBenchmark - 2) / 100 : 0.12 // Converter de % para decimal
+
+  // Função para normalizar ticker - adiciona .SA apenas para tickers brasileiros
+  const normalizeTicker = (ticker: string): string => {
+    // Remove .SA se existir para analisar o ticker base
+    const cleanTicker = ticker.replace(".SA", "").replace(".sa", "").toUpperCase()
+    
+    // Verifica se é ticker brasileiro (termina em 3, 4, 5, 6 ou 11)
+    // 3/4 = ações ordinárias/preferenciais
+    // 5/6 = preferenciais classe A/B
+    // 11 = units/BDRs/ETFs
+    const isBrazilian = /\d{1,2}$/.test(cleanTicker) && 
+      (cleanTicker.endsWith('3') || 
+       cleanTicker.endsWith('4') || 
+       cleanTicker.endsWith('5') || 
+       cleanTicker.endsWith('6') || 
+       cleanTicker.endsWith('11'))
+    
+    return isBrazilian ? `${cleanTicker}.SA` : cleanTicker
+  }
+
+  // Extrair ativos e datas do analysisResult
+  const { assets, startDate, endDate } = useMemo(() => {
+    if (!analysisResult?.results?.alocacao?.alocacao || !analysisResult?.results?.performance) {
+      return { assets: [], startDate: null, endDate: null }
+    }
+
+    const alocacaoData = analysisResult.results.alocacao.alocacao
+    const performance = analysisResult.results.performance
+
+    // Obter lista de ativos (excluir Caixa) e normalizar tickers
+    const assetList = Object.keys(alocacaoData)
+      .filter(a => a !== "Caixa" && alocacaoData[a]?.percentual > 0)
+      .map(ticker => normalizeTicker(ticker))
+
+    // Obter datas do período
+    const dates = performance.map((p: any) => p.date).sort()
+    const start = dates[0]
+    const end = dates[dates.length - 1]
+
+    console.log("[EfficientFrontier] Assets:", assetList, "Period:", start, "-", end)
+
+    return { assets: assetList, startDate: start, endDate: end }
+  }, [analysisResult])
+
+  // Buscar dados da fronteira eficiente do backend (via rota API do Next.js)
+  useEffect(() => {
+    async function fetchFrontierData() {
+      if (assets.length < 2 || !startDate || !endDate) {
+        return
+      }
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        // Usar rota API do Next.js para evitar CORS
+        const response = await fetch("/api/frontier-data", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            assets,
+            start_date: startDate,
+            end_date: endDate,
+            n_samples: 100, // Mínimo requerido pelo backend (será convertido em pontos na fronteira)
+            long_only: true,
+            max_weight: null,
+            rf: riskFreeRate, // CDI anual como decimal
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || "Erro ao buscar fronteira eficiente")
+        }
+
+        const data = await response.json()
+
+        if (data.points && data.points.length > 0) {
+          setFrontierPoints(data.points)
+        } else {
+          setError("Nenhum ponto da fronteira retornado")
+        }
+      } catch (err: any) {
+        console.error("Erro ao buscar fronteira eficiente:", err)
+        setError(err.message || "Erro ao calcular fronteira eficiente")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchFrontierData()
+  }, [assets, startDate, endDate])
+
+  // Processar dados para o gráfico
+  const chartData = useMemo<ChartData | null>(() => {
     if (!analysisResult?.results?.performance || !analysisResult?.results?.alocacao?.alocacao) {
       return null
     }
@@ -126,94 +290,130 @@ export function EfficientFrontier() {
     const performance = analysisResult.results.performance
     const alocacaoData = analysisResult.results.alocacao.alocacao
     const desempenho = analysisResult.results.desempenho || {}
-
-    // Calcular retorno e volatilidade da carteira atual
-    const returns: number[] = []
-    for (let i = 1; i < performance.length; i++) {
-      const ret = (performance[i].portfolio - performance[i - 1].portfolio) / performance[i - 1].portfolio
-      returns.push(ret)
-    }
-
-    const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length
-    const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length
-    const dailyVol = Math.sqrt(variance)
-    
-    // Anualizar
-    const annualReturn = (desempenho.retorno_total_pct || (avgReturn * 252 * 100))
-    const annualVol = dailyVol * Math.sqrt(252) * 100
-
-    // Obter estatísticas dos ativos do backend (dados reais)
     const backendAssetStats = analysisResult.results.asset_stats
+
+    // Usar dados do backend para retorno e volatilidade da carteira
+    // O backend já calcula CAGR e volatilidade anualizada corretamente
+    let annualReturn = desempenho["retorno_anualizado_%"] ?? 0
+    let annualVol = desempenho["volatilidade_anual_%"] ?? 0
     
+    // Fallback: calcular se não temos os dados do backend
+    if (annualReturn === 0 && annualVol === 0 && performance.length > 1) {
+      const returns: number[] = []
+      for (let i = 1; i < performance.length; i++) {
+        const ret = (performance[i].portfolio - performance[i - 1].portfolio) / performance[i - 1].portfolio
+        returns.push(ret)
+      }
+      
+      const tradingDays = returns.length
+      const totalReturn = (performance[performance.length - 1].portfolio / performance[0].portfolio) - 1
+      const yearsInPeriod = tradingDays / 252
+      
+      annualReturn = yearsInPeriod > 0 
+        ? (Math.pow(1 + totalReturn, 1 / yearsInPeriod) - 1) * 100 
+        : 0
+      
+      const avgDailyReturn = returns.reduce((a, b) => a + b, 0) / returns.length
+      const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgDailyReturn, 2), 0) / (returns.length - 1)
+      const dailyVol = Math.sqrt(variance)
+      annualVol = dailyVol * Math.sqrt(252) * 100
+    }
+    
+    const currentSharpe = annualVol > 0 ? (annualReturn - riskFreeRate * 100) / annualVol : 0
+    
+    console.log("[EfficientFrontier] Portfolio Stats from backend:", {
+      annualReturn: annualReturn.toFixed(2) + "%",
+      annualVol: annualVol.toFixed(2) + "%",
+      sharpe: currentSharpe.toFixed(2)
+    })
+
     // Obter ativos individuais - usar dados do backend se disponíveis
     const individualAssets = Object.keys(alocacaoData)
       .filter(a => a !== "Caixa" && alocacaoData[a]?.percentual > 0)
       .map(asset => {
         const ticker = asset.replace(".SA", "")
         
-        // Primeiro tentar dados reais do backend
+        // Tentar dados reais do backend
         const backendStats = backendAssetStats?.find((s: { asset: string }) => s.asset === ticker)
         if (backendStats) {
+          const sharpe = backendStats.volatility > 0 
+            ? (backendStats.return - riskFreeRate * 100) / backendStats.volatility 
+            : 0
           return {
             name: ticker,
             volatility: backendStats.volatility,
             return: backendStats.return,
+            sharpe,
             type: "asset",
           }
         }
         
-        // Fallback para dados hardcoded
-        const stats = assetStats[ticker] || { volatility: 30, return: 10 }
+        // Fallback para valores padrão
         return {
           name: ticker,
-          volatility: stats.volatility,
-          return: stats.return,
+          volatility: 30,
+          return: 15,
+          sharpe: (15 - riskFreeRate * 100) / 30,
           type: "asset",
         }
       })
 
-    // Gerar fronteira eficiente baseada nos ativos
-    const minVol = Math.min(...individualAssets.map(a => a.volatility), annualVol) * 0.9
-    const maxVol = Math.max(...individualAssets.map(a => a.volatility)) * 1.1
-    const maxRet = Math.max(...individualAssets.map(a => a.return), annualReturn) * 1.2
-
-    const frontierData = []
-    for (let i = 0; i <= 100; i++) {
-      const t = i / 100
-      const volatility = minVol + t * (maxVol - minVol) * 0.7
-      // Curva da fronteira eficiente
-      const returnValue = (minVol / volatility) * 5 + Math.sqrt(t) * maxRet * 0.8
-      frontierData.push({
-        volatility: Number(volatility.toFixed(2)),
-        return: Number(Math.min(returnValue, maxRet).toFixed(2)),
-        type: "frontier",
-      })
+    // Converter pontos da fronteira do backend para formato do gráfico
+    // Retornos e volatilidades vêm como decimais (ex: 0.15 = 15%)
+    // O backend agora calcula a fronteira eficiente real usando otimização
+    const frontierData = frontierPoints.map(point => ({
+      volatility: point.vol_annual * 100, // Converter para percentual
+      return: point.ret_annual * 100,     // Converter para percentual
+      sharpe: point.sharpe,
+      type: "frontier",
+    })).sort((a, b) => a.volatility - b.volatility) // Ordenar por volatilidade
+    
+    // Encontrar o ponto de mínima volatilidade
+    let minVarPoint = frontierData.length > 0 
+      ? frontierData.reduce((min, point) => point.volatility < min.volatility ? point : min, frontierData[0])
+      : { volatility: annualVol, return: annualReturn, sharpe: currentSharpe }
+    
+    // Encontrar ponto de máximo Sharpe
+    let maxSharpePoint = frontierData.length > 0
+      ? frontierData.reduce((max, point) => point.sharpe > max.sharpe ? point : max, frontierData[0])
+      : { volatility: annualVol, return: annualReturn, sharpe: currentSharpe }
+    
+    // Se não temos dados da API, usar valores placeholder
+    if (frontierData.length === 0) {
+      minVarPoint = { volatility: annualVol, return: annualReturn, sharpe: currentSharpe }
+      maxSharpePoint = { volatility: annualVol, return: annualReturn, sharpe: currentSharpe }
     }
 
-    // Taxa livre de risco (CDI ~ 12%)
-    const riskFreeRate = 12
+    // Calcular domínios do gráfico
+    // Incluir fronteira, ativos individuais E carteira atual
+    const frontierVolatilities = frontierData.length > 0 
+      ? frontierData.map(p => p.volatility) 
+      : []
+    const frontierReturns = frontierData.length > 0 
+      ? frontierData.map(p => p.return) 
+      : []
+    
+    const allVolatilities = [
+      ...individualAssets.map(a => a.volatility),
+      ...frontierVolatilities,
+      annualVol // Incluir volatilidade da carteira atual
+    ]
+    const allReturns = [
+      ...individualAssets.map(a => a.return),
+      ...frontierReturns,
+      annualReturn // Incluir retorno da carteira atual
+    ]
 
-    // Calcular Sharpe da carteira atual
-    const currentSharpe = annualVol > 0 ? (annualReturn - riskFreeRate) / annualVol : 0
+    // Adicionar margem para visualização (15%)
+    const maxVol = Math.max(...allVolatilities) * 1.15
+    const maxRet = Math.max(...allReturns) * 1.15
+    const minRet = Math.min(...allReturns, 0) - 5
 
-    // Encontrar ponto de máximo Sharpe na fronteira
-    let maxSharpePoint = { volatility: annualVol, return: annualReturn, sharpe: currentSharpe }
-    frontierData.forEach(point => {
-      const sharpe = point.volatility > 0 ? (point.return - riskFreeRate) / point.volatility : 0
-      if (sharpe > maxSharpePoint.sharpe) {
-        maxSharpePoint = { ...point, sharpe }
-      }
-    })
-
-    // Encontrar ponto de mínima volatilidade
-    const minVarPoint = frontierData.reduce((min, point) => 
-      point.volatility < min.volatility ? point : min, frontierData[0])
-
-    // Gerar CAL (Capital Allocation Line)
+    // Gerar CAL (Capital Allocation Line) baseada no máximo Sharpe
     const calData = []
     for (let i = 0; i <= 100; i++) {
       const volatility = (i / 100) * maxVol
-      const returnValue = riskFreeRate + maxSharpePoint.sharpe * volatility
+      const returnValue = riskFreeRate * 100 + maxSharpePoint.sharpe * volatility
       calData.push({
         volatility: Number(volatility.toFixed(2)),
         return: Number(returnValue.toFixed(2)),
@@ -234,22 +434,22 @@ export function EfficientFrontier() {
       },
       maxSharpe: {
         name: `Máximo Sharpe (${maxSharpePoint.sharpe.toFixed(2)})`,
-        volatility: maxSharpePoint.volatility,
-        return: maxSharpePoint.return,
+        volatility: Number(maxSharpePoint.volatility.toFixed(2)),
+        return: Number(maxSharpePoint.return.toFixed(2)),
         sharpe: maxSharpePoint.sharpe,
         type: "maxSharpe",
       },
       minVar: {
         name: `Mínima Volatilidade (${minVarPoint.volatility.toFixed(1)}%)`,
-        volatility: minVarPoint.volatility,
-        return: minVarPoint.return,
+        volatility: Number(minVarPoint.volatility.toFixed(2)),
+        return: Number(minVarPoint.return.toFixed(2)),
         type: "minVar",
       },
-      domainX: [0, Math.ceil(maxVol / 10) * 10],
-      domainY: [Math.floor(Math.min(...individualAssets.map(a => a.return), -10) / 10) * 10, 
-                Math.ceil(maxRet / 10) * 10],
+      domainX: [0, Math.ceil(maxVol / 10) * 10] as [number, number],
+      domainY: [Math.floor(minRet / 10) * 10, Math.ceil(maxRet / 10) * 10] as [number, number],
+      riskFreeRatePct: riskFreeRate * 100, // CDI em percentual
     }
-  }, [analysisResult])
+  }, [analysisResult, frontierPoints, riskFreeRate])
 
   if (!chartData) {
     return (
@@ -269,72 +469,63 @@ export function EfficientFrontier() {
 
   return (
     <Card className="lg:col-span-2 border-border">
-      <CardHeader>
+      <CardHeader className="pb-2">
         <CardTitle className="text-foreground">Fronteira Eficiente (Premissa: Retornos Históricos)</CardTitle>
         <CardDescription className="text-muted-foreground">
           Relação risco-retorno e otimização de portfólio
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[500px]">
+        <div className="h-[600px]" onMouseLeave={() => setActiveTooltip(null)}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart margin={{ top: 20, right: 30, bottom: 60, left: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis
                 type="number"
                 dataKey="volatility"
                 name="Volatilidade"
-                unit="%"
                 domain={chartData.domainX}
                 stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
+                fontSize={11}
                 tickFormatter={(value) => `${value.toFixed(0)}%`}
+                tickCount={8}
               >
                 <Label
                   value="Volatilidade Anualizada (Risco)"
-                  offset={-20}
+                  offset={-10}
                   position="insideBottom"
-                  style={{ fontSize: "14px", fill: "hsl(var(--foreground))" }}
+                  style={{ fontSize: "12px", fill: "hsl(var(--muted-foreground))", fontWeight: 500 }}
                 />
               </XAxis>
               <YAxis
                 type="number"
                 dataKey="return"
                 name="Retorno"
-                unit="%"
                 domain={chartData.domainY}
                 stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
+                fontSize={11}
                 tickFormatter={(value) => `${value.toFixed(0)}%`}
+                tickCount={8}
               >
                 <Label
-                  value="Retorno Anualizado Esperado"
+                  value="Retorno Anualizado"
                   angle={-90}
                   position="insideLeft"
-                  style={{ fontSize: "14px", textAnchor: "middle", fill: "hsl(var(--foreground))" }}
+                  offset={-10}
+                  style={{ fontSize: "12px", textAnchor: "middle", fill: "hsl(var(--muted-foreground))", fontWeight: 500 }}
                 />
               </YAxis>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ paddingTop: "20px" }}
-                iconType="plainline"
-                formatter={(value) => {
-                  if (value === "Fronteira Eficiente")
-                    return <span className="text-sm text-foreground">— Fronteira Eficiente</span>
-                  if (value === "Capital Allocation Line (CAL)")
-                    return <span className="text-sm text-foreground">- - - Capital Allocation Line (CAL)</span>
-                  if (value === "Ativos Individuais")
-                    return <span className="text-sm text-foreground">▪ Ativos Individuais</span>
-                  if (value.includes("Máximo Sharpe"))
-                    return <span className="text-sm text-foreground">★ {value}</span>
-                  if (value.includes("Mínima Volatilidade"))
-                    return <span className="text-sm text-foreground">● {value}</span>
-                  if (value === "Carteira Atual (Backtest)")
-                    return <span className="text-sm text-foreground">◆ Carteira Atual (Backtest)</span>
-                  return value
-                }}
+              <ZAxis range={[200, 200]} />
+
+              {/* Risk-Free Rate Line (CDI dinâmico do backend) */}
+              <ReferenceLine 
+                y={chartData.riskFreeRatePct} 
+                stroke="#22C55E" 
+                strokeWidth={1.5}
+                strokeDasharray="8 4"
               />
 
+              {/* CAL - Capital Allocation Line */}
               <Line
                 type="monotone"
                 dataKey="return"
@@ -343,10 +534,26 @@ export function EfficientFrontier() {
                 strokeWidth={2}
                 strokeDasharray="8 4"
                 dot={false}
+                activeDot={{ 
+                  r: 6, 
+                  fill: "#F59E0B", 
+                  stroke: "#fff", 
+                  strokeWidth: 2,
+                  onMouseEnter: (e: any) => {
+                    const point = e.payload
+                    setActiveTooltip({ 
+                      x: e.cx + 60, 
+                      y: e.cy, 
+                      data: { ...point, type: 'cal', name: 'Capital Allocation Line' } 
+                    })
+                  },
+                  onMouseLeave: () => setActiveTooltip(null)
+                }}
                 name="Capital Allocation Line (CAL)"
                 isAnimationActive={false}
               />
 
+              {/* Fronteira Eficiente */}
               <Line
                 type="monotone"
                 dataKey="return"
@@ -354,54 +561,189 @@ export function EfficientFrontier() {
                 stroke="#1F2937"
                 strokeWidth={3}
                 dot={false}
+                activeDot={{ 
+                  r: 6, 
+                  fill: "#1F2937", 
+                  stroke: "#fff", 
+                  strokeWidth: 2,
+                  onMouseEnter: (e: any) => {
+                    const point = e.payload
+                    setActiveTooltip({ 
+                      x: e.cx + 60, 
+                      y: e.cy, 
+                      data: { ...point, type: 'frontier', name: 'Fronteira Eficiente' } 
+                    })
+                  },
+                  onMouseLeave: () => setActiveTooltip(null)
+                }}
                 name="Fronteira Eficiente"
-                isAnimationActive={true}
+                isAnimationActive={false}
               />
 
-              <Scatter name="Ativos Individuais" data={chartData.individualAssets} fill="#9CA3AF" shape={<CustomShape />} />
-
-              <Scatter
-                name={chartData.maxSharpe.name}
-                data={[chartData.maxSharpe]}
-                fill="#FCD34D"
-                shape={<CustomShape />}
+              {/* Ativos Individuais */}
+              <Scatter 
+                name="Ativos Individuais" 
+                data={chartData.individualAssets} 
+                fill="#9CA3AF"
+                isAnimationActive={false}
+                shape={(props: any) => {
+                  const { cx, cy, payload } = props
+                  if (cx === undefined || cy === undefined) return <g />
+                  return (
+                    <g 
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={(e) => setActiveTooltip({ x: e.clientX, y: e.clientY, data: payload })}
+                      onMouseLeave={() => setActiveTooltip(null)}
+                    >
+                      <circle cx={cx} cy={cy} r={15} fill="transparent" />
+                      <rect x={cx-7} y={cy-7} width={14} height={14} fill="#9CA3AF" stroke="#4B5563" strokeWidth={1.5} />
+                    </g>
+                  )
+                }}
               />
 
+              {/* Carteira Atual - com área de hover maior */}
               <Scatter
-                name={chartData.minVar.name}
-                data={[chartData.minVar]}
-                fill="#FCD34D"
-                shape={<CustomShape />}
-              />
-
-              <Scatter
-                name="Carteira Atual (Backtest)"
+                name="Carteira Atual"
                 data={[chartData.currentPortfolio]}
                 fill="#EF4444"
-                shape={<CustomShape />}
+                isAnimationActive={false}
+                shape={(props: any) => {
+                  const { cx, cy } = props
+                  if (cx === undefined || cy === undefined) return <g />
+                  return (
+                    <g 
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={(e) => setActiveTooltip({ x: e.clientX, y: e.clientY, data: chartData.currentPortfolio })}
+                      onMouseLeave={() => setActiveTooltip(null)}
+                    >
+                      <circle cx={cx} cy={cy} r={25} fill="transparent" />
+                      <polygon points={`${cx},${cy-10} ${cx+10},${cy} ${cx},${cy+10} ${cx-10},${cy}`} fill="#EF4444" stroke="#991B1B" strokeWidth={2} />
+                    </g>
+                  )
+                }}
+              />
+
+              {/* Mínima Volatilidade - com área de hover maior */}
+              <Scatter
+                name="Mínima Volatilidade"
+                data={[chartData.minVar]}
+                fill="#3B82F6"
+                isAnimationActive={false}
+                shape={(props: any) => {
+                  const { cx, cy } = props
+                  if (cx === undefined || cy === undefined) return <g />
+                  return (
+                    <g 
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={(e) => setActiveTooltip({ x: e.clientX, y: e.clientY, data: chartData.minVar })}
+                      onMouseLeave={() => setActiveTooltip(null)}
+                    >
+                      <circle cx={cx} cy={cy} r={25} fill="transparent" />
+                      <circle cx={cx} cy={cy} r={10} fill="#3B82F6" stroke="#1E40AF" strokeWidth={2} />
+                    </g>
+                  )
+                }}
+              />
+
+              {/* Máximo Sharpe - com área de hover maior */}
+              <Scatter
+                name="Máximo Sharpe"
+                data={[chartData.maxSharpe]}
+                fill="#10B981"
+                isAnimationActive={false}
+                shape={(props: any) => {
+                  const { cx, cy } = props
+                  if (cx === undefined || cy === undefined) return <g />
+                  return (
+                    <g 
+                      style={{ cursor: 'pointer' }}
+                      onMouseEnter={(e) => setActiveTooltip({ x: e.clientX, y: e.clientY, data: chartData.maxSharpe })}
+                      onMouseLeave={() => setActiveTooltip(null)}
+                    >
+                      <circle cx={cx} cy={cy} r={25} fill="transparent" />
+                      <polygon points={`${cx},${cy-12} ${cx+5},${cy-5} ${cx+12},${cy} ${cx+5},${cy+5} ${cx},${cy+12} ${cx-5},${cy+5} ${cx-12},${cy} ${cx-5},${cy-5}`} fill="#10B981" stroke="#047857" strokeWidth={2} />
+                    </g>
+                  )
+                }}
               />
             </ComposedChart>
           </ResponsiveContainer>
+          
+          {/* Tooltip customizado que segue o mouse */}
+          {activeTooltip && (
+            <div 
+              className="fixed z-[9999] pointer-events-none bg-card border-2 border-border rounded-lg p-3 shadow-2xl min-w-[200px]"
+              style={{ 
+                left: activeTooltip.x + 15, 
+                top: activeTooltip.y - 10,
+              }}
+            >
+              <p className={`font-bold text-sm mb-2 pb-2 border-b border-border ${
+                activeTooltip.data.type === 'current' ? 'text-red-500' :
+                activeTooltip.data.type === 'maxSharpe' ? 'text-emerald-500' :
+                activeTooltip.data.type === 'minVar' ? 'text-blue-500' :
+                activeTooltip.data.type === 'frontier' ? 'text-gray-800 dark:text-gray-200' :
+                activeTooltip.data.type === 'cal' ? 'text-orange-500' :
+                'text-gray-500'
+              }`}>
+                {activeTooltip.data.type === 'current' ? '◆ Carteira Atual' :
+                 activeTooltip.data.type === 'maxSharpe' ? '★ Máximo Sharpe' :
+                 activeTooltip.data.type === 'minVar' ? '● Mínima Volatilidade' :
+                 activeTooltip.data.type === 'frontier' ? '● Fronteira Eficiente' :
+                 activeTooltip.data.type === 'cal' ? '- - Capital Allocation Line' :
+                 `■ ${activeTooltip.data.name}`}
+              </p>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Retorno Anual:</span>
+                  <span className="text-sm font-bold text-green-600">{activeTooltip.data.return?.toFixed(2)}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Volatilidade:</span>
+                  <span className="text-sm font-bold text-orange-500">{activeTooltip.data.volatility?.toFixed(2)}%</span>
+                </div>
+                {activeTooltip.data.sharpe !== undefined && (
+                  <div className="flex justify-between items-center pt-2 border-t border-border">
+                    <span className="text-xs text-muted-foreground">Sharpe Ratio:</span>
+                    <span className="text-sm font-bold text-amber-500">{activeTooltip.data.sharpe.toFixed(3)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-border">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Carteira Atual (Backtest)</p>
-            <p className="text-sm font-semibold text-foreground">
-              {chartData.currentPortfolio.volatility.toFixed(1)}% vol | {chartData.currentPortfolio.return.toFixed(1)}% ret
-            </p>
+        {/* Legenda - Estilo padronizado com CVaR */}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-lg bg-muted/50 border border-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="h-[3px] w-6 rounded-full bg-gray-700 dark:bg-gray-300" />
+            <span className="text-sm text-muted-foreground">Fronteira</span>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Mínima Volatilidade</p>
-            <p className="text-sm font-semibold text-foreground">
-              {chartData.minVar.volatility.toFixed(2)}% vol | {chartData.minVar.return.toFixed(1)}% ret
-            </p>
+          <div className="flex items-center gap-2">
+            <div className="h-[3px] w-6 rounded-full" style={{ background: 'repeating-linear-gradient(90deg, #F59E0B, #F59E0B 3px, transparent 3px, transparent 6px)' }} />
+            <span className="text-sm text-muted-foreground">CAL</span>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Máximo Sharpe</p>
-            <p className="text-sm font-semibold text-amber-500">
-              {chartData.maxSharpe.volatility.toFixed(1)}% vol | {chartData.maxSharpe.return.toFixed(1)}% ret | SR: {chartData.maxSharpe.sharpe.toFixed(2)}
-            </p>
+          <div className="flex items-center gap-2">
+            <div className="h-[3px] w-6 rounded-full" style={{ background: 'repeating-linear-gradient(90deg, #22C55E, #22C55E 3px, transparent 3px, transparent 6px)' }} />
+            <span className="text-sm"><span className="text-muted-foreground">CDI:</span> <span className="font-semibold text-green-600">{chartData.riskFreeRatePct.toFixed(0)}%</span></span>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-sm bg-gray-400" />
+            <span className="text-sm text-muted-foreground">Ativos</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rotate-45 bg-red-500" />
+            <span className="text-sm text-muted-foreground">Carteira</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-blue-500" />
+            <span className="text-sm text-muted-foreground">Mín. Vol</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 bg-emerald-500" style={{ clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }} />
+            <span className="text-sm text-muted-foreground">Máx. Sharpe</span>
           </div>
         </div>
       </CardContent>

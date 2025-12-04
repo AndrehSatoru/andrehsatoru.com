@@ -5,16 +5,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useDashboardData } from "@/lib/dashboard-data-context"
 
 // Função para determinar a cor baseada na correlação
+// Paleta: Verde (baixa correlação = boa diversificação) -> Amarelo -> Vermelho (alta correlação)
 const getCorrelationColor = (value: number) => {
-  if (value >= 0.8) return "bg-emerald-600 text-white"
-  if (value >= 0.6) return "bg-emerald-500 text-white"
-  if (value >= 0.4) return "bg-emerald-400 text-white"
-  if (value >= 0.2) return "bg-emerald-300 text-slate-900"
-  if (value >= 0) return "bg-emerald-200 text-slate-900"
-  if (value >= -0.2) return "bg-red-200 text-slate-900"
-  if (value >= -0.4) return "bg-red-300 text-slate-900"
-  if (value >= -0.6) return "bg-red-400 text-white"
-  if (value >= -0.8) return "bg-red-500 text-white"
+  // Valor absoluto para considerar correlações negativas como também significativas
+  const absValue = Math.abs(value)
+  
+  // Correlação muito baixa (boa diversificação)
+  if (absValue < 0.2) return "bg-emerald-600 text-white"
+  if (absValue < 0.3) return "bg-emerald-500 text-white"
+  if (absValue < 0.4) return "bg-green-400 text-slate-900"
+  
+  // Correlação moderada
+  if (absValue < 0.5) return "bg-lime-400 text-slate-900"
+  if (absValue < 0.6) return "bg-yellow-300 text-slate-900"
+  if (absValue < 0.7) return "bg-amber-300 text-slate-900"
+  
+  // Correlação alta (ruim para diversificação)
+  if (absValue < 0.8) return "bg-orange-400 text-slate-900"
+  if (absValue < 0.9) return "bg-red-500 text-white"
+  
+  // Correlação muito alta (>=0.9, incluindo 1.0 da diagonal)
   return "bg-red-600 text-white"
 }
 
@@ -161,7 +171,7 @@ export function CorrelationMatrix() {
       <Card>
         <CardHeader>
           <CardTitle>Matriz de Correlação</CardTitle>
-          <CardDescription>Correlação entre os retornos dos ativos da carteira</CardDescription>
+          <CardDescription>Correlação linear entre os ativos da carteira</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
           <p className="text-muted-foreground text-sm">Envie operações para visualizar a matriz de correlação</p>
@@ -177,7 +187,7 @@ export function CorrelationMatrix() {
       <CardHeader>
         <CardTitle>Matriz de Correlação</CardTitle>
         <CardDescription>
-          Correlação entre os retornos dos ativos da carteira
+          Correlação linear entre os ativos da carteira
           {matrixData.source === 'estimated' && (
             <span className="ml-2 text-amber-600">(valores estimados)</span>
           )}
@@ -185,7 +195,7 @@ export function CorrelationMatrix() {
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          <div className="inline-block min-w-full">
+          <div className="flex justify-center">
             <div className="grid gap-1" style={{ gridTemplateColumns: `80px repeat(${assets.length}, 60px)` }}>
               {/* Header vazio no canto */}
               <div className="h-12" />
@@ -226,35 +236,16 @@ export function CorrelationMatrix() {
           </div>
         </div>
 
-        {/* Legenda */}
-        <div className="mt-6 flex items-center justify-center gap-6 text-xs">
+        {/* Legenda - Apenas estatísticas */}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-lg bg-muted/50 border border-border px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-red-500" />
-            <span className="text-muted-foreground">Correlação Negativa</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-emerald-200" />
-            <span className="text-muted-foreground">Correlação Baixa</span>
+            <span className="text-sm"><span className="text-muted-foreground">Média:</span> <span className="font-semibold">{avgCorrelation.toFixed(2)}</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-emerald-500" />
-            <span className="text-muted-foreground">Correlação Alta</span>
+            <span className="text-sm"><span className="text-muted-foreground">Menor:</span> <span className="font-semibold text-amber-600">{minCorrelation.toFixed(2)}</span></span>
           </div>
-        </div>
-
-        {/* Estatísticas */}
-        <div className="mt-6 grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-foreground">{avgCorrelation.toFixed(2)}</div>
-            <div className="text-xs text-muted-foreground">Correlação Média</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-emerald-600">{maxCorrelation.toFixed(2)}</div>
-            <div className="text-xs text-muted-foreground">Maior Correlação</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-amber-600">{minCorrelation.toFixed(2)}</div>
-            <div className="text-xs text-muted-foreground">Menor Correlação</div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm"><span className="text-muted-foreground">Maior:</span> <span className="font-semibold text-emerald-600">{maxCorrelation.toFixed(2)}</span></span>
           </div>
         </div>
       </CardContent>

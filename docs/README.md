@@ -40,6 +40,23 @@ Para engenheiros de DevOps e administradores de sistema.
 
 ## ✨ Novidades Recentes
 
+### 📊 Correções de Gráficos e Performance (v0.8.0 - Dez 2025)
+- **Gráfico de Alocação corrigido**: Evolução percentual agora preenche corretamente de 0% a 100%
+- **Normalização robusta**: Dados convertidos para frações com soma exata = 1
+- **Timeout aumentado**: API timeout aumentado de 30s para 120s para portfólios grandes
+- **Scroll bar padronizado**: Brush consistente em todos os gráficos de evolução temporal
+
+### 💰 Melhorias na Página de Operações (v0.7.0 - Dez 2025)
+- **Formatação de moeda brasileira**: Valores exibidos no formato R$ 100.000,00 com separadores corretos
+- **Componente CurrencyInput**: Input inteligente que permite digitação livre e formata ao sair do campo
+- **Tipos Compra/Venda capitalizados**: Labels exibidos como "Compra" e "Venda" (iniciais maiúsculas)
+- **Exception handling robusto**: Sistema de erros tipados (validation, network, server, unknown)
+- **Validações detalhadas**: Mensagens específicas por operação com erros listados
+- **Tratamento HTTP completo**: Códigos 400, 401, 403, 404, 422, 500, 502, 503, 504 tratados
+- **Timeout de requisição**: AbortController com 60s de timeout
+- **UI de erros melhorada**: Cores por tipo, ícones, lista de detalhes e suporte dark mode
+- **Navegação corrigida**: Botão "Voltar ao dashboard" usando Link do Next.js
+
 ### 📊 6 Novas Análises Avançadas (v1.7.0 / v0.6.0 - Nov 2025)
 - **Análise CAPM**: Alpha, Beta, Sharpe, Treynor e R² por ativo com gráfico scatter
 - **Otimização Markowitz**: Fronteira eficiente com 3 portfólios ótimos e pesos sugeridos

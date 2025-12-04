@@ -1,42 +1,21 @@
 "use client"
 
 import { useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  LineChart,
-  Line,
+  Area,
+  AreaChart,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   ReferenceLine,
   Brush,
 } from "recharts"
 import { usePeriod, filterDataByPeriod } from "@/lib/period-context"
 import { useDashboardData } from "@/lib/dashboard-data-context"
-
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3">
-        <p className="text-sm font-medium mb-2 text-gray-900 dark:text-gray-100">{payload[0].payload.date}</p>
-        <div className="space-y-1">
-          <p className="text-sm text-gray-900 dark:text-gray-100">
-            <span className="font-medium">Retorno Anualizado:</span>{" "}
-            <span className="font-semibold">{payload[0]?.value?.toFixed(1) || 0}%</span>
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            <span className="font-medium">CDI+2%:</span>{" "}
-            <span className="font-semibold">{payload[1]?.value?.toFixed(1) || 0}%</span>
-          </p>
-        </div>
-      </div>
-    )
-  }
-  return null
-}
+import { DASHBOARD_COLORS } from "@/lib/colors"
 
 export function RollingReturns() {
   const { period } = usePeriod()
@@ -97,11 +76,12 @@ export function RollingReturns() {
 
   if (!analysisResult || rollingReturnsData.length === 0) {
     return (
-      <Card>
+      <Card className="border-border">
         <CardHeader>
-          <CardTitle className="text-balance">Retorno Anualizado</CardTitle>
+          <CardTitle className="text-foreground">Retorno Anualizado</CardTitle>
+          <CardDescription className="text-muted-foreground">Comparação com benchmark (CDI + 2%)</CardDescription>
         </CardHeader>
-        <CardContent className="flex items-center justify-center h-[400px]">
+        <CardContent className="flex items-center justify-center h-[380px]">
           <p className="text-muted-foreground text-sm">Envie operações para visualizar os retornos anualizados</p>
         </CardContent>
       </Card>
@@ -109,97 +89,112 @@ export function RollingReturns() {
   }
 
   return (
-    <Card>
+    <Card className="border-border">
       <CardHeader>
-        <CardTitle className="text-balance">Retorno Anualizado</CardTitle>
-        <div className="flex flex-wrap gap-4 text-sm mt-2">
-          <div>
-            <span className="text-muted-foreground">Retorno Atual: </span>
-            <span className="font-semibold text-foreground">{currentReturn.toFixed(1)}%</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">CDI+2%: </span>
-            <span className="font-semibold">{currentBenchmark.toFixed(1)}%</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Outperformance: </span>
-            <span className={`font-semibold ${outperformance >= 0 ? "text-green-600" : "text-red-600"}`}>
-              {outperformance >= 0 ? "+" : ""}
-              {outperformance.toFixed(1)}%
-            </span>
-          </div>
-        </div>
+        <CardTitle className="text-foreground">Retorno Anualizado</CardTitle>
+        <CardDescription className="text-muted-foreground">
+          Retorno: {currentReturn.toFixed(1)}% | CDI+2%: {currentBenchmark.toFixed(1)}% | Outperformance: 
+          <span className={outperformance >= 0 ? "text-green-600" : "text-red-600"}>
+            {" "}{outperformance >= 0 ? "+" : ""}{outperformance.toFixed(1)}%
+          </span>
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <div style={{ width: "100%", height: 450 }}>
-          <ResponsiveContainer>
-            <LineChart data={filteredData} margin={{ top: 10, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-gray-700" />
-              <XAxis
-                dataKey="date"
-                stroke="#6b7280"
-                tick={{ fill: "#6b7280", fontSize: 12 }}
-                tickLine={{ stroke: "#e5e7eb" }}
-                label={{
-                  value: "Data",
-                  position: "insideBottom",
-                  offset: -10,
-                  style: { fill: "#6b7280", fontSize: 12 },
-                }}
-              />
-              <YAxis
-                stroke="#6b7280"
-                tick={{ fill: "#6b7280", fontSize: 12 }}
-                tickLine={{ stroke: "#e5e7eb" }}
-                tickFormatter={(value) => `${value}%`}
-                label={{
-                  value: "Retorno Anualizado",
-                  angle: -90,
-                  position: "insideLeft",
-                  style: { fill: "#6b7280", fontSize: 12 },
-                }}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{
-                  paddingTop: "20px",
-                }}
-                iconType="line"
-              />
-              <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="3 3" strokeWidth={1} />
-              <Line
-                type="monotone"
-                dataKey="portfolio"
-                stroke="#000000"
-                strokeWidth={2.5}
-                dot={false}
-                name="Retorno Anualizado"
-                className="dark:stroke-white"
-              />
-              <Line
-                type="monotone"
-                dataKey="benchmark"
-                stroke="#6b7280"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-                name="Benchmark (CDI+2%)"
-              />
-              <Brush
-                dataKey="date"
-                height={50}
-                stroke="#000000"
-                fill="hsl(var(--background))"
-                fillOpacity={0.3}
-                travellerWidth={12}
-              >
-                <LineChart data={filteredData}>
-                  <Line type="monotone" dataKey="portfolio" stroke="#000000" strokeWidth={1} dot={false} />
-                </LineChart>
-              </Brush>
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <ResponsiveContainer width="100%" height={380}>
+          <AreaChart data={filteredData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorRetorno" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={DASHBOARD_COLORS.portfolio} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={DASHBOARD_COLORS.portfolio} stopOpacity={0.05} />
+              </linearGradient>
+              <linearGradient id="colorBenchmarkRet" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={DASHBOARD_COLORS.benchmark} stopOpacity={0.2} />
+                <stop offset="95%" stopColor={DASHBOARD_COLORS.benchmark} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis
+              dataKey="date"
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => {
+                const [year, month] = value.split('-')
+                return `${month}/${year.slice(2)}`
+              }}
+            />
+            <YAxis
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              tickLine={false}
+              axisLine={false}
+              width={45}
+              tickFormatter={(value) => `${value}%`}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "white",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "8px",
+                color: "hsl(var(--foreground))",
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+              }}
+              labelFormatter={(value) => {
+                const [year, month] = value.split('-')
+                return `${month}/${year}`
+              }}
+              formatter={(value: number, name: string) => {
+                const label = name === "portfolio" ? "Retorno Anualizado" : "Benchmark (CDI+2%)"
+                return [`${value.toFixed(1)}%`, label]
+              }}
+            />
+            <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+            <Area
+              type="monotone"
+              dataKey="portfolio"
+              stroke={DASHBOARD_COLORS.portfolio}
+              fillOpacity={1}
+              fill="url(#colorRetorno)"
+              name="portfolio"
+              strokeWidth={2}
+            />
+            <Area
+              type="monotone"
+              dataKey="benchmark"
+              stroke={DASHBOARD_COLORS.benchmark}
+              fillOpacity={1}
+              fill="url(#colorBenchmarkRet)"
+              name="benchmark"
+              strokeWidth={1.5}
+            />
+            <Brush
+              dataKey="date"
+              height={40}
+              stroke="hsl(var(--border))"
+              fill="#f5f5f5"
+              fillOpacity={1}
+              travellerWidth={10}
+              startIndex={0}
+              endIndex={filteredData.length - 1}
+              tickFormatter={(value) => {
+                const [year, month] = value.split('-')
+                return `${month}/${year}`
+              }}
+            >
+              <AreaChart data={filteredData}>
+                <Area
+                  type="monotone"
+                  dataKey="portfolio"
+                  stroke={DASHBOARD_COLORS.portfolio}
+                  fill={DASHBOARD_COLORS.portfolio}
+                  fillOpacity={0.3}
+                  strokeWidth={1}
+                />
+              </AreaChart>
+            </Brush>
+          </AreaChart>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   )

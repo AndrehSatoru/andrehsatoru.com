@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, useMemo } from "react"
+import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useDashboardData } from "@/lib/dashboard-data-context"
 
@@ -179,84 +179,77 @@ export function BetaMatrix() {
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          <div className="inline-block min-w-full">
-            <div className="grid gap-1" style={{ gridTemplateColumns: "120px 100px 100px" }}>
-              {/* Headers */}
-              <div className="h-12 flex items-center justify-start text-xs font-semibold text-muted-foreground">
+          <div className="flex justify-center">
+            <div className="grid gap-1" style={{ gridTemplateColumns: `80px repeat(${betaData.items.length}, minmax(70px, 1fr))` }}>
+              {/* Header - Ativo */}
+              <div className="h-10 flex items-center justify-end pr-2 text-xs font-semibold text-muted-foreground">
                 Ativo
               </div>
-              <div className="h-12 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+              {/* Headers - Nomes dos ativos */}
+              {betaData.items.map((item) => (
+                <div
+                  key={`header-${item.asset}`}
+                  className="h-10 flex items-center justify-center text-xs font-semibold text-foreground"
+                >
+                  {item.asset}
+                </div>
+              ))}
+
+              {/* Linha Beta */}
+              <div className="h-12 flex items-center justify-end pr-2 text-xs font-semibold text-muted-foreground">
                 Beta (β)
               </div>
-              <div className="h-12 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+              {betaData.items.map((item) => (
+                <div
+                  key={`beta-${item.asset}`}
+                  className={`h-12 flex items-center justify-center text-sm font-bold rounded transition-all hover:scale-105 hover:shadow-md cursor-default ${getBetaColor(item.beta)}`}
+                  title={`Beta de ${item.asset}: ${item.beta.toFixed(2)}`}
+                >
+                  {item.beta.toFixed(2)}
+                </div>
+              ))}
+
+              {/* Linha R² */}
+              <div className="h-12 flex items-center justify-end pr-2 text-xs font-semibold text-muted-foreground">
                 R²
               </div>
-
-              {/* Linhas da matriz */}
               {betaData.items.map((item) => (
-                <Fragment key={`row-${item.asset}`}>
-                  {/* Nome do ativo */}
-                  <div
-                    key={`asset-${item.asset}`}
-                    className="h-12 flex items-center justify-start text-sm font-semibold text-foreground"
-                  >
-                    {item.asset}
-                  </div>
-
-                  {/* Beta */}
-                  <div
-                    key={`beta-${item.asset}`}
-                    className={`h-12 flex items-center justify-center text-sm font-bold rounded transition-all hover:scale-105 hover:shadow-md cursor-default ${getBetaColor(item.beta)}`}
-                    title={`Beta de ${item.asset}: ${item.beta.toFixed(2)}`}
-                  >
-                    {item.beta.toFixed(2)}
-                  </div>
-
-                  {/* R² */}
-                  <div
-                    key={`rsquared-${item.asset}`}
-                    className={`h-12 flex items-center justify-center text-sm font-bold rounded transition-all hover:scale-105 hover:shadow-md cursor-default ${getRSquaredColor(item.rSquared)}`}
-                    title={`R² de ${item.asset}: ${(item.rSquared * 100).toFixed(1)}%`}
-                  >
-                    {(item.rSquared * 100).toFixed(0)}%
-                  </div>
-                </Fragment>
+                <div
+                  key={`rsquared-${item.asset}`}
+                  className={`h-12 flex items-center justify-center text-sm font-bold rounded transition-all hover:scale-105 hover:shadow-md cursor-default ${getRSquaredColor(item.rSquared)}`}
+                  title={`R² de ${item.asset}: ${(item.rSquared * 100).toFixed(1)}%`}
+                >
+                  {(item.rSquared * 100).toFixed(0)}%
+                </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Legenda */}
-        <div className="mt-6 space-y-3">
-          <div className="flex items-center justify-center gap-6 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-emerald-600" />
-              <span className="text-muted-foreground">Beta Baixo (&lt;0.9)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-amber-400" />
-              <span className="text-muted-foreground">Beta Neutro (0.9-1.1)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-red-600" />
-              <span className="text-muted-foreground">Beta Alto (&gt;1.1)</span>
-            </div>
+        {/* Legenda - Estilo padronizado com CVaR */}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-lg bg-muted/50 border border-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded bg-emerald-600" />
+            <span className="text-sm text-muted-foreground">Beta Baixo (&lt;0.9)</span>
           </div>
-          <div className="text-center text-xs text-muted-foreground">
-            R² indica a qualidade do ajuste do modelo (quanto maior, mais confiável o beta)
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded bg-amber-400" />
+            <span className="text-sm text-muted-foreground">Beta Neutro (0.9-1.1)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded bg-red-600" />
+            <span className="text-sm text-muted-foreground">Beta Alto (&gt;1.1)</span>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <div className="flex items-center gap-2">
+            <span className="text-sm"><span className="text-muted-foreground">Beta Médio:</span> <span className="font-semibold">{betaData.avgBeta.toFixed(2)}</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm"><span className="text-muted-foreground">R² Médio:</span> <span className="font-semibold text-blue-600">{(betaData.avgRSquared * 100).toFixed(0)}%</span></span>
           </div>
         </div>
-
-        {/* Estatísticas */}
-        <div className="mt-6 grid grid-cols-2 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-foreground">{betaData.avgBeta.toFixed(2)}</div>
-            <div className="text-xs text-muted-foreground">Beta Médio da Carteira</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{(betaData.avgRSquared * 100).toFixed(0)}%</div>
-            <div className="text-xs text-muted-foreground">R² Médio</div>
-          </div>
+        <div className="mt-2 text-center text-xs text-muted-foreground">
+          R² indica a qualidade do ajuste do modelo (quanto maior, mais confiável o beta)
         </div>
       </CardContent>
     </Card>

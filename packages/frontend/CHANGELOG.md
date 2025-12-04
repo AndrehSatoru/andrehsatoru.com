@@ -1,5 +1,97 @@
 # Histórico de Mudanças - Frontend
 
+## [0.9.0] - 2025-12-03
+
+### 🚀 Novas Funcionalidades
+
+#### Matriz de Correlação de Distância (Distance Correlation)
+- ✨ **Novo componente**: `distance-correlation-matrix.tsx` para análise de dependência não-linear
+- 📊 **dCor (Distance Correlation)**: Detecta relações que a correlação de Pearson não captura
+- 🎨 **Escala de cores**: Verde (baixa dependência) → Vermelho (alta dependência)
+- 📈 **Estatísticas**: Média, mínimo e máximo da matriz
+
+#### TMFG (Triangulated Maximally Filtered Graph)
+- ✨ **Novo componente**: `tmfg-graph.tsx` para visualização de rede de correlações
+- 🔗 **Grafo interativo**: Visualização force-directed com SVG puro
+- 🎯 **Detecção de clusters**: Comunidades detectadas com algoritmo Louvain
+- 📏 **Métricas de centralidade**: Degree centrality e betweenness centrality
+- 🖱️ **Interatividade**: Hover em nós mostra detalhes (peso, cluster, centralidade)
+- 📊 **Estatísticas**: Número de ativos, conexões, clusters e hub central
+
+### 🔧 Melhorias
+
+#### Padronização Visual
+- 🎨 **Cores padronizadas**: Matrizes de correlação agora usam mesma escala (verde=baixo, vermelho=alto)
+- 📐 **Layout lado a lado**: Alocação de Ativos e TMFG Graph na mesma linha
+- 🏷️ **Títulos atualizados**: Descrições mais claras para todas as matrizes
+
+#### Componentes Atualizados
+- 📊 **Matriz de Correlação**: Agora usa valor absoluto para considerar correlações negativas
+- 🥧 **Alocação de Ativos**: Centralizado no card
+- 📈 **Beta Evolution**: Padronização de estilo
+
+---
+
+## [0.8.0] - 2025-12-02
+
+### 🚀 Melhorias
+
+#### Gráfico de Evolução da Alocação Percentual
+- 📊 **Correção completa**: Gráfico agora preenche corretamente de 0% a 100%
+- 🔢 **Normalização manual**: Dados convertidos para frações (0-1) com soma exata = 1
+- 📐 **Eixo Y fixo**: Domain [0, 1] com ticks em 0%, 25%, 50%, 75%, 100%
+- 🎨 **Scroll bar padronizado**: Brush com altura de 40px e estilo consistente
+- 📏 **Layout otimizado**: Margem superior zerada e linhas verticais removidas
+
+#### Timeout de API Aumentado
+- ⏱️ **Timeout 120s**: Aumentado de 30s para 120s para operações longas
+- 🔄 **Processamento robusto**: Suporte a portfólios maiores sem timeout
+
+### 🐛 Correções
+
+- 🐛 **stackOffset**: Removido `stackOffset="expand"` que não funcionava corretamente
+- 🐛 **Dados normalizados**: Ajuste do último ativo para garantir soma = 1 (correção de ponto flutuante)
+- 🐛 **allowDataOverflow**: Adicionado para evitar clipping de dados
+
+---
+
+## [0.7.0] - 2025-12-01
+
+### 🚀 Novas Funcionalidades
+
+#### Página de Envio de Operações Melhorada
+- ✨ **CurrencyInput**: Componente de input de moeda com formatação inteligente
+- 💰 **Formatação Brasileira**: Valores exibidos como R$ 100.000,00
+- ✏️ **Edição Fluida**: Ao focar, mostra valor numérico simples; ao sair, formata
+- 🏷️ **Labels Capitalizados**: "Compra" e "Venda" em vez de "compra" e "venda"
+
+#### Sistema de Erros Tipados
+- 🎯 **Tipos de Erro**: validation, network, server, unknown
+- 📋 **Mensagens Específicas**: Erros listados por operação (ex: "Operação 2: Ticker é obrigatório")
+- 🎨 **UI Colorida**: Amarelo (validação), Laranja (rede), Vermelho (servidor)
+- 🌙 **Dark Mode**: Suporte completo para tema escuro nos alertas
+- ❌ **Botão Fechar**: Permite dispensar mensagens de erro
+
+### 🔧 Melhorias
+
+#### Validações Detalhadas
+- ✅ **Data inicial**: Não pode ser no futuro
+- ✅ **Data operação**: Não pode ser anterior à data inicial
+- ✅ **Ticker**: Validação de formato (4-6 caracteres alfanuméricos)
+- ✅ **Valor**: Não pode ser zero ou negativo
+
+#### Tratamento HTTP
+- 📡 **Códigos tratados**: 400, 401, 403, 404, 422, 500, 502, 503, 504
+- ⏱️ **Timeout 60s**: AbortController para cancelar requisições longas
+- 🔄 **Erros de Rede**: Mensagens claras para falhas de conexão
+
+### 🐛 Correções
+
+- 🔗 **Botão Voltar**: Substituído `<a>` por `<Link>` do Next.js para navegação correta
+- 🎨 **Hover Effect**: Adicionado efeito hover no botão "Voltar ao dashboard"
+
+---
+
 ## [0.6.0] - 2025-11-28
 
 ### 🚀 Novas Funcionalidades

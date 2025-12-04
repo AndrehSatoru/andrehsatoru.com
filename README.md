@@ -4,6 +4,19 @@ Uma plataforma full-stack para análise de risco, otimização de portfólio e a
 
 ## ✨ Novidades
 
+### 📊 Versão 0.8.0 - Correções de Gráficos (Dez 2025)
+
+- 📈 **Gráfico de Alocação corrigido**: Evolução percentual agora preenche de 0% a 100%
+- 🔢 **Normalização robusta**: Soma exata = 1 para evitar erros de ponto flutuante
+- ⏱️ **Timeout aumentado**: 30s → 120s para portfólios maiores
+- 🎨 **Scroll bar padronizado**: Brush consistente em gráficos temporais
+
+### 💰 Versão 0.7.0 - Melhorias na Página de Operações (Dez 2025)
+
+- 💰 **Formatação de moeda brasileira**: R$ 100.000,00 com separadores corretos
+- 🎯 **Sistema de erros tipados**: validation, network, server, unknown
+- ⏱️ **Timeout de requisição**: AbortController com 60s
+
 ### 📊 Versão 1.7.0 / 0.6.0 - 6 Novas Análises Avançadas
 
 Novos componentes de análise profissional para gestão de portfólio:

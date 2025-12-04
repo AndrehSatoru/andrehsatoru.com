@@ -496,6 +496,12 @@ class PortfolioAnalyzer:
         # Gerar matriz de correlação
         correlation_matrix = self._generate_correlation_matrix()
         
+        # Gerar matriz de distance correlation
+        distance_correlation_matrix = self._generate_distance_correlation_matrix()
+        
+        # Gerar grafo TMFG
+        tmfg_graph = self._generate_tmfg_graph()
+        
         # Gerar estatísticas dos ativos individuais (para fronteira eficiente)
         asset_stats = self._generate_asset_stats()
         
@@ -538,6 +544,8 @@ class PortfolioAnalyzer:
             'beta_evolution': beta_evolution,
             'beta_matrix': beta_matrix,
             'correlation_matrix': correlation_matrix,
+            'distance_correlation_matrix': distance_correlation_matrix,
+            'tmfg_graph': tmfg_graph,
             'asset_stats': asset_stats,
             'returns_distribution': returns_distribution,
             'monte_carlo': monte_carlo,
@@ -983,6 +991,298 @@ class PortfolioAnalyzer:
             
         except Exception as e:
             logging.warning(f"Erro ao calcular matriz de correlação: {e}")
+            return {}
+
+    def _generate_distance_correlation_matrix(self) -> dict:
+        """
+        Gera matriz de Distance Correlation entre os retornos dos ativos da carteira.
+        
+        A Distance Correlation (dCor) mede dependência estatística não-linear entre variáveis:
+        - 1.0: dependência perfeita (linear ou não-linear)
+        - 0.0: independência estatística completa
+        
+        Vantagens sobre Pearson:
+        - Detecta relações não-lineares
+        - dCor = 0 implica independência estatística
+        - Sempre não-negativa (0 a 1)
+        
+        Returns:
+            Dicionário com matriz de distance correlation e estatísticas
+        """
+        if not self.assets or len(self.assets) < 2:
+            return {}
+        
+        try:
+            from scipy.spatial.distance import pdist, squareform
+            
+            # Buscar preços dos ativos
+            asset_prices = self.data_loader.fetch_stock_prices(
+                assets=self.assets,
+                start_date=self.start_date.strftime('%Y-%m-%d'),
+                end_date=self.end_date.strftime('%Y-%m-%d')
+            )
+            
+            if asset_prices.empty:
+                return {}
+            
+            # Calcular retornos
+            returns = asset_prices.pct_change().dropna()
+            
+            if len(returns) < 30:
+                return {}
+            
+            # Filtrar apenas ativos que existem nos dados
+            available_assets = [a for a in self.assets if a in returns.columns]
+            
+            if len(available_assets) < 2:
+                return {}
+            
+            def distance_correlation(X: np.ndarray, Y: np.ndarray) -> float:
+                """Calcula distance correlation entre duas séries."""
+                n = len(X)
+                if n < 2:
+                    return 0.0
+                
+                # Matrizes de distância euclidiana
+                a = squareform(pdist(X.reshape(-1, 1)))
+                b = squareform(pdist(Y.reshape(-1, 1)))
+                
+                # Double centering (centralização dupla)
+                A = a - a.mean(axis=0, keepdims=True) - a.mean(axis=1, keepdims=True) + a.mean()
+                B = b - b.mean(axis=0, keepdims=True) - b.mean(axis=1, keepdims=True) + b.mean()
+                
+                # Distance covariance e variance
+                dcov2 = (A * B).sum() / (n * n)
+                dvar_X = (A * A).sum() / (n * n)
+                dvar_Y = (B * B).sum() / (n * n)
+                
+                # Distance correlation
+                if dvar_X > 0 and dvar_Y > 0:
+                    return float(np.sqrt(dcov2 / np.sqrt(dvar_X * dvar_Y)))
+                return 0.0
+            
+            # Calcular matriz de distance correlation
+            assets_clean = [a.replace('.SA', '') for a in available_assets]
+            n_assets = len(available_assets)
+            matrix = [[0.0] * n_assets for _ in range(n_assets)]
+            correlations = []
+            
+            for i, asset_i in enumerate(available_assets):
+                for j, asset_j in enumerate(available_assets):
+                    if i == j:
+                        matrix[i][j] = 1.0
+                    elif i < j:
+                        # Calcular distance correlation
+                        X = returns[asset_i].values
+                        Y = returns[asset_j].values
+                        dcor = distance_correlation(X, Y)
+                        dcor_rounded = round(dcor, 2)
+                        matrix[i][j] = dcor_rounded
+                        matrix[j][i] = dcor_rounded
+                        correlations.append(dcor_rounded)
+            
+            # Calcular estatísticas
+            if correlations:
+                avg_dcor = sum(correlations) / len(correlations)
+                max_dcor = max(correlations)
+                min_dcor = min(correlations)
+            else:
+                avg_dcor = max_dcor = min_dcor = 0
+            
+            return {
+                'assets': assets_clean,
+                'matrix': matrix,
+                'avg_correlation': round(float(avg_dcor), 2),
+                'max_correlation': round(float(max_dcor), 2),
+                'min_correlation': round(float(min_dcor), 2)
+            }
+            
+        except Exception as e:
+            logging.warning(f"Erro ao calcular matriz de distance correlation: {e}")
+            return {}
+
+    def _generate_tmfg_graph(self) -> dict:
+        """
+        Gera o Triangulated Maximally Filtered Graph (TMFG) da carteira.
+        
+        TMFG é um método de filtragem de grafos que:
+        - Mantém as relações mais significativas entre ativos
+        - Cria um grafo planar triangulado
+        - Usa 3n - 6 arestas para n ativos
+        
+        Returns:
+            Dicionário com nós, arestas e estatísticas do grafo
+        """
+        if not self.assets or len(self.assets) < 4:
+            return {}
+        
+        try:
+            import networkx as nx
+            from scipy.spatial.distance import squareform, pdist
+            
+            # Buscar preços dos ativos
+            asset_prices = self.data_loader.fetch_stock_prices(
+                assets=self.assets,
+                start_date=self.start_date.strftime('%Y-%m-%d'),
+                end_date=self.end_date.strftime('%Y-%m-%d')
+            )
+            
+            if asset_prices.empty:
+                return {}
+            
+            # Calcular retornos e correlação
+            returns = asset_prices.pct_change().dropna()
+            
+            if len(returns) < 30:
+                return {}
+            
+            available_assets = [a for a in self.assets if a in returns.columns]
+            
+            if len(available_assets) < 4:
+                return {}
+            
+            # Calcular matriz de correlação
+            corr_matrix = returns[available_assets].corr().values
+            n = len(available_assets)
+            
+            # Converter correlação para distância (quanto maior correlação, menor distância)
+            # d = sqrt(2 * (1 - rho))
+            distance_matrix = np.sqrt(2 * (1 - corr_matrix))
+            np.fill_diagonal(distance_matrix, 0)
+            
+            # Algoritmo TMFG simplificado usando Prim's MST + triangulação
+            def build_tmfg(dist_matrix, n_nodes):
+                """Constrói TMFG usando algoritmo guloso."""
+                G = nx.Graph()
+                G.add_nodes_from(range(n_nodes))
+                
+                # Converter distância de volta para similaridade para pesos
+                sim_matrix = 1 - (dist_matrix ** 2) / 2  # Correlação original
+                
+                # Passo 1: Encontrar tetraedro inicial (4 nós mais conectados)
+                # Encontrar os 4 nós com maior soma de correlações
+                node_strengths = np.sum(sim_matrix, axis=1)
+                initial_nodes = np.argsort(node_strengths)[-4:].tolist()
+                
+                # Adicionar todas as 6 arestas do tetraedro
+                for i in range(4):
+                    for j in range(i + 1, 4):
+                        n1, n2 = initial_nodes[i], initial_nodes[j]
+                        G.add_edge(n1, n2, weight=float(sim_matrix[n1, n2]))
+                
+                # Nós já adicionados
+                added_nodes = set(initial_nodes)
+                remaining_nodes = set(range(n_nodes)) - added_nodes
+                
+                # Passo 2: Adicionar nós restantes um por um
+                while remaining_nodes:
+                    best_node = None
+                    best_score = -np.inf
+                    best_triangle = None
+                    
+                    # Para cada nó restante, encontrar melhor triângulo para conectar
+                    for node in remaining_nodes:
+                        # Encontrar os 2 nós já adicionados mais correlacionados com este nó
+                        correlations = [(n, sim_matrix[node, n]) for n in added_nodes]
+                        correlations.sort(key=lambda x: x[1], reverse=True)
+                        
+                        if len(correlations) >= 2:
+                            n1, c1 = correlations[0]
+                            n2, c2 = correlations[1]
+                            score = c1 + c2 + sim_matrix[n1, n2]
+                            
+                            if score > best_score:
+                                best_score = score
+                                best_node = node
+                                best_triangle = (n1, n2)
+                    
+                    if best_node is not None and best_triangle is not None:
+                        n1, n2 = best_triangle
+                        G.add_edge(best_node, n1, weight=float(sim_matrix[best_node, n1]))
+                        G.add_edge(best_node, n2, weight=float(sim_matrix[best_node, n2]))
+                        added_nodes.add(best_node)
+                        remaining_nodes.remove(best_node)
+                    else:
+                        break
+                
+                return G
+            
+            # Construir TMFG
+            G = build_tmfg(distance_matrix, n)
+            
+            # Calcular métricas de centralidade
+            degree_centrality = nx.degree_centrality(G)
+            betweenness_centrality = nx.betweenness_centrality(G, weight='weight')
+            
+            # Detectar comunidades usando algoritmo de Louvain simplificado
+            try:
+                communities = nx.community.greedy_modularity_communities(G, weight='weight')
+                community_map = {}
+                for idx, comm in enumerate(communities):
+                    for node in comm:
+                        community_map[node] = idx
+            except:
+                community_map = {i: 0 for i in range(n)}
+            
+            # Preparar dados para o frontend
+            assets_clean = [a.replace('.SA', '') for a in available_assets]
+            
+            # Obter alocação atual do portfólio
+            allocation_data = self.analyze_allocation()
+            allocation_map = allocation_data.get('alocacao', {}) if allocation_data else {}
+            
+            # Nós com suas propriedades
+            nodes = []
+            for i, asset in enumerate(assets_clean):
+                # Obter peso na carteira se disponível
+                weight = 0
+                asset_sa = available_assets[i]
+                if asset_sa in allocation_map:
+                    weight = allocation_map[asset_sa].get('percentual', 0)
+                
+                nodes.append({
+                    'id': asset,
+                    'group': int(community_map.get(i, 0)),
+                    'degree': round(degree_centrality.get(i, 0), 3),
+                    'betweenness': round(betweenness_centrality.get(i, 0), 3),
+                    'weight': round(weight, 1)  # Percentual na carteira
+                })
+            
+            # Arestas com pesos (correlação)
+            edges = []
+            for u, v, data in G.edges(data=True):
+                edges.append({
+                    'source': assets_clean[u],
+                    'target': assets_clean[v],
+                    'correlation': round(data.get('weight', 0), 2)
+                })
+            
+            # Estatísticas do grafo
+            num_communities = len(set(community_map.values()))
+            avg_clustering = nx.average_clustering(G, weight='weight')
+            density = nx.density(G)
+            
+            # Nó mais central (hub)
+            most_central_idx = max(degree_centrality, key=degree_centrality.get)
+            most_central = assets_clean[most_central_idx]
+            
+            return {
+                'nodes': nodes,
+                'edges': edges,
+                'stats': {
+                    'num_nodes': n,
+                    'num_edges': G.number_of_edges(),
+                    'num_communities': num_communities,
+                    'avg_clustering': round(avg_clustering, 3),
+                    'density': round(density, 3),
+                    'most_central': most_central
+                }
+            }
+            
+        except Exception as e:
+            logging.warning(f"Erro ao calcular TMFG: {e}")
+            import traceback
+            traceback.print_exc()
             return {}
 
     def _generate_asset_stats(self) -> list:
