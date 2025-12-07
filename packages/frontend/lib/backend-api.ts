@@ -8,8 +8,8 @@ import { useAuthStore } from '../hooks/useAuthStore';
 // Use INTERNAL_API_URL for server-side calls (API routes), NEXT_PUBLIC_API_URL for client-side
 const isServer = typeof window === 'undefined';
 const API_BASE_URL = isServer 
-  ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
-  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');
+  ? (process.env.INTERNAL_API_URL || 'http://portfolio_backend:8000')
+  : (process.env.NEXT_PUBLIC_API_URL || '');  // Empty string = relative URL (same origin)
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '120000', 10); // 2 minutes timeout
 
 // Create a Zodios instance
