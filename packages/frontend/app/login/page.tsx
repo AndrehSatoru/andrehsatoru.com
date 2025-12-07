@@ -31,7 +31,7 @@ export default function LoginPage() {
       formData.append('grant_type', 'password');
 
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/auth/token`,
+        '/api/v1/auth/token',
         formData,
         {
           headers: {
