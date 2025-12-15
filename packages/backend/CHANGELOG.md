@@ -1,5 +1,13 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.9.0] - 2025-12-15
+
+### 🚀 Performance (Optimization Plan - Phase 1)
+
+#### Quick Wins
+- ⚡ **Batch Fetch de Tickers**: Endpoint `/processar_operacoes` agora busca preços de todos os ativos em uma única chamada à API externa (antes era 1 chamada por ativo). Redução drástica no tempo de resposta e uso de rede.
+- 🧹 **Limpeza de Logs**: Removidos prints de debug em ambiente de produção (`data_handling.py`).
+
 ## [1.8.1] - 2025-12-04
 
 ### 🏗️ Refatoração e Qualidade de Código
