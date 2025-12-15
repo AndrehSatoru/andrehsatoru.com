@@ -18,7 +18,6 @@ from backend_projeto.infrastructure.utils.retry import retry_with_backoff
 import numpy as np
 import time
 import logging
-print("DEBUG: LOADING DATA HANDLING MODULE")
 import requests
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional

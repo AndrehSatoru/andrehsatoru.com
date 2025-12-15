@@ -24,7 +24,6 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
-        console.log("[DashboardData] Loaded from localStorage:", parsed)
         setAnalysisResultState(parsed)
       }
     } catch (e) {
@@ -35,12 +34,10 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
 
   // Função para salvar dados
   const setAnalysisResult = (data: any) => {
-    console.log("[DashboardData] Setting analysis result:", data)
     setAnalysisResultState(data)
     try {
       if (data) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-        console.log("[DashboardData] Saved to localStorage")
       } else {
         localStorage.removeItem(STORAGE_KEY)
       }

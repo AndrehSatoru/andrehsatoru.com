@@ -20,45 +20,7 @@ export const apiClient = new Zodios(endpoints, {
   }),
 });
 
-// --- Interceptors ---
-// Request interceptor for authentication
-apiClient.axios.interceptors.request.use(
-  (config) => {
-    const token = useAuthStore.getState().accessToken; // Get token from store
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
-// Response interceptor for error handling and retries
-apiClient.axios.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config;
-
-    // Handle 401 Unauthorized errors
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-      originalRequest._retry = true; // Mark request as retried
-      const refreshToken = useAuthStore.getState().refreshToken;
-
-      if (refreshToken) {
-        try {
-          // Assuming there's a refresh endpoint
-          // const response = await api.auth.refresh({ refresh_token: refreshToken });
-          // But since it's not defined, perhaps skip for now
-        } catch (refreshError) {
-          // Handle refresh error
-        }
-      }
-    }
-    return Promise.reject(error);
-  }
-);
 
 // --- Interceptors ---
 // Request interceptor for authentication

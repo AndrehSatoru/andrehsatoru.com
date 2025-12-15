@@ -6,10 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    console.log('[frontier-data] Calling backend with:', {
-      url: `${API_BASE_URL}/api/v1/opt/markowitz/frontier-data`,
-      body
-    });
+
 
     const response = await fetch(`${API_BASE_URL}/api/v1/opt/markowitz/frontier-data`, {
       method: 'POST',

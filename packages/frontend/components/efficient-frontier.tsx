@@ -225,8 +225,6 @@ export function EfficientFrontier() {
     const start = dates[0]
     const end = dates[dates.length - 1]
 
-    console.log("[EfficientFrontier] Assets:", assetList, "Period:", start, "-", end)
-
     return { assets: assetList, startDate: start, endDate: end }
   }, [analysisResult])
 
@@ -321,12 +319,6 @@ export function EfficientFrontier() {
     
     const currentSharpe = annualVol > 0 ? (annualReturn - riskFreeRate * 100) / annualVol : 0
     
-    console.log("[EfficientFrontier] Portfolio Stats from backend:", {
-      annualReturn: annualReturn.toFixed(2) + "%",
-      annualVol: annualVol.toFixed(2) + "%",
-      sharpe: currentSharpe.toFixed(2)
-    })
-
     // Obter ativos individuais - usar dados do backend se disponíveis
     const individualAssets = Object.keys(alocacaoData)
       .filter(a => a !== "Caixa" && alocacaoData[a]?.percentual > 0)
