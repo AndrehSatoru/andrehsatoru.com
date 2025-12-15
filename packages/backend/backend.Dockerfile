@@ -47,12 +47,12 @@ RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+# Health check (start_period maior para VMs lentas)
+HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=5 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/status')"
 
 # Expor porta
 EXPOSE 8000
 
-# Comando de inicialização
-CMD ["/app/venv/bin/python", "-m", "uvicorn", "src.backend_projeto.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Comando de inicialização (1 worker para ambientes com poucos recursos)
+CMD ["/app/venv/bin/python", "-m", "uvicorn", "src.backend_projeto.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

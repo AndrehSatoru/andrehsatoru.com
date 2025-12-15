@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_BASE_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.INTERNAL_API_URL || 'http://portfolio_backend:8000';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    console.log('[frontier-data] Calling backend with:', {
-      url: `${API_BASE_URL}/api/v1/opt/markowitz/frontier-data`,
-      body
-    });
+
 
     const response = await fetch(`${API_BASE_URL}/api/v1/opt/markowitz/frontier-data`, {
       method: 'POST',

@@ -143,6 +143,132 @@ class DashboardGenerator:
 
         return pio.to_html(fig, full_html=True, include_plotlyjs='cdn')
 
+    def generate_monte_carlo_dashboard(self, simulation_results: Dict[str, Any]) -> bytes:
+        """
+        Generates a Monte Carlo simulation dashboard as a PNG image.
+
+        Args:
+            simulation_results (Dict[str, Any]): Dictionary containing simulation results with keys:
+                - 'n_paths': Number of simulation paths
+                - 'n_days': Number of days simulated
+                - 'prices_paths': 2D array of price paths (n_days x n_paths)
+                - 'terminal_distribution': 1D array of terminal values
+                - 'var': Value at Risk
+                - 'es': Expected Shortfall
+                - 'confidence': Confidence level
+                - 'params': Dictionary with 'mu', 'sigma', 'vol_method'
+
+        Returns:
+            bytes: The generated chart as a PNG image in bytes format.
+        """
+        from plotly.subplots import make_subplots
+        import numpy as np
+
+        n_paths = simulation_results.get('n_paths', 1000)
+        n_days = simulation_results.get('n_days', 252)
+        prices_paths = np.array(simulation_results.get('prices_paths', []))
+        terminal_dist = np.array(simulation_results.get('terminal_distribution', []))
+        var_value = simulation_results.get('var', 0)
+        es_value = simulation_results.get('es', 0)
+        confidence = simulation_results.get('confidence', 0.99)
+        params = simulation_results.get('params', {})
+
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=(
+                "Simulação de Trajetórias de Preços",
+                "Distribuição de Retornos Terminais",
+                "Métricas de Risco",
+                "Parâmetros da Simulação"
+            ),
+            specs=[
+                [{"type": "xy"}, {"type": "xy"}],
+                [{"type": "table"}, {"type": "table"}]
+            ]
+        )
+
+        # Plot price paths (only first 100 for clarity)
+        if len(prices_paths) > 0:
+            paths_to_plot = min(100, prices_paths.shape[1] if len(prices_paths.shape) > 1 else 1)
+            for i in range(paths_to_plot):
+                if len(prices_paths.shape) > 1:
+                    path = prices_paths[:, i]
+                else:
+                    path = prices_paths
+                fig.add_trace(
+                    go.Scatter(
+                        x=list(range(len(path))),
+                        y=path,
+                        mode='lines',
+                        line=dict(width=0.5, color='lightblue'),
+                        showlegend=False,
+                        opacity=0.3
+                    ),
+                    row=1, col=1
+                )
+
+        # Terminal distribution histogram
+        if len(terminal_dist) > 0:
+            fig.add_trace(
+                go.Histogram(
+                    x=terminal_dist,
+                    nbinsx=50,
+                    name="Distribuição Terminal",
+                    marker_color='steelblue'
+                ),
+                row=1, col=2
+            )
+            # Add VaR line
+            fig.add_vline(
+                x=float(-var_value) if var_value else 0,
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"VaR {confidence*100:.0f}%",
+                row=1, col=2
+            )
+
+        # Risk metrics table
+        risk_metrics = [
+            ["Métrica", "Valor"],
+            ["VaR", f"{var_value:.4f}"],
+            ["Expected Shortfall", f"{es_value:.4f}"],
+            ["Confiança", f"{confidence*100:.1f}%"],
+            ["Caminhos", str(n_paths)],
+            ["Dias", str(n_days)]
+        ]
+        fig.add_trace(
+            go.Table(
+                header=dict(values=risk_metrics[0], fill_color='paleturquoise', align='left'),
+                cells=dict(values=[[row[0] for row in risk_metrics[1:]], [row[1] for row in risk_metrics[1:]]],
+                          fill_color='lavender', align='left')
+            ),
+            row=2, col=1
+        )
+
+        # Parameters table
+        params_data = [
+            ["Parâmetro", "Valor"],
+            ["Mu (retorno médio)", f"{params.get('mu', 0):.6f}"],
+            ["Sigma (volatilidade)", f"{params.get('sigma', 0):.6f}"],
+            ["Método Vol.", params.get('vol_method', 'N/A')]
+        ]
+        fig.add_trace(
+            go.Table(
+                header=dict(values=params_data[0], fill_color='paleturquoise', align='left'),
+                cells=dict(values=[[row[0] for row in params_data[1:]], [row[1] for row in params_data[1:]]],
+                          fill_color='lavender', align='left')
+            ),
+            row=2, col=2
+        )
+
+        fig.update_layout(
+            title_text=f"Dashboard Monte Carlo - {n_paths} simulações, {n_days} dias",
+            height=900,
+            showlegend=False
+        )
+
+        return pio.to_image(fig, format="png")
+
     def generate_sector_dashboard(self, prices: pd.DataFrame, asset_info: Dict[str, Dict[str, str]]) -> bytes:
         """
         Generates a bar chart visualizing the count of assets by sector.

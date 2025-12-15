@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 import pandas as pd
 import numpy as np
 
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 client = TestClient(app)
 
@@ -70,6 +70,7 @@ def monkeypatch_ff_plots(monkeypatch):
 
 def test_plot_ff_factors_ff3(monkeypatch_ff_plots):
     monkeypatch_ff_plots()
+    payload = {"model": "ff3", "start_date": "2024-01-01", "end_date": "2024-06-30"}
     r = client.post("/api/v1/plots/ff-factors", json=payload)
     assert r.status_code == 200
     assert r.headers["content-type"] == "image/png"
@@ -79,7 +80,7 @@ def test_plot_ff_factors_ff3(monkeypatch_ff_plots):
 def test_plot_ff_factors_ff5(monkeypatch_ff_plots):
     monkeypatch_ff_plots()
     payload = {"model": "ff5", "start_date": "2024-01-01", "end_date": "2024-06-30"}
-    r = client.post("/plots/ff-factors", json=payload)
+    r = client.post("/api/v1/plots/ff-factors", json=payload)
     assert r.status_code == 200
     assert r.headers["content-type"] == "image/png"
 
@@ -108,6 +109,6 @@ def test_plot_ff_betas_ff5(monkeypatch_ff_plots):
         "end_date": "2024-06-30",
         "rf_source": "selic"
     }
-    r = client.post("/plots/ff-betas", json=payload)
+    r = client.post("/api/v1/plots/ff-betas", json=payload)
     assert r.status_code == 200
     assert r.headers["content-type"] == "image/png"

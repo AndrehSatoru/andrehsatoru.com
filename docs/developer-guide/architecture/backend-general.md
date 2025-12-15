@@ -184,7 +184,24 @@ Controllers FastAPI que expõem os endpoints:
 └─────────────────────────────────────────────────────────┘
 ```
 
-## 3. Definição e Geração do Cliente da API
+## 3. Padrões de Codificação
+
+Para garantir a qualidade e manutenibilidade do código, seguimos os seguintes padrões:
+
+### 3.1. Documentação (Docstrings)
+*   **Idioma:** Todas as docstrings devem ser escritas em **Inglês**.
+*   **Formato:** Seguir o [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings).
+*   **Cobertura:** Módulos, classes e funções públicas devem ser documentados.
+
+### 3.2. Constantes e Configurações
+*   **Domínio:** Valores fixos que pertencem à regra de negócio (ex: mapeamentos, listas de proxies) devem ser centralizados em `domain/constants.py`. Evite "magic strings" espalhadas pelo código.
+*   **Ambiente:** Configurações sensíveis ou variáveis (ex: chaves de API, URLs) devem usar variáveis de ambiente via `infrastructure/utils/config.py`.
+
+### 3.3. Observabilidade e Logs
+*   **Logging vs Print:** Nunca use `print()` em código de produção ou testes. Utilize o módulo `logging` (`logging.info`, `logging.error`, etc.).
+*   **Exceções:** Ao capturar exceções críticas, use `logging.error("msg", exc_info=True)` para preservar o stack trace.
+
+## 4. Definição e Geração do Cliente da API
 
 O backend utiliza o padrão OpenAPI (anteriormente Swagger) para descrever sua API.
 

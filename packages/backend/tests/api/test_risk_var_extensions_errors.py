@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 import pandas as pd
 
-from src.backend_projeto.main import app
+from backend_projeto.main import app
 
 client = TestClient(app)
 
@@ -40,7 +40,8 @@ def monkeypatch_benchmark(monkeypatch):
     return _patch
 
 
-def test_ivar_empty_assets_returns_500(monkeypatch_prices):
+def test_ivar_empty_assets_returns_422(monkeypatch_prices):
+    """Pydantic valida assets vazio e retorna 422 antes de chegar à lógica de negócio."""
     monkeypatch_prices()
     payload = {
         "assets": [],
@@ -52,10 +53,11 @@ def test_ivar_empty_assets_returns_500(monkeypatch_prices):
         "delta": 0.01,
     }
     r = client.post("/api/v1/risk/ivar", json=payload)
-    assert r.status_code == 500  # ValueError não tratado vira 500 pelo handler genérico
+    assert r.status_code == 422  # Pydantic valida lista vazia
 
 
-def test_mvar_weights_sum_zero_returns_500(monkeypatch_prices):
+def test_mvar_weights_sum_zero_returns_422(monkeypatch_prices):
+    """Pydantic valida weights com soma zero e retorna 422."""
     monkeypatch_prices()
     payload = {
         "assets": ["AAA", "BBB"],
@@ -66,10 +68,11 @@ def test_mvar_weights_sum_zero_returns_500(monkeypatch_prices):
         "method": "historical",
     }
     r = client.post("/api/v1/risk/mvar", json=payload)
-    assert r.status_code == 500
+    assert r.status_code == 422  # Pydantic valida soma de weights
 
 
-def test_relvar_no_overlap_returns_500(monkeypatch_prices, monkeypatch_benchmark):
+def test_relvar_no_overlap_returns_422(monkeypatch_prices, monkeypatch_benchmark):
+    """Sem interseção de datas retorna 422 pela validação do endpoint."""
     monkeypatch_prices()
     # benchmark com datas sem interseção
     monkeypatch_benchmark(shifted=True)
@@ -83,7 +86,7 @@ def test_relvar_no_overlap_returns_500(monkeypatch_prices, monkeypatch_benchmark
         "benchmark": "^SHIFT",
     }
     r = client.post("/api/v1/risk/relvar", json=payload)
-    assert r.status_code == 500
+    assert r.status_code == 422  # Validação de dados retorna 422
 
 
 @pytest.mark.xfail(reason="Dependência 'arch' pode não estar instalada; comportamento varia")

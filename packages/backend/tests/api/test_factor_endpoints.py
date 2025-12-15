@@ -4,14 +4,14 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture(scope="module")
 def client():
-    from src.backend_projeto.main import app
+    from backend_projeto.main import app
     return TestClient(app)
 
 def test_factors_ff3(client: TestClient):
     payload = {
         "assets": ["AAA.SA", "BBB.SA"],
-        "start_date": "2020-01-01",
-        "end_date": "2020-12-31",
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
         "rf_source": "ff"
     }
     r = client.post("/api/v1/factors/ff3", json=payload)
@@ -22,8 +22,8 @@ def test_factors_ff3(client: TestClient):
 def test_factors_ff5(client: TestClient):
     payload = {
         "assets": ["AAA.SA", "BBB.SA"],
-        "start_date": "2020-01-01",
-        "end_date": "2020-12-31",
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
         "rf_source": "ff"
     }
     r = client.post("/api/v1/factors/ff5", json=payload)
@@ -41,7 +41,9 @@ def test_factors_capm(client: TestClient):
     r = client.post("/api/v1/factors/capm", json=payload)
     assert r.status_code == 200
     js = r.json()["result"]
-    assert "AAA.SA" in js and "beta" in js["AAA.SA"]
+    assert "metrics" in js
+    metrics = js["metrics"]
+    assert "AAA.SA" in metrics and "beta" in metrics["AAA.SA"]
 
 def test_factors_apt(client: TestClient):
     payload = {
@@ -53,4 +55,6 @@ def test_factors_apt(client: TestClient):
     r = client.post("/api/v1/factors/apt", json=payload)
     assert r.status_code == 200
     js = r.json()["result"]
-    assert "AAA.SA" in js and "betas" in js["AAA.SA"]
+    assert "metrics" in js
+    metrics = js["metrics"]
+    assert "AAA.SA" in metrics and "betas" in metrics["AAA.SA"]

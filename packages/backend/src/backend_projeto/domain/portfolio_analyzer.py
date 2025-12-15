@@ -398,8 +398,17 @@ class PortfolioAnalyzer:
             if analysis_date < self.start_date or analysis_date > self.end_date:
                 return {"error": f"Data fora do intervalo de análise ({self.start_date} a {self.end_date})"}
         
-        # Obter posições na data de análise
-        positions = self.positions.loc[analysis_date]
+        # Obter posições na data de análise - usar a última data disponível se a data solicitada não existir
+        if analysis_date in self.positions.index:
+            positions = self.positions.loc[analysis_date]
+        else:
+            # Encontrar a última data disponível antes ou igual à data solicitada
+            available_dates = self.positions.index[self.positions.index <= analysis_date]
+            if len(available_dates) == 0:
+                return {"error": f"Não há dados de posições disponíveis para a data {analysis_date}"}
+            actual_date = available_dates[-1]
+            positions = self.positions.loc[actual_date]
+            logging.info(f"Data {analysis_date} não disponível, usando {actual_date}")
         
         # Obter preços - buscar um intervalo maior para garantir que temos dados
         # (considerando fins de semana e feriados)

@@ -1,8 +1,8 @@
 """
 Repository Interfaces for Domain-Driven Design.
 
-Repositories são abstrações para persistência de Aggregates.
-Definem contratos que a camada de Infrastructure deve implementar.
+Repositories are abstractions for Aggregate persistence.
+They define contracts that the Infrastructure layer must implement.
 """
 
 from abc import ABC, abstractmethod
@@ -16,43 +16,43 @@ from .value_objects import Ticker, DateRange
 
 class IPortfolioRepository(ABC):
     """
-    Interface de repositório para Portfolio (Aggregate Root).
+    Repository interface for Portfolio (Aggregate Root).
     """
 
     @abstractmethod
     async def get_by_id(self, portfolio_id: UUID) -> Optional[Portfolio]:
-        """Busca um portfólio pelo ID."""
+        """Retrieves a portfolio by ID."""
         pass
 
     @abstractmethod
     async def get_by_owner(self, owner_id: UUID) -> List[Portfolio]:
-        """Busca todos os portfólios de um usuário."""
+        """Retrieves all portfolios for a user."""
         pass
 
     @abstractmethod
     async def save(self, portfolio: Portfolio) -> Portfolio:
-        """Salva ou atualiza um portfólio."""
+        """Saves or updates a portfolio."""
         pass
 
     @abstractmethod
     async def delete(self, portfolio_id: UUID) -> bool:
-        """Remove um portfólio."""
+        """Removes a portfolio."""
         pass
 
     @abstractmethod
     async def exists(self, portfolio_id: UUID) -> bool:
-        """Verifica se um portfólio existe."""
+        """Checks if a portfolio exists."""
         pass
 
 
 class ITransactionRepository(ABC):
     """
-    Interface de repositório para Transactions.
+    Repository interface for Transactions.
     """
 
     @abstractmethod
     async def get_by_id(self, transaction_id: UUID) -> Optional[Transaction]:
-        """Busca uma transação pelo ID."""
+        """Retrieves a transaction by ID."""
         pass
 
     @abstractmethod
@@ -61,7 +61,7 @@ class ITransactionRepository(ABC):
         portfolio_id: UUID, 
         date_range: Optional[DateRange] = None
     ) -> List[Transaction]:
-        """Busca transações de um portfólio, opcionalmente filtradas por período."""
+        """Retrieves transactions for a portfolio, optionally filtered by date range."""
         pass
 
     @abstractmethod
@@ -70,55 +70,55 @@ class ITransactionRepository(ABC):
         portfolio_id: UUID, 
         ticker: Ticker
     ) -> List[Transaction]:
-        """Busca transações de um ticker específico."""
+        """Retrieves transactions for a specific ticker."""
         pass
 
     @abstractmethod
     async def save(self, transaction: Transaction, portfolio_id: UUID) -> Transaction:
-        """Salva uma transação."""
+        """Saves a transaction."""
         pass
 
     @abstractmethod
     async def delete(self, transaction_id: UUID) -> bool:
-        """Remove uma transação."""
+        """Removes a transaction."""
         pass
 
 
 class IUserRepository(ABC):
     """
-    Interface de repositório para Users.
+    Repository interface for Users.
     """
 
     @abstractmethod
     async def get_by_id(self, user_id: UUID) -> Optional[User]:
-        """Busca um usuário pelo ID."""
+        """Retrieves a user by ID."""
         pass
 
     @abstractmethod
     async def get_by_email(self, email: str) -> Optional[User]:
-        """Busca um usuário pelo email."""
+        """Retrieves a user by email."""
         pass
 
     @abstractmethod
     async def save(self, user: User) -> User:
-        """Salva ou atualiza um usuário."""
+        """Saves or updates a user."""
         pass
 
     @abstractmethod
     async def delete(self, user_id: UUID) -> bool:
-        """Remove um usuário."""
+        """Removes a user."""
         pass
 
     @abstractmethod
     async def exists_email(self, email: str) -> bool:
-        """Verifica se um email já está cadastrado."""
+        """Checks if an email is already registered."""
         pass
 
 
 class IMarketDataRepository(ABC):
     """
-    Interface de repositório para dados de mercado.
-    Abstrai a fonte de dados (yfinance, API, cache, etc).
+    Repository interface for market data.
+    Abstracts the data source (yfinance, API, cache, etc).
     """
 
     @abstractmethod
@@ -128,19 +128,19 @@ class IMarketDataRepository(ABC):
         date_range: DateRange
     ) -> Dict[str, Any]:
         """
-        Busca preços históricos.
-        Retorna DataFrame-like com preços ajustados.
+        Retrieves historical prices.
+        Returns a DataFrame-like object with adjusted prices.
         """
         pass
 
     @abstractmethod
     async def get_current_prices(self, tickers: List[Ticker]) -> Dict[str, float]:
-        """Busca preços atuais."""
+        """Retrieves current prices."""
         pass
 
     @abstractmethod
     async def get_fundamentals(self, ticker: Ticker) -> Dict[str, Any]:
-        """Busca dados fundamentalistas de um ativo."""
+        """Retrieves fundamental data for an asset."""
         pass
 
     @abstractmethod
@@ -149,57 +149,57 @@ class IMarketDataRepository(ABC):
         ticker: Ticker, 
         date_range: DateRange
     ) -> List[Dict[str, Any]]:
-        """Busca histórico de dividendos."""
+        """Retrieves dividend history."""
         pass
 
 
 class ICDIRepository(ABC):
     """
-    Interface de repositório para dados do CDI.
+    Repository interface for CDI (Interbank Deposit Certificate) data.
     """
 
     @abstractmethod
     async def get_rates(self, date_range: DateRange) -> Dict[date, float]:
-        """Busca taxas CDI diárias para o período."""
+        """Retrieves daily CDI rates for the period."""
         pass
 
     @abstractmethod
     async def get_current_rate(self) -> float:
-        """Busca taxa CDI atual (anualizada)."""
+        """Retrieves current CDI rate (annualized)."""
         pass
 
     @abstractmethod
     async def get_accumulated(self, date_range: DateRange) -> float:
-        """Calcula CDI acumulado no período."""
+        """Calculates accumulated CDI over the period."""
         pass
 
 
 class ICacheRepository(ABC):
     """
-    Interface de repositório para cache.
+    Repository interface for caching.
     """
 
     @abstractmethod
     async def get(self, key: str) -> Optional[Any]:
-        """Busca valor do cache."""
+        """Retrieves a value from cache."""
         pass
 
     @abstractmethod
     async def set(self, key: str, value: Any, ttl_seconds: int = 3600) -> bool:
-        """Salva valor no cache com TTL."""
+        """Saves a value to cache with TTL."""
         pass
 
     @abstractmethod
     async def delete(self, key: str) -> bool:
-        """Remove valor do cache."""
+        """Removes a value from cache."""
         pass
 
     @abstractmethod
     async def exists(self, key: str) -> bool:
-        """Verifica se chave existe no cache."""
+        """Checks if a key exists in cache."""
         pass
 
     @abstractmethod
     async def clear_pattern(self, pattern: str) -> int:
-        """Remove todas as chaves que correspondem ao padrão."""
+        """Removes all keys matching the pattern."""
         pass

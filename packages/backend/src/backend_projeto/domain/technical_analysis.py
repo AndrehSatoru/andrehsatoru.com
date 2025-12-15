@@ -32,6 +32,11 @@ def _ensure_sorted_index(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: The DataFrame with a sorted DatetimeIndex.
     """
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df.index = pd.to_datetime(df.index)
+    res = df.sort_index()
+    # print(f"DEBUG: _ensure_sorted_index returning type {type(res)}")
+    return res
 
 
 def sma(series: pd.Series, window: int) -> pd.Series:
@@ -45,6 +50,7 @@ def sma(series: pd.Series, window: int) -> pd.Series:
     Returns:
         pd.Series: A Series containing the SMA values.
     """
+    return series.rolling(window=window).mean()
 
 
 def ema(series: pd.Series, window: int) -> pd.Series:
@@ -58,6 +64,7 @@ def ema(series: pd.Series, window: int) -> pd.Series:
     Returns:
         pd.Series: A Series containing the EMA values.
     """
+    return series.ewm(span=window, adjust=False).mean()
 
 
 def moving_averages(

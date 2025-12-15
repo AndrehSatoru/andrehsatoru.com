@@ -1,5 +1,13 @@
 # Histórico de Mudanças - Frontend
 
+## [1.9.0] - 2025-12-15
+
+### 🚀 Performance (Optimization Plan - Phase 1)
+
+#### Quick Wins
+- ⚡ **Otimização de Imagens**: Configurado `next.config.mjs` para usar formatos modernos (AVIF, WebP) e tamanhos de dispositivo otimizados.
+- 🧹 **Limpeza de Logs e Interceptors**: Removidos console.logs de produção em componentes críticos (`efficient-frontier.tsx`, `dashboard-context.tsx`) e interceptors duplicados no cliente HTTP.
+
 ## [0.9.0] - 2025-12-03
 
 ### 🚀 Novas Funcionalidades

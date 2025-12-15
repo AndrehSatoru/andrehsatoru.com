@@ -1,5 +1,31 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.9.0] - 2025-12-15
+
+### 🚀 Performance (Optimization Plan - Phase 1)
+
+#### Quick Wins
+- ⚡ **Batch Fetch de Tickers**: Endpoint `/processar_operacoes` agora busca preços de todos os ativos em uma única chamada à API externa (antes era 1 chamada por ativo). Redução drástica no tempo de resposta e uso de rede.
+- 🧹 **Limpeza de Logs**: Removidos prints de debug em ambiente de produção (`data_handling.py`).
+
+## [1.8.1] - 2025-12-04
+
+### 🏗️ Refatoração e Qualidade de Código
+
+#### Centralização de Configurações
+- ✨ **Domain Constants**: Criado arquivo `constants.py` para centralizar "magic strings" e configurações de domínio (ex: `CDI_PROXIES`, `MONTH_MAP`).
+- 🔧 **Refatoração de Endpoints**: Atualizado `portfolio_endpoints.py` para utilizar as novas constantes, melhorando a manutenibilidade e facilitando a internacionalização.
+
+#### Melhorias na Observabilidade
+- 📝 **Logging Estruturado**: Substituídos `print()` por `logging` nos testes (`test_graphics_specific.py`) e no tratamento de erros da API.
+- 🐛 **Tratamento de Erros Robusto**: Melhor captura de exceções na busca de dados do CDI, com logs detalhados (`exc_info=True`) para facilitar a depuração sem interromper o fluxo da aplicação.
+
+#### Documentação e Padrões
+- 🌐 **Docstrings em Inglês**: Padronização das docstrings das interfaces de repositório (`repositories.py`) para o Inglês, alinhando com o padrão global do projeto e facilitando a integração de novos desenvolvedores.
+- 🧪 **Correção de Testes**: Ajustes nos caminhos de importação (`sys.path`) nos scripts de teste para garantir execução correta em diferentes ambientes.
+
+---
+
 ## [1.8.0] - 2025-12-03
 
 ### 🚀 Novas Funcionalidades

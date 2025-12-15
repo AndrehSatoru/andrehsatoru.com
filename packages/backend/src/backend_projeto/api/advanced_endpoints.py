@@ -773,7 +773,7 @@ def generate_monte_carlo_dashboard(
         )
         
         # Gerar dashboard
-        generator = DashboardGenerator()
+        generator = DashboardGenerator(config=get_config())
         chart_bytes = generator.generate_monte_carlo_dashboard(simulation_results)
         
         return StreamingResponse(io.BytesIO(chart_bytes), media_type="image/png")

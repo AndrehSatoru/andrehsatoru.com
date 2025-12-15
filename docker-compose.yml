@@ -50,9 +50,9 @@ services:
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/status')"]
       interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
     networks:
       - app-network
 
@@ -62,13 +62,13 @@ services:
       context: .
       dockerfile: packages/frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: https://andrehsatoru.com
+        NEXT_PUBLIC_API_URL: ""
     container_name: portfolio_frontend
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=https://andrehsatoru.com
+      - NEXT_PUBLIC_API_URL=
       - INTERNAL_API_URL=http://portfolio_backend:8000
     depends_on:
       backend:
@@ -84,7 +84,10 @@ services:
       dockerfile: Dockerfile
     container_name: portfolio_nginx
     ports:
-      - "8080:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - frontend
       - backend

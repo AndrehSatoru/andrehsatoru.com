@@ -178,7 +178,7 @@ class FF3Request(BaseModel):
 class PricesResponse(BaseModel):
     columns: List[str]
     index: List[str]
-    data: List[List[float]]
+    data: List[List[Optional[float]]]
 
 
 

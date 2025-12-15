@@ -6,20 +6,30 @@ Script de teste específico para identificar problemas com gráficos financeiros
 import os
 import sys
 import traceback
+import logging
 from datetime import datetime, timedelta
 
+# Configuração de Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
 # Adicionar o diretório raiz do projeto ao path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# packages/backend/tests/.. -> packages/backend -> packages/backend/src
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
 
 def test_data_loading():
     """Testa carregamento de dados financeiros."""
-    print("🔍 Testando carregamento de dados...")
+    logging.info("🔍 Testando carregamento de dados...")
 
     try:
         from backend_projeto.infrastructure.data_handling import YFinanceProvider
-        from src.backend_projeto.utils.config import Config
+        from backend_projeto.infrastructure.utils.config import settings
 
-        config = Config()
         loader = YFinanceProvider()
 
         # Testar com ativo válido
@@ -27,127 +37,131 @@ def test_data_loading():
         start_date = '2023-01-01'
         end_date = '2024-01-01'
 
-        print(f"  Buscando dados para {assets} de {start_date} a {end_date}...")
+        logging.info(f"  Buscando dados para {assets} de {start_date} a {end_date}...")
 
         try:
             prices = loader.fetch_stock_prices(assets, start_date, end_date)
-            print(f"  ✅ Dados carregados: {prices.shape}")
-            print(f"  📊 Colunas: {list(prices.columns)}")
-            print(f"  📅 Período: {prices.index.min()} a {prices.index.max()}")
+            logging.info(f"  ✅ Dados carregados: {prices.shape}")
+            logging.info(f"  📊 Colunas: {list(prices.columns)}")
+            logging.info(f"  📅 Período: {prices.index.min()} a {prices.index.max()}")
 
-            if prices.empty or prices.iloc[0, 0] <= 0:
-                print("  ⚠️  Dados vazios ou inválidos")
+            if prices.empty or (len(prices) > 0 and prices.iloc[0, 0] <= 0):
+                logging.warning("  ⚠️  Dados vazios ou inválidos")
                 return None
 
             return prices
 
         except Exception as e:
-            print(f"  ❌ Erro ao buscar dados: {e}")
-            traceback.print_exc()
+            logging.error(f"  ❌ Erro ao buscar dados: {e}", exc_info=True)
             return None
 
     except Exception as e:
-        print(f"  ❌ Erro na configuração: {e}")
-        traceback.print_exc()
+        logging.error(f"  ❌ Erro na configuração: {e}", exc_info=True)
         return None
 
 def test_technical_analysis():
     """Testa análise técnica básica."""
-    print("\n🔍 Testando análise técnica...")
+    logging.info("\n🔍 Testando análise técnica...")
 
     prices = test_data_loading()
     if prices is None:
-        print("  ⏭️  Pulando teste de análise técnica (sem dados)")
+        logging.warning("  ⏭️  Pulando teste de análise técnica (sem dados)")
         return False
 
     try:
-        from src.backend_projeto.core.technical_analysis import moving_averages, macd_series
+        # Imports ajustados para a estrutura observada
+        from backend_projeto.domain.technical_analysis import calculate_moving_averages, calculate_macd
 
         asset = prices.columns[0]
-        print(f"  Calculando médias móveis para {asset}...")
+        logging.info(f"  Calculando médias móveis para {asset}...")
+        
+        series = prices[asset]
 
         # Testar médias móveis
-        ma_df = moving_averages(prices[[asset]], windows=[5, 21], method='sma')
-        print(f"  ✅ Médias móveis calculadas: {ma_df.shape}")
+        ma_df = calculate_moving_averages(series, windows=[5, 21])
+        logging.info(f"  ✅ Médias móveis calculadas: {ma_df.shape}")
 
         # Testar MACD
-        macd_df = macd_series(prices[[asset]], fast=12, slow=26, signal=9)
-        print(f"  ✅ MACD calculado: {macd_df.shape}")
+        macd_df = calculate_macd(series, fast=12, slow=26, signal=9)
+        logging.info(f"  ✅ MACD calculado: {macd_df.shape}")
 
         return True
 
     except Exception as e:
-        print(f"  ❌ Erro na análise técnica: {e}")
-        traceback.print_exc()
+        logging.error(f"  ❌ Erro na análise técnica: {e}", exc_info=True)
         return False
 
 def test_chart_generation():
     """Testa geração de gráficos."""
-    print("\n🔍 Testando geração de gráficos...")
+    logging.info("\n🔍 Testando geração de gráficos...")
 
     prices = test_data_loading()
     if prices is None:
-        print("  ⏭️  Pulando teste de gráficos (sem dados)")
+        logging.warning("  ⏭️  Pulando teste de gráficos (sem dados)")
         return False
 
     try:
-        from src.backend_projeto.core.visualizations.ta_visualization import plot_price_with_ma, plot_macd
-        from src.backend_projeto.core.visualizations.comprehensive_visualization import ComprehensiveVisualizer
+        # Imports ajustados
+        from backend_projeto.infrastructure.visualization.ta_visualization import generate_price_with_ma_chart, generate_macd_chart
+        from backend_projeto.infrastructure.visualization.comprehensive_visualization import ComprehensiveVisualizer
         from backend_projeto.infrastructure.data_handling import YFinanceProvider
 
         asset = prices.columns[0]
         output_dir = "test_graficos"
 
-        print(f"  Gerando gráficos para {asset}...")
+        logging.info(f"  Gerando gráficos para {asset}...")
 
         # Testar gráfico de médias móveis
-        ma_bytes = plot_price_with_ma(prices, asset, windows=[5, 21], method='sma')
-        print(f"  ✅ Gráfico de médias móveis gerado ({len(ma_bytes)} bytes)")
+        ma_bytes = generate_price_with_ma_chart(prices, asset, windows=[5, 21])
+        logging.info(f"  ✅ Gráfico de médias móveis gerado ({len(ma_bytes)} bytes)")
 
         # Testar gráfico MACD
-        macd_bytes = plot_macd(prices, asset, fast=12, slow=26, signal=9)
-        print(f"  ✅ Gráfico MACD gerado ({len(macd_bytes)} bytes)")
+        macd_bytes = generate_macd_chart(prices, asset, fast=12, slow=26, signal=9)
+        logging.info(f"  ✅ Gráfico MACD gerado ({len(macd_bytes)} bytes)")
 
         # Testar visualizador completo
-        visualizer = ComprehensiveVisualizer(output_dir=output_dir)
+        visualizer = ComprehensiveVisualizer() # output_dir é passado no método ou config
         loader = YFinanceProvider()
+        
+        # Criando diretório se não existir
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
         generated_files = visualizer.generate_all_charts(
             assets=[asset],
-            start_date='2023-01-01',
-            end_date='2024-01-01',
-            loader=loader
+            prices_df=prices, # Assumindo que aceita o DF direto, se não, teremos que ver a assinatura
+            output_dir=output_dir
         )
 
-        print(f"  ✅ Visualizador executado: {len(generated_files)} arquivos")
+        logging.info(f"  ✅ Visualizador executado: {len(generated_files)} arquivos")
 
         return True
 
     except Exception as e:
-        print(f"  ❌ Erro na geração de gráficos: {e}")
-        traceback.print_exc()
+        logging.error(f"  ❌ Erro na geração de gráficos: {e}", exc_info=True)
         return False
 
 def main():
     """Função principal."""
-    print("🚀 Teste específico de gráficos financeiros")
-    print("=" * 50)
+    logging.info("🚀 Teste específico de gráficos financeiros")
+    logging.info("=" * 50)
 
     # Teste 1: Carregamento de dados
     if not test_data_loading():
-        print("\n❌ Problemas no carregamento de dados")
+        logging.error("\n❌ Problemas no carregamento de dados")
         return False
 
     # Teste 2: Análise técnica
     if not test_technical_analysis():
-        print("\n❌ Problemas na análise técnica")
+        logging.error("\n❌ Problemas na análise técnica")
         return False
 
     # Teste 3: Geração de gráficos
     if not test_chart_generation():
-        print("\n❌ Problemas na geração de gráficos")
+        logging.error("\n❌ Problemas na geração de gráficos")
         return False
 
-    print("\n✅ Todos os testes específicos passaram!")
+    logging.info("\n✅ Todos os testes específicos passaram!")
     return True
 
 if __name__ == "__main__":
