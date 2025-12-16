@@ -304,7 +304,7 @@ export default function EnviarOperacoesPage() {
     setLoading(true)
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 300000) // 300s timeout (5 min)
 
       const resp = await fetch("/api/enviar-operacoes", {
         method: "POST",
