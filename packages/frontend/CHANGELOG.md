@@ -8,6 +8,8 @@
 ### 🐛 Bug Fixes
 - 🔧 **Timeout Fix**: Increased API timeout to 5 minutes to prevent 500 errors on long running operations.
 - 🛡️ **Crash Prevention**: Added null checks to chart components (`RollingReturns`, `EfficientFrontier`, etc.) to prevent crashes when processing partial data.
+- 🧹 **Data Sanitization**: Implemented result sanitization in `DashboardDataProvider` to handle backend error objects gracefully.
+- 📈 **Beta Chart Hardening**: Improved `BetaEvolution` component to robustly handle missing or invalid data points.
 
 ## [1.9.0] - 2025-12-15
 
