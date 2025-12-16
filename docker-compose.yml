@@ -71,6 +71,8 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=
       - INTERNAL_API_URL=http://portfolio_backend:8000
+      - NEXT_PUBLIC_API_TIMEOUT=300000
+      - INTERNAL_API_TIMEOUT=300000
     depends_on:
       backend:
         condition: service_healthy
