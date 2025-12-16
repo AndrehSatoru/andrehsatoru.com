@@ -31,8 +31,8 @@ export function ProfitabilityTable() {
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Extrair dados de retornos mensais do analysisResult
-  const monthlyData: MonthlyReturnRow[] = analysisResult?.results?.monthly_returns || []
-  const startDate = analysisResult?.results?.metadados?.periodo_analise?.inicio
+  const monthlyData: MonthlyReturnRow[] = analysisResult?.monthly_returns || []
+  const startDate = analysisResult?.metadados?.periodo_analise?.inicio
   const lastUpdate = new Date().toISOString().split('T')[0]
 
   // Debug log para verificar dados

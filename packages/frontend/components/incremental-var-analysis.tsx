@@ -15,11 +15,11 @@ export function IncrementalVarAnalysis() {
   const { analysisResult } = useDashboardData()
 
   const ivarData = useMemo(() => {
-    if (!analysisResult?.results?.incremental_var) {
+    if (!analysisResult?.incremental_var) {
       return null
     }
 
-    const data = analysisResult.results.incremental_var
+    const data = analysisResult.incremental_var
 
     if (data.error || !data.items || data.items.length === 0) {
       return null

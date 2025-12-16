@@ -30,12 +30,12 @@ export function DistanceCorrelationMatrix() {
   const { analysisResult } = useDashboardData()
 
   const matrixData = useMemo(() => {
-    if (!analysisResult?.results) {
+    if (!analysisResult) {
       return null
     }
 
     // Usar dados do backend
-    const backendDCor = analysisResult.results.distance_correlation_matrix
+    const backendDCor = analysisResult.distance_correlation_matrix
     
     if (backendDCor && backendDCor.matrix && backendDCor.matrix.length > 0) {
       return {

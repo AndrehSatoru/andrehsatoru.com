@@ -23,11 +23,11 @@ export function FamaFrenchPanel() {
   const { analysisResult } = useDashboardData()
 
   const ffData = useMemo(() => {
-    if (!analysisResult?.results?.fama_french) {
+    if (!analysisResult?.fama_french) {
       return null
     }
 
-    const ff = analysisResult.results.fama_french
+    const ff = analysisResult.fama_french
 
     if (ff.error || !ff.items || ff.items.length === 0) {
       return null

@@ -10,17 +10,38 @@ import { VarChart } from "@/components/var-chart"
 import { CVarChart } from "@/components/cvar-chart"
 import { ReturnsDistribution } from "@/components/returns-distribution"
 import { StressTestChart } from "@/components/stress-test-chart"
-import { EfficientFrontier } from "@/components/efficient-frontier"
-import { CorrelationMatrix } from "@/components/correlation-matrix"
-import { DistanceCorrelationMatrix } from "@/components/distance-correlation-matrix"
-import { TMFGGraph } from "@/components/tmfg-graph"
+import dynamic from 'next/dynamic'
+import { Skeleton } from '@/components/ui/skeleton'
+// Lazy-loaded components
+const EfficientFrontier = dynamic(
+  () => import('@/components/efficient-frontier').then((mod) => mod.EfficientFrontier),
+  { loading: () => <Skeleton className="h-[500px]" />, ssr: false }
+)
+const CorrelationMatrix = dynamic(
+  () => import('@/components/correlation-matrix').then((mod) => mod.CorrelationMatrix),
+  { loading: () => <Skeleton className="h-[400px]" />, ssr: false }
+)
+const DistanceCorrelationMatrix = dynamic(
+  () => import('@/components/distance-correlation-matrix').then((mod) => mod.DistanceCorrelationMatrix),
+  { loading: () => <Skeleton className="h-[400px]" />, ssr: false }
+)
+const TMFGGraph = dynamic(
+  () => import('@/components/tmfg-graph').then((mod) => mod.TMFGGraph),
+  { loading: () => <Skeleton className="h-[400px]" />, ssr: false }
+)
 import { AllocationEvolution } from "@/components/allocation-evolution"
 import { RollingReturns } from "@/components/rolling-returns"
 import { BetaMatrix } from "@/components/beta-matrix"
-import { MonteCarloDistribution } from "@/components/monte-carlo-distribution"
+const MonteCarloDistribution = dynamic(
+  () => import('@/components/monte-carlo-distribution').then((mod) => mod.MonteCarloDistribution),
+  { loading: () => <Skeleton className="h-[400px]" />, ssr: false }
+)
 import { BetaEvolution } from "@/components/beta-evolution"
 import { ProfitabilityTable } from "@/components/profitability-table"
-import { FamaFrenchPanel } from "@/components/fama-french-panel"
+const FamaFrenchPanel = dynamic(
+  () => import('@/components/fama-french-panel').then((mod) => mod.FamaFrenchPanel),
+  { loading: () => <Skeleton className="h-[400px]" />, ssr: false }
+)
 import { MarkowitzOptimization } from "@/components/markowitz-optimization"
 import { VarBacktest } from "@/components/var-backtest"
 import { RiskAttributionDetailed } from "@/components/risk-attribution-detailed"

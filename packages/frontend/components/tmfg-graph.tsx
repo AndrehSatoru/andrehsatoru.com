@@ -132,13 +132,13 @@ export function TMFGGraph() {
   const [hoveredEdge, setHoveredEdge] = useState<{ source: string; target: string } | null>(null)
   
   const graphData = useMemo(() => {
-    if (!analysisResult?.results?.tmfg_graph) {
+    if (!analysisResult?.tmfg_graph) {
       return null
     }
     
-    const tmfg = analysisResult.results.tmfg_graph
+    const tmfg = analysisResult.tmfg_graph
     
-    if (!tmfg.nodes || tmfg.nodes.length === 0) {
+    if (!tmfg.nodes || !Array.isArray(tmfg.nodes) || tmfg.nodes.length === 0 || !tmfg.edges || !Array.isArray(tmfg.edges)) {
       return null
     }
     

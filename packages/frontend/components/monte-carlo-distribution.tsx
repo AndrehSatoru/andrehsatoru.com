@@ -76,12 +76,7 @@ export function MonteCarloDistribution() {
   const { analysisResult } = useDashboardData()
   
   // Obter dados de monte_carlo da API
-  const monteCarloData: MonteCarloData | null = useMemo(() => {
-    if (!analysisResult?.results?.monte_carlo?.distribution) {
-      return null
-    }
-    return analysisResult.results.monte_carlo as MonteCarloData
-  }, [analysisResult])
+  const monteCarloData = analysisResult.monte_carlo as MonteCarloData
   
   // Calcular domínio do eixo Y dinamicamente (valores agora são em %)
   const yDomain = useMemo(() => {

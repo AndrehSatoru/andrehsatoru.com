@@ -888,12 +888,12 @@ eslint: {
 - [ ] Remover console.logs de produção
 
 ### Fase 2 (Core)
-- [ ] Implementar análise sob demanda em portfolio_analyzer.py
-- [ ] Criar cache único de dados no analyzer
-- [ ] Vetorizar loops iterrows()
-- [ ] Vetorizar Monte Carlo
-- [ ] Implementar lazy loading no frontend
-- [ ] Dividir context em stores menores
+- [x] Implementar análise sob demanda em portfolio_analyzer.py
+- [x] Criar cache único de dados no analyzer
+- [x] Vetorizar loops iterrows()
+- [x] Vetorizar Monte Carlo
+- [x] Implementar lazy loading no frontend
+- [x] Dividir context em stores menores
 
 ### Fase 3 (Refinamentos)
 - [ ] Implementar cache inteligente

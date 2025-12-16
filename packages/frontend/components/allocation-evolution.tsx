@@ -21,7 +21,7 @@ export function AllocationEvolution() {
 
   const { allocationData, assets, originalData } = useMemo(() => {
     // Usar dados reais do histórico de alocação da API
-    const allocationHistory = analysisResult?.results?.allocation_history
+    const allocationHistory = analysisResult?.allocation_history
     
     if (allocationHistory && allocationHistory.length > 0) {
       const firstEntry = allocationHistory[0]
@@ -71,12 +71,12 @@ export function AllocationEvolution() {
     }
     
     // Fallback: calcular a partir dos dados de alocação atual
-    if (!analysisResult?.results?.performance || !analysisResult?.results?.alocacao?.alocacao) {
+    if (!analysisResult?.performance || !analysisResult?.alocacao?.alocacao) {
       return { allocationData: [], assets: [], originalData: {} }
     }
 
-    const performance = analysisResult.results.performance
-    const alocacaoData = analysisResult.results.alocacao.alocacao
+    const performance = analysisResult.performance
+    const alocacaoData = analysisResult.alocacao.alocacao
 
     // Obter ativos e suas alocações percentuais
     const assetList = Object.keys(alocacaoData)

@@ -171,9 +171,27 @@ class PortfolioAnalyzer:
             freq='B' # Dias úteis
         )
         
-        # Sumarizar as transações por data e ativo
+        # Mapear datas das transações para o próximo dia útil disponível
+        # (transações em finais de semana/feriados são movidas para o próximo dia útil)
+        def map_to_business_day(date, business_days):
+            """Mapeia uma data para o próximo dia útil disponível no índice."""
+            if date in business_days:
+                return date
+            # Encontrar o próximo dia útil após a data
+            future_dates = business_days[business_days >= date]
+            if len(future_dates) > 0:
+                return future_dates[0]
+            # Se não houver dia útil futuro, usar o último dia útil
+            return business_days[-1]
+        
+        # Aplicar o mapeamento às transações
+        self.transactions['Data_Mapped'] = self.transactions['Data'].apply(
+            lambda x: map_to_business_day(x, all_dates)
+        )
+        
+        # Sumarizar as transações por data mapeada e ativo
         # 'Quantidade' já reflete compra (+ve) ou venda (-ve)
-        daily_transactions = self.transactions.groupby(['Data', 'Ativo'])['Quantidade'].sum().unstack(fill_value=0)
+        daily_transactions = self.transactions.groupby(['Data_Mapped', 'Ativo'])['Quantidade'].sum().unstack(fill_value=0)
         
         # Reindexar com todas as datas do período de análise e preencher com 0
         daily_transactions = daily_transactions.reindex(all_dates, fill_value=0)
@@ -249,12 +267,13 @@ class PortfolioAnalyzer:
         # Preparar DataFrame de eventos (transações e dividendos)
         events_df = pd.DataFrame(index=self.positions.index).fillna(0.0)
         
-        # Processar transações
+        # Processar transações usando a coluna Data_Mapped que foi criada em _calculate_positions
         tx_values = self.transactions['Preco'] * self.transactions['Quantidade']
-        tx_events = pd.Series(tx_values.values, index=self.transactions['Data'])
+        # Usar Data_Mapped se existir, senão usar Data
+        tx_index = self.transactions.get('Data_Mapped', self.transactions['Data'])
+        tx_events = pd.Series(tx_values.values, index=tx_index)
         
-        # Mapear datas de transação para as datas válidas no índice do portfólio
-        # Isso já é feito implicitamente com a reindexação
+        # As datas já foram mapeadas para dias úteis em _calculate_positions
         
         # Somar valores das transações por dia útil
         daily_tx_sum = tx_events.groupby(level=0).sum()
@@ -590,6 +609,16 @@ class PortfolioAnalyzer:
             },
             'transacoes': len(self.transactions)
         }
+        
+        # Mapeamento de chaves para compatibilidade com o frontend
+        # O frontend espera 'desempenho' para métricas de performance e 'alocacao' para alocação
+        # e 'performance' para a série temporal de performance
+        if 'performance' in results:
+            results['desempenho'] = results.pop('performance')
+        if 'allocation' in results:
+            results['alocacao'] = results.pop('allocation')
+        if 'performance_series' in results:
+            results['performance'] = results.pop('performance_series')
         
         return results
     

@@ -17,11 +17,11 @@ export function MarkowitzOptimization() {
   const [selectedPortfolio, setSelectedPortfolio] = useState<string | null>(null)
 
   const optimizationData = useMemo(() => {
-    if (!analysisResult?.results?.markowitz_optimization) {
+    if (!analysisResult?.markowitz_optimization) {
       return null
     }
 
-    const data = analysisResult.results.markowitz_optimization
+    const data = analysisResult.markowitz_optimization
 
     if (data.error || !data.optimal_portfolios) {
       return null

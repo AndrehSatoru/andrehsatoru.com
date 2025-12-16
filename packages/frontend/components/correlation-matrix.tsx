@@ -53,12 +53,12 @@ export function CorrelationMatrix() {
   const { analysisResult } = useDashboardData()
 
   const matrixData = useMemo(() => {
-    if (!analysisResult?.results) {
+    if (!analysisResult) {
       return null
     }
 
     // Primeiro, tentar usar dados reais calculados pelo backend
-    const backendCorrelation = analysisResult.results.correlation_matrix
+    const backendCorrelation = analysisResult.correlation_matrix
     
     if (backendCorrelation && backendCorrelation.matrix && backendCorrelation.matrix.length > 0) {
       // Usar dados reais do backend
@@ -73,11 +73,11 @@ export function CorrelationMatrix() {
     }
 
     // Fallback: calcular baseado em setores (estimativa)
-    if (!analysisResult?.results?.alocacao?.alocacao) {
+    if (!analysisResult?.alocacao?.alocacao) {
       return null
     }
 
-    const alocacaoData = analysisResult.results.alocacao.alocacao
+    const alocacaoData = analysisResult.alocacao.alocacao
 
     // Extrair ativos da alocação (excluindo "Caixa")
     const assets = Object.keys(alocacaoData)

@@ -10,7 +10,7 @@ export function AllocationChart() {
   const { analysisResult } = useDashboardData()
 
   // Extrair dados de alocação do resultado
-  const alocacaoData = analysisResult?.results?.alocacao?.alocacao || {}
+  const alocacaoData = analysisResult?.alocacao?.alocacao || {}
   
   // Converter para formato esperado pelo gráfico
   const data = Object.entries(alocacaoData).map(([name, info]: [string, any], index: number) => ({

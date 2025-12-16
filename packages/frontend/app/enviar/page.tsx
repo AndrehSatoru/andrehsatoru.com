@@ -374,7 +374,14 @@ export default function EnviarOperacoesPage() {
       }
 
       // Sucesso
-      setAnalysisResult(data)
+      // O backend retorna { status: 'success', results: { ... } }
+      // Precisamos passar apenas o objeto 'results' para o contexto
+      if (data && data.results) {
+        setAnalysisResult(data.results)
+      } else {
+        // Fallback caso a estrutura mude ou seja diferente
+        setAnalysisResult(data)
+      }
       router.push("/")
 
     } catch (err: unknown) {

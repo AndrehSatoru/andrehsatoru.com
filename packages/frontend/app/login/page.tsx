@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { useRouter } from 'next/navigation';
 import { useApi } from '../../hooks/use-api';
-import axios from 'axios';
+import { apiClient } from '@/lib/backend-api';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -30,7 +30,7 @@ export default function LoginPage() {
       formData.append('password', password);
       formData.append('grant_type', 'password');
 
-      const response = await axios.post(
+      const response = await apiClient.axios.post(
         '/api/v1/auth/token',
         formData,
         {

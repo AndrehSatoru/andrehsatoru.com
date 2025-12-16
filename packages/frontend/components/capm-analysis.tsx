@@ -26,11 +26,11 @@ export function CAPMAnalysis() {
   const { analysisResult } = useDashboardData()
 
   const capmData = useMemo(() => {
-    if (!analysisResult?.results?.capm_analysis) {
+    if (!analysisResult?.capm_analysis) {
       return null
     }
 
-    const data = analysisResult.results.capm_analysis
+    const data = analysisResult.capm_analysis
 
     if (data.error || !data.items || data.items.length === 0) {
       return null

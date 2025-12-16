@@ -76,12 +76,12 @@ export function BetaMatrix() {
   const { analysisResult } = useDashboardData()
 
   const betaData = useMemo(() => {
-    if (!analysisResult?.results) {
+    if (!analysisResult) {
       return null
     }
 
     // Primeiro, tentar usar dados reais calculados pelo backend
-    const backendBetaMatrix = analysisResult.results.beta_matrix
+    const backendBetaMatrix = analysisResult.beta_matrix
     
     if (backendBetaMatrix && backendBetaMatrix.items && backendBetaMatrix.items.length > 0) {
       // Usar dados reais do backend
@@ -101,11 +101,11 @@ export function BetaMatrix() {
     }
 
     // Fallback: usar dados hardcoded baseados em setor
-    if (!analysisResult?.results?.alocacao?.alocacao) {
+    if (!analysisResult?.alocacao?.alocacao) {
       return null
     }
 
-    const alocacaoData = analysisResult.results.alocacao.alocacao
+    const alocacaoData = analysisResult.alocacao.alocacao
 
     // Extrair ativos da alocação (excluindo "Caixa")
     const assets = Object.keys(alocacaoData)

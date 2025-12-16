@@ -27,11 +27,11 @@ export function VarBacktest() {
   const { analysisResult } = useDashboardData()
 
   const backtestData = useMemo(() => {
-    if (!analysisResult?.results?.var_backtest) {
+    if (!analysisResult?.var_backtest) {
       return null
     }
 
-    const data = analysisResult.results.var_backtest
+    const data = analysisResult.var_backtest
 
     if (data.error || !data.summary) {
       return null

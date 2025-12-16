@@ -8,8 +8,8 @@ export function MetricsGrid() {
   const { analysisResult } = useDashboardData()
   
   // Extrair dados do resultado da análise
-  const desempenho = analysisResult?.results?.desempenho || {}
-  const alocacao = analysisResult?.results?.alocacao || {}
+  const desempenho = analysisResult?.desempenho || {}
+  const alocacao = analysisResult?.alocacao || {}
   
   // Calcular valor total do portfólio
   const valorTotal = alocacao?.valor_total || 0

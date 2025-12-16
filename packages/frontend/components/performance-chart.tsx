@@ -12,8 +12,11 @@ export function PerformanceChart() {
   const { analysisResult } = useDashboardData()
 
   // Backend returns performance in results.performance
-  const allData = analysisResult?.results?.performance || []
-  const data = filterDataByPeriod(allData, period)
+  const allData = analysisResult?.performance || []
+  
+  // Ensure allData is an array before filtering
+  const safeData = Array.isArray(allData) ? allData : []
+  const data = filterDataByPeriod(safeData, period)
 
   // Debug log
   console.log("[PerformanceChart] analysisResult:", analysisResult)

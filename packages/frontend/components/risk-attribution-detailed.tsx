@@ -15,11 +15,11 @@ export function RiskAttributionDetailed() {
   const { analysisResult } = useDashboardData()
 
   const attributionData = useMemo(() => {
-    if (!analysisResult?.results?.risk_attribution_detailed) {
+    if (!analysisResult?.risk_attribution_detailed) {
       return null
     }
 
-    const data = analysisResult.results.risk_attribution_detailed
+    const data = analysisResult.risk_attribution_detailed
 
     if (data.error || !data.items || data.items.length === 0) {
       return null

@@ -10,7 +10,7 @@ export function RiskContribution() {
   
   const riskContributionData = useMemo(() => {
     // Usar dados da API
-    const apiData = analysisResult?.results?.risk_contribution
+    const apiData = analysisResult?.risk_contribution
     
     if (apiData && apiData.length > 0) {
       return apiData

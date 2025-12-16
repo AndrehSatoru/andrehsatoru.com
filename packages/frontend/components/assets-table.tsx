@@ -11,8 +11,8 @@ export function AssetsTable() {
   const { analysisResult } = useDashboardData()
   
   // Extrair dados de alocação do resultado
-  const alocacaoData = analysisResult?.results?.alocacao?.alocacao || {}
-  const metadados = analysisResult?.results?.metadados || {}
+  const alocacaoData = analysisResult?.alocacao?.alocacao || {}
+  const metadados = analysisResult?.metadados || {}
   
   // Converter para array de ativos
   const assets = Object.entries(alocacaoData).map(([name, info]: [string, any]) => ({

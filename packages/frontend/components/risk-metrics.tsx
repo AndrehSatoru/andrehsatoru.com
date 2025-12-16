@@ -7,7 +7,7 @@ import { useDashboardData } from "@/lib/dashboard-data-context"
 export function RiskMetrics() {
   const { analysisResult } = useDashboardData()
   
-  const desempenho = analysisResult?.results?.desempenho || {}
+  const desempenho = analysisResult?.desempenho || {}
   
   const riskMetrics = [
     { 

@@ -38,8 +38,8 @@ interface PortfolioProfile {
 export function PortfolioSummary() {
   const { analysisResult } = useDashboardData()
 
-  const desempenho = analysisResult?.results?.desempenho || {}
-  const alocacao = analysisResult?.results?.alocacao || {}
+  const desempenho = analysisResult?.desempenho || {}
+  const alocacao = analysisResult?.alocacao || {}
 
   // Métricas principais
   const retornoTotal = desempenho["retorno_total_%"] || 0

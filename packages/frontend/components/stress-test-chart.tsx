@@ -20,9 +20,8 @@ export function StressTestChart() {
   
   const stressScenarios = useMemo(() => {
     // Usar dados do backend se disponíveis
-    if (analysisResult?.results?.stress_tests && analysisResult.results.stress_tests.length > 0) {
-      return analysisResult.results.stress_tests.map((test: any) => ({
-        scenario: test.scenario,
+      if (analysisResult?.stress_tests && analysisResult.stress_tests.length > 0) {
+        return analysisResult.stress_tests.map((test: any) => ({        scenario: test.scenario,
         impact: test.impact,
         type: test.type
       }))
