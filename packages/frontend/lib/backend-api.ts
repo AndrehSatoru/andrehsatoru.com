@@ -12,8 +12,6 @@ const API_BASE_URL = isServer
   : (process.env.NEXT_PUBLIC_API_URL || '');  // Empty string = relative URL (same origin)
 const API_TIMEOUT = parseInt(process.env.INTERNAL_API_TIMEOUT || process.env.NEXT_PUBLIC_API_TIMEOUT || '300000', 10); // 5 minutes timeout
 
-console.log(`[BackendAPI] Initialized with Base URL: ${API_BASE_URL}, Timeout: ${API_TIMEOUT}ms`);
-
 // Create a Zodios instance
 export const apiClient = new Zodios(endpoints, {
   axiosInstance: axios.create({
