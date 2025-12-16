@@ -1,5 +1,10 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.9.1] - 2025-12-16
+
+### 🐳 Infrastructure
+- 🚀 Docker services started successfully.
+
 ## [1.9.0] - 2025-12-15
 
 ### 🚀 Performance (Optimization Plan - Phase 1)
