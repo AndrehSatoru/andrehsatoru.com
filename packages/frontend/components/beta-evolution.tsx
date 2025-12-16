@@ -16,10 +16,10 @@ export function BetaEvolution() {
   
   // Obter dados de beta_evolution da API
   const data: BetaDataPoint[] = useMemo(() => {
-    if (!analysisResult?.results?.beta_evolution) {
+    if (!analysisResult?.beta_evolution) {
       return []
     }
-    return analysisResult.results.beta_evolution
+    return analysisResult.beta_evolution
   }, [analysisResult])
   
   // Calcular estatísticas (filtrando valores muito baixos que indicam início da carteira)
@@ -29,7 +29,9 @@ export function BetaEvolution() {
     }
     
     // Filtrar valores maiores que 0.1 para evitar betas artificialmente baixos do início
-    const validBetaValues = data.map((d) => d.beta).filter((b) => b > 0.1)
+    const validBetaValues = data
+      .map((d) => d.beta)
+      .filter((b) => typeof b === 'number' && !isNaN(b) && b > 0.1)
     
     if (validBetaValues.length === 0) {
       return { currentBeta: 0, avgBeta: 0, minBeta: 0, maxBeta: 0 }
