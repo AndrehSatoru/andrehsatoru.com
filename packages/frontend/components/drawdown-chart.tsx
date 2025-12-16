@@ -22,16 +22,20 @@ export function DrawdownChart() {
   // Calcular série de drawdown a partir da série de performance
   const data = useMemo(() => {
     // Se não há dados da API, retornar array vazio
-    if (!analysisResult?.results?.performance || analysisResult.results.performance.length === 0) {
+    if (!analysisResult?.performance || analysisResult.performance.length === 0) {
       return []
     }
     
-    const performanceData = analysisResult.results.performance
+    const performanceData = analysisResult.performance
     
+    if (!performanceData[0]) return []
+
     // Calcular drawdown: (valor atual - máximo histórico) / máximo histórico * 100
     let peak = performanceData[0].portfolio
     
     return performanceData.map((item: { date: string; portfolio: number }) => {
+      if (!item || item.portfolio === undefined) return { date: '', drawdown: 0 }
+
       // Atualizar o pico se valor atual é maior
       if (item.portfolio > peak) {
         peak = item.portfolio

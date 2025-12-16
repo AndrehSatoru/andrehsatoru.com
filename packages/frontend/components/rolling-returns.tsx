@@ -23,14 +23,14 @@ export function RollingReturns() {
 
   const rollingReturnsData = useMemo(() => {
     // Usar dados reais da API
-    const apiData = analysisResult?.results?.rolling_annualized_returns
+    const apiData = analysisResult?.rolling_annualized_returns
     
     if (apiData && apiData.length > 0) {
       return apiData
     }
     
     // Fallback: calcular a partir dos dados de performance
-    const performance = analysisResult?.results?.performance
+    const performance = analysisResult?.performance
     if (!performance || performance.length < 60) {
       return []
     }
@@ -39,6 +39,10 @@ export function RollingReturns() {
     const monthlyData: { [key: string]: { values: number[], benchmark: number[] } } = {}
     
     for (let i = 1; i < performance.length; i++) {
+      if (!performance[i] || !performance[i-1] || performance[i].portfolio === undefined || performance[i-1].portfolio === undefined) {
+        continue;
+      }
+
       const date = new Date(performance[i].date)
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       

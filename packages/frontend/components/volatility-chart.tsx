@@ -17,18 +17,22 @@ export function VolatilityChart() {
   
   // Calcular volatilidade rolante de 21 dias da carteira e do Ibovespa
   const data = useMemo(() => {
-    if (!analysisResult?.results?.performance || analysisResult.results.performance.length < ROLLING_WINDOW + 1) {
+    if (!analysisResult?.performance || analysisResult.performance.length < ROLLING_WINDOW + 1) {
       return []
     }
     
-    const performanceData = analysisResult.results.performance
-    
-    // Verificar se temos dados do Ibovespa
-    const hasIbovespa = performanceData.some((d: any) => d.ibovespa !== undefined)
+  const performanceData = analysisResult.performance
+  
+  if (!Array.isArray(performanceData)) return [];
+
+  const hasIbovespa = performanceData.some((d: any) => d.ibovespa !== undefined)
     
     // Calcular retornos diários da carteira e do Ibovespa
     const dailyReturns: { date: string; portfolioReturn: number; ibovespaReturn: number | null }[] = []
     for (let i = 1; i < performanceData.length; i++) {
+      if (!performanceData[i] || !performanceData[i-1] || performanceData[i].portfolio === undefined || performanceData[i-1].portfolio === undefined) {
+        continue
+      }
       const prevPortfolio = performanceData[i - 1].portfolio
       const currPortfolio = performanceData[i].portfolio
       

@@ -180,7 +180,7 @@ export function EfficientFrontier() {
   const [error, setError] = useState<string | null>(null)
 
   // Taxa livre de risco - obter CDI do backend (benchmark mais recente), fallback para 12%
-  const rollingReturns = analysisResult?.results?.rolling_annualized_returns
+  const rollingReturns = analysisResult?.rolling_annualized_returns
   const lastBenchmark = Array.isArray(rollingReturns) && rollingReturns.length > 0 
     ? rollingReturns[rollingReturns.length - 1]?.benchmark 
     : null
@@ -208,12 +208,12 @@ export function EfficientFrontier() {
 
   // Extrair ativos e datas do analysisResult
   const { assets, startDate, endDate } = useMemo(() => {
-    if (!analysisResult?.results?.alocacao?.alocacao || !analysisResult?.results?.performance) {
+    if (!analysisResult?.alocacao?.alocacao || !analysisResult?.performance) {
       return { assets: [], startDate: null, endDate: null }
     }
 
-    const alocacaoData = analysisResult.results.alocacao.alocacao
-    const performance = analysisResult.results.performance
+    const alocacaoData = analysisResult.alocacao.alocacao
+    const performance = analysisResult.performance
 
     // Obter lista de ativos (excluir Caixa) e normalizar tickers
     const assetList = Object.keys(alocacaoData)
@@ -281,14 +281,14 @@ export function EfficientFrontier() {
 
   // Processar dados para o gráfico
   const chartData = useMemo<ChartData | null>(() => {
-    if (!analysisResult?.results?.performance || !analysisResult?.results?.alocacao?.alocacao) {
+    if (!analysisResult?.performance || !analysisResult?.alocacao?.alocacao) {
       return null
     }
 
-    const performance = analysisResult.results.performance
-    const alocacaoData = analysisResult.results.alocacao.alocacao
-    const desempenho = analysisResult.results.desempenho || {}
-    const backendAssetStats = analysisResult.results.asset_stats
+    const performance = analysisResult.performance
+    const alocacaoData = analysisResult.alocacao.alocacao
+    const desempenho = analysisResult.desempenho || {}
+    const backendAssetStats = analysisResult.asset_stats
 
     // Usar dados do backend para retorno e volatilidade da carteira
     // O backend já calcula CAGR e volatilidade anualizada corretamente
@@ -299,12 +299,21 @@ export function EfficientFrontier() {
     if (annualReturn === 0 && annualVol === 0 && performance.length > 1) {
       const returns: number[] = []
       for (let i = 1; i < performance.length; i++) {
+        if (!performance[i] || !performance[i-1] || performance[i].portfolio === undefined || performance[i-1].portfolio === undefined) {
+          continue
+        }
         const ret = (performance[i].portfolio - performance[i - 1].portfolio) / performance[i - 1].portfolio
         returns.push(ret)
       }
       
       const tradingDays = returns.length
-      const totalReturn = (performance[performance.length - 1].portfolio / performance[0].portfolio) - 1
+      const lastPerf = performance[performance.length - 1]
+      const firstPerf = performance[0]
+      
+      const totalReturn = (lastPerf && firstPerf && firstPerf.portfolio !== 0) 
+        ? (lastPerf.portfolio / firstPerf.portfolio) - 1 
+        : 0
+        
       const yearsInPeriod = tradingDays / 252
       
       annualReturn = yearsInPeriod > 0 

@@ -20,16 +20,19 @@ export function VarChart() {
   const { analysisResult } = useDashboardData()
 
   const chartData = useMemo(() => {
-    if (!analysisResult?.results?.performance || analysisResult.results.performance.length < 2) {
+    if (!analysisResult?.performance || analysisResult.performance.length < 2) {
       return null
     }
 
-    const performanceData = analysisResult.results.performance
+    const performanceData = analysisResult.performance
     
     // Calcular retornos monetários diários a partir da série de performance
     const returns: number[] = []
 
     for (let i = 1; i < performanceData.length; i++) {
+      if (!performanceData[i] || !performanceData[i-1] || performanceData[i].portfolio === undefined || performanceData[i-1].portfolio === undefined) {
+        continue
+      }
       const prevValue = performanceData[i - 1].portfolio
       const currValue = performanceData[i].portfolio
       const dailyReturn = currValue - prevValue // Retorno monetário
@@ -58,6 +61,9 @@ export function VarChart() {
 
     // Calcular VaR rolling para cada ponto, usando janela adaptativa
     for (let i = minWindowSize; i < returns.length; i++) {
+      // Garantir que performanceData[i+1] existe
+      if (!performanceData[i+1]) continue
+
       // Janela cresce até maxWindowSize
       const windowSize = Math.min(i, maxWindowSize)
       const windowReturns = returns.slice(i - windowSize, i)

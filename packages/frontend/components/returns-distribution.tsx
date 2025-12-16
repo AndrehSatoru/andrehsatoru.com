@@ -10,7 +10,7 @@ export function ReturnsDistribution() {
   
   const chartData = useMemo(() => {
     // Tentar usar dados reais do backend
-    const backendData = analysisResult?.results?.returns_distribution
+    const backendData = analysisResult?.returns_distribution
     
     if (backendData && backendData.distribution && backendData.distribution.length > 0) {
       return {
@@ -21,7 +21,7 @@ export function ReturnsDistribution() {
     }
     
     // Fallback: calcular a partir da série de performance
-    const performance = analysisResult?.results?.performance
+    const performance = analysisResult?.performance
     if (!performance || performance.length < 30) {
       return null
     }
@@ -29,6 +29,9 @@ export function ReturnsDistribution() {
     // Calcular retornos diários
     const returns: number[] = []
     for (let i = 1; i < performance.length; i++) {
+      if (!performance[i] || !performance[i-1] || performance[i].portfolio === undefined || performance[i-1].portfolio === undefined) {
+        continue
+      }
       const ret = ((performance[i].portfolio - performance[i - 1].portfolio) / performance[i - 1].portfolio) * 100
       returns.push(ret)
     }
