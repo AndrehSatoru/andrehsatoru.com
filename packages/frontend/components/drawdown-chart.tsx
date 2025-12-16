@@ -19,10 +19,18 @@ import { SEMANTIC_COLORS } from "@/lib/colors"
 export function DrawdownChart() {
   const { analysisResult } = useDashboardData()
   
-  // Calcular série de drawdown a partir da série de performance
+  // Calcular série de drawdown a partir da série de performance ou usar dados pré-calculados
   const data = useMemo(() => {
-    // Se não há dados da API, retornar array vazio
-    if (!analysisResult?.performance || analysisResult.performance.length === 0) {
+    if (!analysisResult) return []
+
+    // Prioridade: Usar dados de drawdown pré-calculados pelo backend (mais precisos)
+    // O backend agora calcula o drawdown com resolução total e faz downsampling preservando os picos
+    if (analysisResult.drawdown && Array.isArray(analysisResult.drawdown) && analysisResult.drawdown.length > 0) {
+      return analysisResult.drawdown
+    }
+
+    // Fallback: Calcular a partir da série de performance (pode perder picos devido à amostragem)
+    if (!analysisResult.performance || analysisResult.performance.length === 0) {
       return []
     }
     

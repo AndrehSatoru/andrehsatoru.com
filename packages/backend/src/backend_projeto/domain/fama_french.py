@@ -6,7 +6,9 @@ This module provides functions for:
 - Fama-French 5-factor model analysis
 """
 import pandas as pd
+import numpy as np
 import statsmodels.api as sm
+import logging
 from typing import Dict, List, Any
 
 
@@ -58,16 +60,39 @@ def ff3_metrics(
             continue
         y = (df[a] - df['RF']).dropna()
         XA = X.loc[y.index]
-        if len(y) < 10:
+        
+        # 1. Increased threshold for FF3 (4 params) -> 24 obs recommended
+        if len(y) < 24:
+            logging.warning(f"Asset {a}: Insufficient data ({len(y)} < 24). Skipping.")
             continue
+            
+        # 2. Rank validation
+        if np.linalg.matrix_rank(XA) < XA.shape[1]:
+            logging.warning(f"Asset {a}: Singular design matrix (perfect collinearity). Skipping.")
+            continue
+
         model = sm.OLS(y.values, XA.values)
-        res = model.fit()
+        
+        # 3. Secure fit using QR decomposition
+        try:
+            res = model.fit(method='qr')
+        except Exception as e:
+            logging.error(f"Asset {a}: OLS fit error: {e}")
+            continue
+
         params = res.params.tolist()
         pvals = res.pvalues.tolist()
         tstats = res.tvalues.tolist()
+        
         note = None
-        if int(res.nobs) < 12:
-            note = "Poucas observações (< 12 meses); estimativas podem ser instáveis."
+        if int(res.nobs) < 36:
+            note = "Observation count < 36; estimates may be unstable."
+            
+        # 4. Condition Number validation
+        if res.condition_number > 1000:
+            cond_msg = f"High condition number ({res.condition_number:.1f})."
+            note = f"{note} {cond_msg}" if note else cond_msg
+
         results[a] = {
             'alpha': float(params[0]),
             'beta_mkt': float(params[1]),
@@ -118,15 +143,39 @@ def ff5_metrics(
             continue
         y = (df[a] - df['RF']).dropna()
         XA = X.loc[y.index]
-        if len(y) < 10:
+        
+        # 1. Increased threshold for FF5 (6 params) -> 36 obs recommended
+        if len(y) < 36:
+            logging.warning(f"Asset {a}: Insufficient data ({len(y)} < 36). Skipping.")
             continue
-        res = sm.OLS(y.values, XA.values).fit()
+
+        # 2. Rank validation
+        if np.linalg.matrix_rank(XA) < XA.shape[1]:
+            logging.warning(f"Asset {a}: Singular design matrix (perfect collinearity). Skipping.")
+            continue
+
+        model = sm.OLS(y.values, XA.values)
+        
+        # 3. Secure fit using QR decomposition
+        try:
+            res = model.fit(method='qr')
+        except Exception as e:
+            logging.error(f"Asset {a}: OLS fit error: {e}")
+            continue
+
         params = res.params.tolist()
         pvals = res.pvalues.tolist()
         tstats = res.tvalues.tolist()
+        
         note = None
-        if int(res.nobs) < 12:
-            note = "Poucas observações (< 12 meses); estimativas podem ser instáveis."
+        if int(res.nobs) < 48:
+            note = "Observation count < 48; estimates may be unstable."
+
+        # 4. Condition Number validation
+        if res.condition_number > 1000:
+            cond_msg = f"High condition number ({res.condition_number:.1f})."
+            note = f"{note} {cond_msg}" if note else cond_msg
+
         results[a] = {
             'alpha': float(params[0]),
             'beta_mkt': float(params[1]),

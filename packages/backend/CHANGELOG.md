@@ -1,5 +1,20 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.9.3] - 2025-12-16
+
+### 🐛 Bug Fixes
+- 📉 **Drawdown Accuracy**: Fixed discrepancy between summary max drawdown and the drawdown graph.
+  - Implemented `_generate_drawdown_data` in backend with **Min-Max Pooling** downsampling. This technique captures both the deepest troughs (minima) and recoveries (maxima) in each sampling window, ensuring the graph accurately reflects the full-resolution data shape and extrema.
+  - Updated `analyze_performance` (Summary) to calculate Max Drawdown using the exact same value-based logic (`(Value - CumMax) / CumMax`) as the graph, eliminating mathematical discrepancies caused by return reconstruction methods.
+  - Updated frontend `DrawdownChart` to prioritize this pre-calculated high-fidelity data over client-side estimation.
+
+## [1.9.2] - 2025-12-16
+
+### 🐛 Bug Fixes
+- 🐛 **Monte Carlo Simulation**: Fixed the issue where MGB and Bootstrap simulations were producing identical results. Now they are calculated separately using correct methodologies (Parametric Log-Normal for MGB, Historical Resampling for Bootstrap).
+- 📈 **Simulation Precision**: Increased default number of paths from 10,000 to 100,000 for smoother distribution graphs.
+- 🧮 **Math Correction**: Fixed return compounding logic in Monte Carlo to correctly handle log-returns (`exp(cumsum)`) instead of simple return approximation.
+
 ## [1.9.1] - 2025-12-16
 
 ### 🐛 Bug Fixes

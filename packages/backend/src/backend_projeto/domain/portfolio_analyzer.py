@@ -399,10 +399,10 @@ class PortfolioAnalyzer:
         # Assumindo taxa livre de risco de 0% para simplificar
         sharpe_ratio = cagr / annualized_vol if annualized_vol > 0 else 0
         
-        # Calcular drawdown
-        cum_returns = (1 + simple_returns).cumprod()
-        running_max = cum_returns.cummax()
-        drawdowns = (cum_returns - running_max) / running_max
+        # Calcular drawdown usando valores reais (não retornos) para precisão e consistência com o gráfico
+        # Isso evita erros de base onde o pico inicial é ignorado
+        cum_max = valid_portfolio.cummax()
+        drawdowns = (valid_portfolio - cum_max) / cum_max
         max_drawdown = drawdowns.min() * 100  # em %
         
         # Calcular VaR e ES usando retornos simples
@@ -513,6 +513,90 @@ class PortfolioAnalyzer:
             'alocacao': allocation
         }
     
+    def _generate_drawdown_data(self) -> list:
+        """
+        Gera dados de drawdown com downsampling preservando picos e vales (Min-Max Pooling).
+        
+        Usa 'Min-Max pooling' para capturar tanto o pior drawdown (mínimo) quanto
+        a melhor recuperação (máximo) em cada janela de tempo. Isso garante que o
+        gráfico represente visualmente a amplitude real dos movimentos, incluindo
+        picos negativos extremos e recuperações intradiárias/curtas.
+        
+        Returns:
+            Lista de dicionários com data e valor do drawdown
+        """
+        if self.portfolio_value is None or self.portfolio_value.empty:
+            return []
+        
+        # Remover valores NaN
+        valid_portfolio = self.portfolio_value.dropna()
+        if valid_portfolio.empty:
+            return []
+            
+        # 1. Calcular drawdown full resolution (math preciso)
+        cum_max = valid_portfolio.cummax()
+        # Evitar divisão por zero
+        drawdown_series = (valid_portfolio - cum_max) / cum_max.replace(0, 1) * 100 # Em %
+        
+        # 2. Downsampling inteligente (Min-Max pooling)
+        # 250 janelas * 2 pontos/janela = ~500 pontos no gráfico final
+        target_points = 250 
+        
+        if len(drawdown_series) <= target_points * 2:
+            return [{'date': d.strftime('%Y-%m-%d'), 'drawdown': round(float(v), 2)} 
+                    for d, v in drawdown_series.items()]
+        
+        step = len(drawdown_series) / target_points
+        result = []
+        
+        for i in range(target_points):
+            start_idx = int(i * step)
+            end_idx = int((i + 1) * step)
+            
+            # Garantir que não ultrapasse o final
+            if start_idx >= len(drawdown_series):
+                break
+            
+            # Pegar o pedaço da série
+            chunk = drawdown_series.iloc[start_idx:end_idx]
+            
+            if chunk.empty:
+                continue
+                
+            # Encontrar mínimos e máximos locais
+            min_val = chunk.min()
+            min_date = chunk.idxmin()
+            
+            max_val = chunk.max()
+            max_date = chunk.idxmax()
+            
+            # Adicionar pontos na ordem cronológica para manter a linha correta
+            if min_date == max_date:
+                result.append({
+                    'date': min_date.strftime('%Y-%m-%d'), 
+                    'drawdown': round(float(min_val), 2)
+                })
+            elif min_date < max_date:
+                result.append({
+                    'date': min_date.strftime('%Y-%m-%d'), 
+                    'drawdown': round(float(min_val), 2)
+                })
+                result.append({
+                    'date': max_date.strftime('%Y-%m-%d'), 
+                    'drawdown': round(float(max_val), 2)
+                })
+            else:
+                result.append({
+                    'date': max_date.strftime('%Y-%m-%d'), 
+                    'drawdown': round(float(max_val), 2)
+                })
+                result.append({
+                    'date': min_date.strftime('%Y-%m-%d'), 
+                    'drawdown': round(float(min_val), 2)
+                })
+            
+        return result
+
     def run_analysis(self, analyses: Optional[List[str]] = None) -> dict:
         """
         Executa análises especificadas ou todas se None.
@@ -541,6 +625,7 @@ class PortfolioAnalyzer:
                 - 'monthly_returns': Retornos mensais
                 - 'allocation_history': Histórico de alocação
                 - 'rolling_annualized_returns': Retornos anualizados rolling
+                - 'drawdown': Série de drawdown (novo)
         """
         # Calcular posições e valor do portfólio (pré-requisito para a maioria das análises)
         # Estas são executadas sempre que run_analysis é chamado.
@@ -562,6 +647,7 @@ class PortfolioAnalyzer:
             'monthly_returns': self._generate_monthly_returns,
             'allocation_history': self._generate_allocation_history,
             'rolling_annualized_returns': self._generate_rolling_annualized_returns,
+            'drawdown': self._generate_drawdown_data,
             'risk_contribution': self._generate_risk_contribution,
             'beta_evolution': self._generate_beta_evolution,
             'beta_matrix': self._generate_beta_matrix,
@@ -1478,7 +1564,7 @@ class PortfolioAnalyzer:
             logging.warning(f"Erro ao calcular evolução do beta: {e}")
             return []
     
-    def _generate_monte_carlo_simulation(self, n_paths: int = 10000, n_days: int = 252) -> dict:
+    def _generate_monte_carlo_simulation(self, n_paths: int = 100000, n_days: int = 252) -> dict:
         """
         Gera simulação de Monte Carlo comparativa usando MGB com GARCH e Bootstrap Histórico.
         
@@ -1497,53 +1583,62 @@ class PortfolioAnalyzer:
             if len(valid_portfolio) < 60:
                 return {}
             
-            # Usar retornos do portfólio
-            returns = self._portfolio_returns
-            if len(returns) < 30:
+            # Garantir uso de log-retornos para propriedade aditiva
+            log_returns = np.log(valid_portfolio / valid_portfolio.shift(1)).dropna()
+            
+            if len(log_returns) < 30:
                 return {}
             
             # Valor inicial = valor atual da carteira
             initial_value = float(valid_portfolio.iloc[-1])
             
-            # ==== MGB (Geometric Brownian Motion) com volatilidade histórica ====
-            # mu e sigma são DIÁRIOS
-            mu_daily = float(returns.mean())  # Retorno médio diário
-            sigma_daily = float(returns.std())  # Volatilidade diária
+            # ==== Parâmetros para MGB ====
+            mu_daily = float(log_returns.mean())
+            sigma_daily = float(log_returns.std())
             
             # Drift e volatilidade anualizados (para exibição)
+            # Para log-retornos, a média escala linearmente com o tempo
             annual_drift = mu_daily * 252
             annual_volatility = sigma_daily * np.sqrt(252)
             
-            # Simular MGB: S(t+dt) = S(t) * exp((mu - 0.5*sigma^2)*dt + sigma*sqrt(dt)*Z)
-            # Como dt = 1 dia e mu/sigma já são diários, usamos diretamente:
             np.random.seed(42)  # Para reprodutibilidade
             
-            historical_returns_portfolio = returns.values # From self._portfolio_returns
-            
-            # === Vetorização do Monte Carlo (Bootstrap Histórico simplificado) ===
-            # Gerar todos os paths de uma vez
-            sampled_indices = np.random.randint(
-                0, len(historical_returns_portfolio), 
+            # ==== 1. Simulação MGB (Paramétrica) ====
+            # Gerar retornos aleatórios normais: N(mu, sigma)
+            # Vetorizado: gera (n_days, n_paths) de uma vez
+            mgb_log_returns = np.random.normal(
+                loc=mu_daily,
+                scale=sigma_daily,
                 size=(n_days, n_paths)
             )
-            sampled_returns = historical_returns_portfolio[sampled_indices]
             
-            # Calcular paths cumulativos
-            cumulative_returns = np.cumprod(1 + sampled_returns, axis=0)
-            paths = initial_value * cumulative_returns
+            # Caminho de preços: P_t = P_0 * exp(sum(r_i))
+            mgb_cumulative_log_returns = np.cumsum(mgb_log_returns, axis=0)
+            mgb_paths = initial_value * np.exp(mgb_cumulative_log_returns)
+            terminal_mgb = mgb_paths[-1, :]
             
-            # Para manter compatibilidade com a estrutura de retorno, ambos MGB e Bootstrap
-            # usarão os resultados dessa simulação simplificada.
-            terminal_mgb = paths[-1, :] 
-            terminal_bootstrap = paths[-1, :]
+            # ==== 2. Simulação Bootstrap (Histórica) ====
+            # Reamostragem dos log-retornos históricos
+            historical_returns_values = log_returns.values
+            
+            sampled_indices = np.random.randint(
+                0, len(historical_returns_values), 
+                size=(n_days, n_paths)
+            )
+            bootstrap_log_returns = historical_returns_values[sampled_indices]
+            
+            # Caminho de preços: P_t = P_0 * exp(sum(r_i))
+            bootstrap_cumulative_log_returns = np.cumsum(bootstrap_log_returns, axis=0)
+            bootstrap_paths = initial_value * np.exp(bootstrap_cumulative_log_returns)
+            terminal_bootstrap = bootstrap_paths[-1, :]
             
             # ==== Gerar histograma para ambas distribuições ====
-            # Determinar range baseado nos dados
+            # Determinar range baseado nos dados combinados
             all_terminal = np.concatenate([terminal_mgb, terminal_bootstrap])
             min_val = np.percentile(all_terminal, 0.5)
             max_val = np.percentile(all_terminal, 99.5)
             
-            # Com 50k simulações, podemos usar mais bins para melhor resolução
+            # Com 100k simulações, podemos usar mais bins para melhor resolução
             n_bins = 50
             bins = np.linspace(min_val, max_val, n_bins + 1)
             bin_centers = (bins[:-1] + bins[1:]) / 2
