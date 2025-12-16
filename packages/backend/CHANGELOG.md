@@ -2,6 +2,10 @@
 
 ## [1.9.1] - 2025-12-16
 
+### 🐛 Bug Fixes
+- 🐛 **AttributeError**: Fixed `AttributeError: 'PortfolioAnalyzer' object has no attribute 'returns'` by using `self.asset_returns` in `_generate_risk_contribution`.
+- 💾 **Redis Connection**: Corrected `CacheManager` instantiation to properly use `REDIS_HOST` and `REDIS_PORT` from settings, resolving the Redis connection refused error.
+
 ### 🐳 Infrastructure
 - 🚀 Docker services started successfully.
 
