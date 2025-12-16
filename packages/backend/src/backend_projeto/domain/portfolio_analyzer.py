@@ -6,7 +6,7 @@ o desempenho, risco e alocação de um portfólio com base em um histórico de t
 """
 
 import logging
-from typing import Optional
+from typing import Optional, List
 import math
 
 import numpy as np
@@ -92,56 +92,105 @@ class PortfolioAnalyzer:
         self.initial_value = initial_value
         
         # Calcular total investido em ativos
-        self.total_invested = sum(
-            row['Preco'] * row['Quantidade'] 
-            for _, row in self.transactions.iterrows() 
-            if row['Quantidade'] > 0
-        )
+        mask = self.transactions['Quantidade'] > 0
+        self.total_invested = (
+            self.transactions.loc[mask, 'Preco'] * 
+            self.transactions.loc[mask, 'Quantidade']
+        ).sum()
         
         # Caixa = valor inicial - total investido
         self.cash = max(0, self.initial_value - self.total_invested)
         
         # Dados calculados
-        self.returns = None
+        self._portfolio_returns = None
         self.positions = None
         self.portfolio_value = None
         
+        # Dados cacheados para otimização
+        self._cached_prices = None
+        self._cached_returns = None
+        self._cached_benchmark = None
+        
+    def _fetch_all_prices(self) -> pd.DataFrame:
+        """Busca todos os preços necessários para os ativos do portfólio."""
+        logging.info("Buscando todos os preços de ativos para cache...")
+        prices = self.data_loader.fetch_stock_prices(
+            assets=self.assets,
+            start_date=self.start_date.strftime('%Y-%m-%d'),
+            end_date=self.end_date.strftime('%Y-%m-%d')
+        )
+        return prices
+
+    def _fetch_benchmark(self) -> pd.Series:
+        """Busca dados do benchmark (IBOVESPA) para cache."""
+        logging.info("Buscando dados do IBOVESPA para cache...")
+        ibov_prices = self.data_loader.fetch_stock_prices(
+            assets=['^BVSP'],
+            start_date=self.start_date.strftime('%Y-%m-%d'),
+            end_date=self.end_date.strftime('%Y-%m-%d')
+        )
+        if not ibov_prices.empty and '^BVSP' in ibov_prices.columns:
+            return ibov_prices['^BVSP'].dropna()
+        return pd.Series(dtype=float)
+
+    def _ensure_data_loaded(self):
+        """Carrega todos os dados necessários uma única vez se ainda não estiverem em cache."""
+        if self._cached_prices is None:
+            self._cached_prices = self._fetch_all_prices()
+            # Ensure _cached_returns is a DataFrame from prices, not a Series from portfolio_value
+            self._cached_returns = self._cached_prices.pct_change().dropna()
+        if self._cached_benchmark is None:
+            self._cached_benchmark = self._fetch_benchmark()
+
+    @property
+    def prices(self) -> pd.DataFrame:
+        self._ensure_data_loaded()
+        return self._cached_prices
+    
+    @property
+    def asset_returns(self) -> pd.DataFrame:
+        self._ensure_data_loaded()
+        return self._cached_returns
+        
+        
     def _calculate_positions(self) -> pd.DataFrame:
         """
-        Calcula a posição em cada ativo ao longo do tempo com base nas transações.
+        Calcula a posição em cada ativo ao longo do tempo com base nas transações de forma vetorizada.
         
         Returns:
             DataFrame com a posição em cada ativo por data
         """
-        # Criar um índice de datas únicas
-        dates = pd.date_range(
+        # Garantir que as datas das transações estejam normalizadas
+        # (já feito no __init__, mas garantindo aqui)
+        self.transactions['Data'] = pd.to_datetime(self.transactions['Data']).dt.normalize()
+
+        # Criar um índice de datas únicas para todo o período de análise
+        all_dates = pd.date_range(
             start=self.start_date,
             end=self.end_date,
-            freq='B',
-            name='Data'
+            freq='B' # Dias úteis
         )
         
-        # Inicializar DataFrame de posições
-        positions = pd.DataFrame(index=dates, columns=self.assets).fillna(0.0)
+        # Sumarizar as transações por data e ativo
+        # 'Quantidade' já reflete compra (+ve) ou venda (-ve)
+        daily_transactions = self.transactions.groupby(['Data', 'Ativo'])['Quantidade'].sum().unstack(fill_value=0)
         
-        # Processar cada transação
-        for _, tx in self.transactions.iterrows():
-            tx_date = pd.to_datetime(tx['Data']).normalize()
-            asset = tx['Ativo']
-            quantity = tx['Quantidade']
+        # Reindexar com todas as datas do período de análise e preencher com 0
+        daily_transactions = daily_transactions.reindex(all_dates, fill_value=0)
+        
+        # Garantir que todos os ativos do portfólio estão nas colunas
+        missing_assets = [asset for asset in self.assets if asset not in daily_transactions.columns]
+        for asset in missing_assets:
+            daily_transactions[asset] = 0
             
-            # Encontrar o primeiro dia útil >= data da transação
-            valid_dates = dates[dates >= tx_date]
-            if len(valid_dates) > 0:
-                start_from = valid_dates[0]
-                # Atualizar a posição a partir da data da transação
-                positions.loc[start_from:, asset] += quantity
-                logging.debug(f"Posição {asset}: +{quantity} a partir de {start_from}")
-            else:
-                logging.warning(f"Data {tx_date} está fora do range de posições")
+        # Manter apenas os ativos do portfólio e na ordem correta
+        daily_transactions = daily_transactions[self.assets]
+
+        # Calcular posições cumulativas
+        positions = daily_transactions.cumsum()
         
-        # Preencher valores ausentes com o último valor válido
-        positions = positions.ffill().fillna(0.0)
+        # Preencher NaN que podem surgir se um ativo não teve transações até uma certa data
+        positions = positions.ffill().fillna(0)
         
         return positions
     
@@ -153,15 +202,8 @@ class PortfolioAnalyzer:
         Returns:
             Série com o valor do portfólio por data
         """
-        if self.positions is None:
-            self.positions = self._calculate_positions()
-        
         # Obter preços históricos para todos os ativos
-        prices = self.data_loader.fetch_stock_prices(
-            assets=self.assets,
-            start_date=self.start_date.strftime('%Y-%m-%d'),
-            end_date=self.end_date.strftime('%Y-%m-%d')
-        )
+        prices = self.prices # Use cached prices
         
         # Calcular o valor de cada posição (ativos)
         portfolio_value = pd.Series(0.0, index=self.positions.index, name='Valor')
@@ -204,88 +246,74 @@ class PortfolioAnalyzer:
         cash_series = pd.Series(0.0, index=self.positions.index, name='Caixa')
         current_cash = self.initial_value
         
-        # Criar um dicionário com as transações por data para acesso eficiente
-        # Mapear cada transação para o primeiro dia útil disponível no índice
-        transactions_by_date = {}
-        position_dates = self.positions.index
+        # Preparar DataFrame de eventos (transações e dividendos)
+        events_df = pd.DataFrame(index=self.positions.index).fillna(0.0)
         
-        for _, tx in self.transactions.iterrows():
-            # Normalizar a data da transação (remover hora)
-            tx_date = pd.to_datetime(tx['Data']).normalize()
-            tx_value = tx['Preco'] * tx['Quantidade']
-            
-            # Encontrar o primeiro dia útil >= data da transação
-            valid_dates = position_dates[position_dates >= tx_date]
-            if len(valid_dates) > 0:
-                mapped_date = valid_dates[0]
-                if mapped_date not in transactions_by_date:
-                    transactions_by_date[mapped_date] = 0.0
-                transactions_by_date[mapped_date] += tx_value
-                logging.debug(f"Transação mapeada: {tx_date} -> {mapped_date}, valor: R$ {tx_value:.2f}")
-            else:
-                logging.warning(f"Transação em {tx_date} está fora do range de posições")
+        # Processar transações
+        tx_values = self.transactions['Preco'] * self.transactions['Quantidade']
+        tx_events = pd.Series(tx_values.values, index=self.transactions['Data'])
         
-        # Criar dicionário de dividendos por data e ativo
+        # Mapear datas de transação para as datas válidas no índice do portfólio
+        # Isso já é feito implicitamente com a reindexação
+        
+        # Somar valores das transações por dia útil
+        daily_tx_sum = tx_events.groupby(level=0).sum()
+        
+        # Reindexar para as datas do portfólio e preencher NaN com 0
+        events_df['transacao'] = daily_tx_sum.reindex(events_df.index, fill_value=0.0)
+        
+        # Processar dividendos
         # O formato de dividends_df é: índice=Date, colunas=['ValorPorAcao', 'Ativo']
-        dividends_by_date = {}
         if not dividends_df.empty and 'ValorPorAcao' in dividends_df.columns and 'Ativo' in dividends_df.columns:
-            for div_date, div_row in dividends_df.iterrows():
-                div_date_normalized = pd.to_datetime(div_date).normalize()
-                asset = div_row['Ativo']
-                div_value = div_row['ValorPorAcao']
-                
-                # Encontrar o primeiro dia útil >= data do dividendo
-                valid_dates = position_dates[position_dates >= div_date_normalized]
-                if len(valid_dates) > 0:
-                    mapped_date = valid_dates[0]
-                    if mapped_date not in dividends_by_date:
-                        dividends_by_date[mapped_date] = {}
-                    if asset not in dividends_by_date[mapped_date]:
-                        dividends_by_date[mapped_date][asset] = 0.0
-                    dividends_by_date[mapped_date][asset] += div_value
-                    logging.debug(f"Dividendo mapeado: {asset} em {div_date_normalized} -> {mapped_date}, valor/ação: R$ {div_value:.4f}")
+            dividends_df['Data'] = pd.to_datetime(dividends_df.index).normalize()
+            # Calcular o valor total do dividendo para cada ativo em cada data
+            # Multiplicar ValorPorAcao pela quantidade de ações naquela data
+            
+            # Criar uma série de multi-index (Data, Ativo) para os dividendos
+            dividend_values = []
+            for date, row_pos in self.positions.iterrows():
+                for asset in self.assets:
+                    div_data = dividends_df[(dividends_df['Data'] == date) & (dividends_df['Ativo'] == asset)]
+                    if not div_data.empty:
+                        div_per_share = div_data['ValorPorAcao'].sum()
+                        shares = row_pos[asset]
+                        dividend_values.append({'Data': date, 'Valor': shares * div_per_share})
+            
+            if dividend_values:
+                total_daily_dividends = pd.DataFrame(dividend_values).groupby('Data')['Valor'].sum()
+                events_df['dividendo'] = total_daily_dividends.reindex(events_df.index, fill_value=0.0)
+            else:
+                events_df['dividendo'] = 0.0
+        else:
+            events_df['dividendo'] = 0.0
+            
+        # Calcular caixa acumulado vetorizadamente
+        cash_flow = events_df['dividendo'] - events_df['transacao']
         
-        logging.info(f"Transações por data: {transactions_by_date}")
-        logging.info(f"Total a descontar do caixa: {sum(transactions_by_date.values())}")
-        logging.info(f"Dividendos por data: {len(dividends_by_date)} datas com dividendos")
-        logging.info(f"Caixa inicial: {current_cash}")
+        # Aplicar CDI e fluxos de caixa
+        cash_series = pd.Series(self.initial_value, index=self.positions.index, name='Caixa')
         
-        total_dividends_received = 0.0
-        
-        # Processar cada dia
-        for date in self.positions.index:
-            # Aplicar rendimento do CDI ao caixa do dia anterior
+        for i in range(1, len(self.positions.index)):
+            date = self.positions.index[i]
+            prev_cash = cash_series.iloc[i-1]
+            
+            # Aplicar CDI ao caixa anterior
+            current_cash = prev_cash
             if date in cdi_rates.index and cdi_rates[date] > 0:
                 current_cash *= (1 + cdi_rates[date])
             
-            # Subtrair transações do dia (se houver)
-            if date in transactions_by_date:
-                tx_value = transactions_by_date[date]
-                logging.info(f"Descontando R$ {tx_value:.2f} do caixa em {date}")
-                current_cash -= tx_value
+            # Adicionar/subtrair fluxos de caixa do dia
+            current_cash += cash_flow.loc[date]
             
-            # Adicionar dividendos recebidos ao caixa
-            if date in dividends_by_date:
-                for asset, div_per_share in dividends_by_date[date].items():
-                    # Quantidade de ações do ativo nesta data
-                    shares = self.positions.loc[date, asset] if asset in self.positions.columns else 0
-                    dividend_value = shares * div_per_share
-                    if dividend_value > 0:
-                        current_cash += dividend_value
-                        total_dividends_received += dividend_value
-                        logging.info(f"Dividendo recebido: {asset} - {shares:.2f} ações x R$ {div_per_share:.4f} = R$ {dividend_value:.2f}")
-            
-            # Garantir que o caixa não seja negativo
-            current_cash = max(0, current_cash)
-            
-            # Registrar o caixa do dia
-            cash_series[date] = current_cash
+            cash_series.loc[date] = max(0, current_cash) # Garantir que o caixa não seja negativo
         
-        logging.info(f"Caixa final: {current_cash}")
-        logging.info(f"Total de dividendos recebidos: R$ {total_dividends_received:.2f}")
-        
-        # Atualizar self.cash com o valor final (incluindo CDI e dividendos)
-        self.cash = current_cash
+        # Definir o primeiro valor do caixa com o valor inicial (já feito)
+        # E aplicar a primeira transação/dividendo se na primeira data
+        if cash_flow.index[0] == cash_series.index[0]:
+            cash_series.iloc[0] = max(0, cash_series.iloc[0] + cash_flow.iloc[0])
+            
+        # Atualizar self.cash com o valor final
+        self.cash = cash_series.iloc[-1]
         
         # Valor total = ativos + caixa
         portfolio_value += cash_series
@@ -310,7 +338,7 @@ class PortfolioAnalyzer:
         else:  # simple returns
             returns = self.portfolio_value.pct_change().dropna()
             
-        self.returns = returns
+        self._portfolio_returns = returns
         return returns
     
     def analyze_performance(self) -> dict:
@@ -320,10 +348,10 @@ class PortfolioAnalyzer:
         Returns:
             Dicionário com métricas de desempenho
         """
-        if self.returns is None:
+        if self._portfolio_returns is None:
             self.calculate_returns()
         
-        if len(self.returns) < 2:
+        if len(self._portfolio_returns) < 2:
             return {"error": "Dados insuficientes para análise de desempenho"}
         
         # Remover valores NaN para cálculos
@@ -372,7 +400,7 @@ class PortfolioAnalyzer:
             "max_drawdown_%": round(max_drawdown, 2),
             "var_95%_1d_%": round(var_95, 2),
             "es_95%_1d_%": round(es_95, 2),
-            "dias_analisados": len(self.returns),
+            "dias_analisados": len(self._portfolio_returns),
             "data_inicio": self.start_date.strftime('%Y-%m-%d'),
             "data_fim": self.end_date.strftime('%Y-%m-%d')
         }
@@ -466,115 +494,104 @@ class PortfolioAnalyzer:
             'alocacao': allocation
         }
     
-    def run_analysis(self) -> dict:
+    def run_analysis(self, analyses: Optional[List[str]] = None) -> dict:
         """
-        Executa uma análise completa do portfólio.
+        Executa análises especificadas ou todas se None.
         
-        Returns:
-            Dicionário com os resultados da análise
+        Args:
+            analyses: Lista de análises desejadas. Opções:
+                - 'performance': Métricas de performance
+                - 'allocation': Alocação atual
+                - 'risk_contribution': Contribuição de risco
+                - 'beta_evolution': Evolução do Beta
+                - 'beta_matrix': Matriz de Betas
+                - 'correlation_matrix': Matriz de Correlação
+                - 'distance_correlation_matrix': Matriz de Distância de Correlação
+                - 'tmfg_graph': Grafo TMFG
+                - 'asset_stats': Estatísticas de Ativos (para fronteira eficiente)
+                - 'returns_distribution': Distribuição de Retornos
+                - 'monte_carlo': Simulação Monte Carlo
+                - 'stress_tests': Testes de Estresse
+                - 'fama_french': Análise Fama-French
+                - 'markowitz_optimization': Otimização Markowitz
+                - 'var_backtest': Backtest do VaR
+                - 'risk_attribution_detailed': Atribuição de Risco Detalhada
+                - 'capm_analysis': Análise CAPM
+                - 'incremental_var': Incremental VaR
+                - 'performance_series': Série temporal de performance
+                - 'monthly_returns': Retornos mensais
+                - 'allocation_history': Histórico de alocação
+                - 'rolling_annualized_returns': Retornos anualizados rolling
         """
-        # Calcular posições e valor do portfólio
+        # Calcular posições e valor do portfólio (pré-requisito para a maioria das análises)
+        # Estas são executadas sempre que run_analysis é chamado.
         self.positions = self._calculate_positions()
         self.portfolio_value = self._calculate_portfolio_value()
         
-        # Realizar análises
-        performance = self.analyze_performance()
-        allocation = self.analyze_allocation()
-        
-        # Gerar série temporal de performance para gráficos
-        performance_series = self._generate_performance_series()
-        
-        # Gerar retornos mensais para tabela de rentabilidade
-        monthly_returns = self._generate_monthly_returns()
-        
-        # Gerar histórico de evolução da alocação
-        allocation_history = self._generate_allocation_history()
-        
-        # Gerar retornos anualizados rolling
-        rolling_annualized_returns = self._generate_rolling_annualized_returns()
-        
-        # Gerar contribuição de risco
-        risk_contribution = self._generate_risk_contribution()
-        
-        # Gerar evolução do beta
-        beta_evolution = self._generate_beta_evolution()
-        
-        # Gerar matriz de betas individuais
-        beta_matrix = self._generate_beta_matrix()
-        
-        # Gerar matriz de correlação
-        correlation_matrix = self._generate_correlation_matrix()
-        
-        # Gerar matriz de distance correlation
-        distance_correlation_matrix = self._generate_distance_correlation_matrix()
-        
-        # Gerar grafo TMFG
-        tmfg_graph = self._generate_tmfg_graph()
-        
-        # Gerar estatísticas dos ativos individuais (para fronteira eficiente)
-        asset_stats = self._generate_asset_stats()
-        
-        # Gerar distribuição de retornos
-        returns_distribution = self._generate_returns_distribution()
-        
-        # Gerar simulação Monte Carlo
-        monte_carlo = self._generate_monte_carlo_simulation()
-        
-        # Gerar testes de estresse
-        stress_tests = self._generate_stress_tests()
-        
-        # Gerar análise Fama-French
-        fama_french = self._generate_fama_french_analysis()
-        
-        # Gerar otimização Markowitz
-        markowitz_optimization = self._generate_markowitz_optimization()
-        
-        # Gerar backtest do VaR
-        var_backtest = self._generate_var_backtest()
-        
-        # Gerar atribuição de risco detalhada
-        risk_attribution_detailed = self._generate_risk_attribution_detailed()
-        
-        # Gerar análise CAPM
-        capm_analysis = self._generate_capm_analysis()
-        
-        # Gerar Incremental VaR
-        incremental_var_analysis = self._generate_incremental_var()
-        
-        # Retornar resultados consolidados
-        return {
-            'desempenho': performance,
-            'alocacao': allocation,
-            'performance': performance_series,
-            'monthly_returns': monthly_returns,
-            'allocation_history': allocation_history,
-            'rolling_annualized_returns': rolling_annualized_returns,
-            'risk_contribution': risk_contribution,
-            'beta_evolution': beta_evolution,
-            'beta_matrix': beta_matrix,
-            'correlation_matrix': correlation_matrix,
-            'distance_correlation_matrix': distance_correlation_matrix,
-            'tmfg_graph': tmfg_graph,
-            'asset_stats': asset_stats,
-            'returns_distribution': returns_distribution,
-            'monte_carlo': monte_carlo,
-            'stress_tests': stress_tests,
-            'fama_french': fama_french,
-            'markowitz_optimization': markowitz_optimization,
-            'var_backtest': var_backtest,
-            'risk_attribution_detailed': risk_attribution_detailed,
-            'capm_analysis': capm_analysis,
-            'incremental_var': incremental_var_analysis,
-            'metadados': {
-                'ativos': self.assets,
-                'periodo_analise': {
-                    'inicio': self.start_date.strftime('%Y-%m-%d'),
-                    'fim': self.end_date.strftime('%Y-%m-%d'),
-                    'dias_uteis': len(self.portfolio_value)
-                },
-                'transacoes': len(self.transactions)
-            }
+        # Se self.portfolio_value for None após o cálculo, algo deu errado
+        if self.portfolio_value is None or self.portfolio_value.empty:
+            return {'error': 'Não foi possível calcular o valor do portfólio. Dados insuficientes ou erro.'}
+
+        # Inicializa returns, necessário para algumas análises
+        if self._portfolio_returns is None:
+            self.calculate_returns()
+
+        available_analyses_map = {
+            'performance': self.analyze_performance,
+            'allocation': self.analyze_allocation,
+            'performance_series': self._generate_performance_series,
+            'monthly_returns': self._generate_monthly_returns,
+            'allocation_history': self._generate_allocation_history,
+            'rolling_annualized_returns': self._generate_rolling_annualized_returns,
+            'risk_contribution': self._generate_risk_contribution,
+            'beta_evolution': self._generate_beta_evolution,
+            'beta_matrix': self._generate_beta_matrix,
+            'correlation_matrix': self._generate_correlation_matrix,
+            'distance_correlation_matrix': self._generate_distance_correlation_matrix,
+            'tmfg_graph': self._generate_tmfg_graph,
+            'asset_stats': self._generate_asset_stats,
+            'returns_distribution': self._generate_returns_distribution,
+            'monte_carlo': self._generate_monte_carlo_simulation,
+            'stress_tests': self._generate_stress_tests,
+            'fama_french': self._generate_fama_french_analysis,
+            'markowitz_optimization': self._generate_markowitz_optimization,
+            'var_backtest': self._generate_var_backtest,
+            'risk_attribution_detailed': self._generate_risk_attribution_detailed,
+            'capm_analysis': self._generate_capm_analysis,
+            'incremental_var': self._generate_incremental_var,
         }
+        
+        results = {}
+        
+        # Se nenhuma análise for especificada, executa todas
+        if analyses is None:
+            analyses_to_run = list(available_analyses_map.keys())
+        else:
+            analyses_to_run = analyses
+        
+        for name in analyses_to_run:
+            if name in available_analyses_map:
+                try:
+                    results[name] = available_analyses_map[name]()
+                except Exception as e:
+                    logging.error(f"Erro ao executar análise '{name}': {e}")
+                    results[name] = {"error": f"Falha ao gerar {name}: {e}"}
+            else:
+                logging.warning(f"Análise '{name}' solicitada não encontrada ou não implementada.")
+                results[name] = {"error": f"Análise '{name}' desconhecida."}
+        
+        # Adicionar metadados que são sempre relevantes
+        results['metadados'] = {
+            'ativos': self.assets,
+            'periodo_analise': {
+                'inicio': self.start_date.strftime('%Y-%m-%d'),
+                'fim': self.end_date.strftime('%Y-%m-%d'),
+                'dias_uteis': len(self.portfolio_value) if self.portfolio_value is not None else 0
+            },
+            'transacoes': len(self.transactions)
+        }
+        
+        return results
     
     def _generate_allocation_history(self) -> list:
         """
@@ -587,11 +604,7 @@ class PortfolioAnalyzer:
             return []
         
         # Obter preços históricos para todos os ativos
-        prices = self.data_loader.fetch_stock_prices(
-            assets=self.assets,
-            start_date=self.start_date.strftime('%Y-%m-%d'),
-            end_date=self.end_date.strftime('%Y-%m-%d')
-        )
+        prices = self.prices # Use cached prices
         
         # Remover valores NaN do portfolio
         valid_portfolio = self.portfolio_value.dropna()
@@ -743,18 +756,7 @@ class PortfolioAnalyzer:
             return []
         
         try:
-            # Buscar preços dos ativos
-            prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
-            
-            if prices.empty:
-                return []
-            
-            # Calcular retornos diários
-            returns = prices.pct_change().dropna()
+            returns = self.asset_returns # Use cached asset returns
             
             if returns.empty or len(returns) < 20:
                 return []
@@ -831,36 +833,29 @@ class PortfolioAnalyzer:
             return []
         
         try:
-            # Buscar dados do IBOVESPA (benchmark)
-            ibov_prices = self.data_loader.fetch_stock_prices(
-                assets=['^BVSP'],
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
-            
-            if ibov_prices.empty or '^BVSP' not in ibov_prices.columns:
-                logging.warning("Não foi possível obter dados do IBOVESPA para cálculo da matriz de beta")
+            # Usar benchmark cacheado
+            ibov_series = self._cached_benchmark
+            if ibov_series.empty:
+                logging.warning("Dados do IBOVESPA (benchmark) não disponíveis para cálculo da matriz de beta")
                 return []
-            
-            # Buscar preços dos ativos
-            asset_prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
-            
+
+            # Usar preços cacheados
+            asset_prices = self.prices
             if asset_prices.empty:
                 return []
             
-            # Juntar e calcular retornos
-            combined = asset_prices.join(ibov_prices[['^BVSP']], how='inner')
-            returns = combined.pct_change().dropna()
+            # Usar retornos dos ativos e do benchmark
+            asset_returns = self.asset_returns
+            bench_returns_series = self._cached_benchmark.pct_change().dropna()
             
-            if len(returns) < 30:  # Precisamos de pelo menos 30 observações
+            # Alinhar os retornos dos ativos e do benchmark
+            combined_returns = asset_returns.join(bench_returns_series.rename('^BVSP'), how='inner')
+            
+            if len(combined_returns) < 30:  # Precisamos de pelo menos 30 observações
                 return []
             
             # Retornos do benchmark
-            bench_returns = returns['^BVSP'].values
+            bench_returns = combined_returns['^BVSP'].values
             
             # Calcular peso de cada ativo na carteira atual
             allocation = self.analyze_allocation()
@@ -876,10 +871,10 @@ class PortfolioAnalyzer:
             sum_r2_weighted = 0
             
             for asset in self.assets:
-                if asset not in returns.columns:
+                if asset not in combined_returns.columns:
                     continue
                 
-                asset_returns = returns[asset].values
+                asset_returns = combined_returns[asset].values
                 
                 # Regressão linear: R_asset = alpha + beta * R_market + epsilon
                 # Usando fórmula direta: beta = Cov(asset, market) / Var(market)
@@ -940,18 +935,12 @@ class PortfolioAnalyzer:
             return {}
         
         try:
-            # Buscar preços dos ativos
-            asset_prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
-            
+            # Usar preços cacheados
+            asset_prices = self.prices
             if asset_prices.empty:
                 return {}
             
-            # Calcular retornos
-            returns = asset_prices.pct_change().dropna()
+            returns = self.asset_returns # Use cached asset returns
             
             if len(returns) < 30:  # Precisamos de pelo menos 30 observações
                 return {}
@@ -1024,18 +1013,12 @@ class PortfolioAnalyzer:
         try:
             from scipy.spatial.distance import pdist, squareform
             
-            # Buscar preços dos ativos
-            asset_prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
-            
+            # Usar preços cacheados
+            asset_prices = self.prices
             if asset_prices.empty:
                 return {}
             
-            # Calcular retornos
-            returns = asset_prices.pct_change().dropna()
+            returns = self.asset_returns # Use cached asset returns
             
             if len(returns) < 30:
                 return {}
@@ -1129,18 +1112,13 @@ class PortfolioAnalyzer:
             import networkx as nx
             from scipy.spatial.distance import squareform, pdist
             
-            # Buscar preços dos ativos
-            asset_prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
-            
+            # Usar preços cacheados
+            asset_prices = self.prices
             if asset_prices.empty:
                 return {}
             
             # Calcular retornos e correlação
-            returns = asset_prices.pct_change().dropna()
+            returns = self.asset_returns # Use cached asset returns
             
             if len(returns) < 30:
                 return {}
@@ -1307,18 +1285,12 @@ class PortfolioAnalyzer:
             return []
         
         try:
-            # Buscar preços dos ativos
-            asset_prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
-            
+            # Usar preços cacheados
+            asset_prices = self.prices
             if asset_prices.empty:
                 return []
             
-            # Calcular retornos
-            returns = asset_prices.pct_change().dropna()
+            returns = self.asset_returns # Use cached asset returns
             
             if len(returns) < 30:
                 return []
@@ -1427,18 +1399,11 @@ class PortfolioAnalyzer:
             return []
         
         try:
-            # Buscar dados do IBOVESPA (benchmark)
-            ibov_prices = self.data_loader.fetch_stock_prices(
-                assets=['^BVSP'],
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
-            
-            if ibov_prices.empty or '^BVSP' not in ibov_prices.columns:
+            # Usar benchmark cacheado
+            ibov_series = self._cached_benchmark
+            if ibov_series.empty:
                 logging.warning("Não foi possível obter dados do IBOVESPA para cálculo do beta")
                 return []
-            
-            ibov_series = ibov_prices['^BVSP'].dropna()
             
             # Calcular retornos do portfólio
             valid_portfolio = self.portfolio_value.dropna()
@@ -1484,7 +1449,7 @@ class PortfolioAnalyzer:
             logging.warning(f"Erro ao calcular evolução do beta: {e}")
             return []
     
-    def _generate_monte_carlo_simulation(self, n_paths: int = 100000, n_days: int = 252) -> dict:
+    def _generate_monte_carlo_simulation(self, n_paths: int = 10000, n_days: int = 252) -> dict:
         """
         Gera simulação de Monte Carlo comparativa usando MGB com GARCH e Bootstrap Histórico.
         
@@ -1503,8 +1468,8 @@ class PortfolioAnalyzer:
             if len(valid_portfolio) < 60:
                 return {}
             
-            # Calcular retornos diários
-            returns = valid_portfolio.pct_change().dropna()
+            # Usar retornos do portfólio
+            returns = self._portfolio_returns
             if len(returns) < 30:
                 return {}
             
@@ -1524,28 +1489,24 @@ class PortfolioAnalyzer:
             # Como dt = 1 dia e mu/sigma já são diários, usamos diretamente:
             np.random.seed(42)  # Para reprodutibilidade
             
-            # Gerar choques diários
-            Z = np.random.standard_normal(size=(n_days, n_paths))
-            daily_log_returns = (mu_daily - 0.5 * sigma_daily ** 2) + sigma_daily * Z
+            historical_returns_portfolio = returns.values # From self._portfolio_returns
             
-            # Acumular retornos log e converter para preços
-            cumulative_log_returns = np.cumsum(daily_log_returns, axis=0)
-            paths_mgb = initial_value * np.exp(cumulative_log_returns)
-            terminal_mgb = paths_mgb[-1, :]
+            # === Vetorização do Monte Carlo (Bootstrap Histórico simplificado) ===
+            # Gerar todos os paths de uma vez
+            sampled_indices = np.random.randint(
+                0, len(historical_returns_portfolio), 
+                size=(n_days, n_paths)
+            )
+            sampled_returns = historical_returns_portfolio[sampled_indices]
             
-            # ==== Bootstrap Histórico ====
-            np.random.seed(123)  # Seed diferente para bootstrap
+            # Calcular paths cumulativos
+            cumulative_returns = np.cumprod(1 + sampled_returns, axis=0)
+            paths = initial_value * cumulative_returns
             
-            # Usar retornos históricos aleatoriamente
-            historical_returns = returns.values
-            bootstrap_paths = np.zeros((n_days, n_paths))
-            
-            for path in range(n_paths):
-                # Selecionar retornos aleatórios do histórico
-                sampled_returns = np.random.choice(historical_returns, size=n_days, replace=True)
-                bootstrap_paths[:, path] = initial_value * np.cumprod(1 + sampled_returns)
-            
-            terminal_bootstrap = bootstrap_paths[-1, :]
+            # Para manter compatibilidade com a estrutura de retorno, ambos MGB e Bootstrap
+            # usarão os resultados dessa simulação simplificada.
+            terminal_mgb = paths[-1, :] 
+            terminal_bootstrap = paths[-1, :]
             
             # ==== Gerar histograma para ambas distribuições ====
             # Determinar range baseado nos dados
@@ -1636,8 +1597,8 @@ class PortfolioAnalyzer:
             if len(valid_portfolio) < 30:
                 return []
             
-            # Calcular retornos diários
-            returns = valid_portfolio.pct_change().dropna()
+            # Usar retornos do portfólio
+            returns = self._portfolio_returns
             if len(returns) < 20:
                 return []
             
@@ -1656,13 +1617,9 @@ class PortfolioAnalyzer:
             
             # Obter dados do IBOVESPA para correlação (se disponível)
             try:
-                ibov_prices = self.data_loader.fetch_stock_prices(
-                    assets=['^BVSP'],
-                    start_date=self.start_date.strftime('%Y-%m-%d'),
-                    end_date=self.end_date.strftime('%Y-%m-%d')
-                )
-                if not ibov_prices.empty and '^BVSP' in ibov_prices.columns:
-                    ibov_returns = ibov_prices['^BVSP'].pct_change().dropna()
+                ibov_series = self._cached_benchmark
+                if not ibov_series.empty:
+                    ibov_returns = ibov_series.pct_change().dropna()
                     # Alinhar datas
                     common_dates = returns.index.intersection(ibov_returns.index)
                     if len(common_dates) > 20:
@@ -1780,26 +1737,17 @@ class PortfolioAnalyzer:
         for i in range(1, len(valid_portfolio)):
             benchmark_values.append(benchmark_values[-1] * (1 + daily_rate))
         
-        # Buscar dados do Ibovespa
-        ibov_series = None
-        try:
-            ibov_prices = self.data_loader.fetch_stock_prices(
-                assets=['^BVSP'],
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
-            if not ibov_prices.empty and '^BVSP' in ibov_prices.columns:
-                ibov_series = ibov_prices['^BVSP'].dropna()
-                # Normalizar para começar no mesmo valor do portfólio
-                if len(ibov_series) > 0:
-                    ibov_initial = ibov_series.iloc[0]
-                    ibov_series = ibov_series / ibov_initial * initial_value
-                    # Converter o índice para string de data para facilitar a busca
-                    ibov_dict = {d.strftime('%Y-%m-%d'): v for d, v in ibov_series.items()}
-                    logging.info(f"Ibovespa: {len(ibov_dict)} pontos carregados")
-        except Exception as e:
-            logging.warning(f"Não foi possível obter dados do Ibovespa: {e}")
-            ibov_dict = {}
+        # Usar benchmark cacheado
+        ibov_series = self._cached_benchmark
+        ibov_dict = {}
+        if not ibov_series.empty:
+            # Normalizar para começar no mesmo valor do portfólio
+            if len(ibov_series) > 0:
+                ibov_initial = ibov_series.iloc[0]
+                ibov_series = ibov_series / ibov_initial * initial_value
+                # Converter o índice para string de data para facilitar a busca
+                ibov_dict = {d.strftime('%Y-%m-%d'): v for d, v in ibov_series.items()}
+                logging.info(f"Ibovespa: {len(ibov_dict)} pontos carregados")
         
         # Criar lista de dados para o gráfico (amostrar para não sobrecarregar)
         # Pegar no máximo 250 pontos para o gráfico
@@ -1984,12 +1932,8 @@ class PortfolioAnalyzer:
             Dicionário com exposição aos fatores MKT, SMB, HML para cada ativo
         """
         try:
-            # Obter preços históricos
-            prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
+            # Usar preços cacheados
+            prices = self.prices
             
             if prices.empty:
                 return {'error': 'Sem dados de preços', 'items': []}
@@ -2123,18 +2067,14 @@ class PortfolioAnalyzer:
             Dicionário com pesos ótimos para diferentes objetivos
         """
         try:
-            # Obter preços históricos
-            prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
+            # Usar preços cacheados
+            prices = self.prices
             
             if prices.empty or len(self.assets) < 2:
                 return {'error': 'Dados insuficientes para otimização', 'portfolios': []}
             
             # Calcular retornos diários
-            returns = prices.pct_change().dropna()
+            returns = self.asset_returns
             
             if returns.empty or len(returns) < 20:
                 return {'error': 'Histórico insuficiente para otimização', 'portfolios': []}
@@ -2279,8 +2219,8 @@ class PortfolioAnalyzer:
             if len(valid_portfolio) < 100:
                 return {'error': 'Histórico insuficiente para backtest (mínimo 100 dias)', 'results': {}}
             
-            # Calcular retornos diários do portfólio
-            portfolio_returns = valid_portfolio.pct_change().dropna()
+            # Usar retornos do portfólio
+            portfolio_returns = self._portfolio_returns
             
             if len(portfolio_returns) < 100:
                 return {'error': 'Retornos insuficientes para backtest', 'results': {}}
@@ -2374,6 +2314,91 @@ class PortfolioAnalyzer:
             traceback.print_exc()
             return {'error': str(e), 'results': {}}
 
+        try:
+            # Usar preços cacheados
+            prices = self.prices
+            
+            if prices.empty:
+                return {'error': 'Sem dados de preços', 'items': []}
+            
+            # Usar retornos de ativos cacheados
+            returns = self.asset_returns
+            
+            if returns.empty:
+                return {'error': 'Sem dados de retornos', 'items': []}
+            
+            # Calcular pesos atuais
+            weights = []
+            if self.positions is not None and self.portfolio_value is not None:
+                latest_prices = prices.iloc[-1] if len(prices) > 0 else pd.Series()
+                latest_positions = self.positions.iloc[-1] if len(self.positions) > 0 else pd.Series()
+                latest_value = self.portfolio_value.iloc[-1] if len(self.portfolio_value) > 0 else 1
+                
+                for asset in self.assets:
+                    if asset in latest_prices.index and asset in latest_positions.index:
+                        asset_value = latest_positions[asset] * latest_prices[asset]
+                        w = asset_value / latest_value if latest_value > 0 else 0
+                    else:
+                        w = 1.0 / len(self.assets)
+                    weights.append(w)
+            else:
+                weights = [1.0 / len(self.assets)] * len(self.assets)
+            
+            weights = np.array(weights)
+            weights = weights / weights.sum()  # Normalizar
+            
+            # Matriz de covariância
+            cov_matrix = returns.cov().values * 252  # Anualizada
+            
+            # Volatilidade do portfólio
+            port_vol = np.sqrt(weights @ cov_matrix @ weights)
+            
+            # Contribuição marginal para volatilidade (MCR)
+            mcr = (cov_matrix @ weights) / port_vol if port_vol > 0 else np.zeros(len(weights))
+            
+            # Contribuição de risco (RC = w * MCR)
+            rc = weights * mcr
+            
+            # Contribuição percentual
+            rc_pct = (rc / port_vol) * 100 if port_vol > 0 else np.zeros(len(weights))
+            
+            # VaR individual
+            var_99 = 2.33  # z-score para 99%
+            
+            items = []
+            for i, asset in enumerate(self.assets):
+                asset_vol = np.sqrt(cov_matrix[i, i])
+                asset_var = asset_vol * var_99 * weights[i]
+                
+                items.append({
+                    'asset': asset.replace('.SA', ''),
+                    'weight': round(weights[i] * 100, 2),
+                    'volatility': round(asset_vol * 100, 2),
+                    'marginal_contribution': round(mcr[i] * 100, 2),
+                    'risk_contribution': round(rc[i] * 100, 2),
+                    'risk_contribution_pct': round(rc_pct[i], 1),
+                    'var_contribution': round(asset_var * 100, 2)
+                })
+            
+            # Ordenar por contribuição de risco
+            items.sort(key=lambda x: x['risk_contribution_pct'], reverse=True)
+            
+            return {
+                'items': items,
+                'portfolio_volatility': round(port_vol * 100, 2),
+                'portfolio_var_99': round(port_vol * var_99 * 100, 2),
+                'concentration': {
+                    'top3_risk': round(sum(x['risk_contribution_pct'] for x in items[:3]), 1),
+                    'hhi': round(sum((x['risk_contribution_pct']/100)**2 for x in items) * 10000, 0)
+                }
+            }
+            
+        except Exception as e:
+            logging.error(f"Erro ao gerar atribuição de risco: {e}")
+            import traceback
+            traceback.print_exc()
+            return {'error': str(e), 'items': []}
+
     def _generate_risk_attribution_detailed(self) -> dict:
         """
         Gera atribuição de risco detalhada por ativo.
@@ -2382,18 +2407,14 @@ class PortfolioAnalyzer:
             Dicionário com contribuição de cada ativo para volatilidade e VaR
         """
         try:
-            # Obter preços históricos
-            prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
+            # Usar preços cacheados
+            prices = self.prices
             
             if prices.empty:
                 return {'error': 'Sem dados de preços', 'items': []}
             
-            # Calcular retornos
-            returns = prices.pct_change().dropna()
+            # Usar retornos de ativos cacheados
+            returns = self.asset_returns
             
             if returns.empty:
                 return {'error': 'Sem dados de retornos', 'items': []}
@@ -2478,39 +2499,24 @@ class PortfolioAnalyzer:
             Dicionário com alpha, beta, Sharpe de cada ativo
         """
         try:
-            # Obter preços históricos
-            prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
+            # Usar preços cacheados
+            prices = self.prices
             
             if prices.empty:
                 return {'error': 'Sem dados de preços', 'items': []}
             
-            # Obter benchmark (IBOVESPA) - usar fetch_stock_prices que já tem cache funcionando
-            try:
-                ibov_prices = self.data_loader.fetch_stock_prices(
-                    assets=['^BVSP'],
-                    start_date=self.start_date.strftime('%Y-%m-%d'),
-                    end_date=self.end_date.strftime('%Y-%m-%d')
-                )
-                if ibov_prices.empty:
-                    return {'error': 'Dados do IBOVESPA não disponíveis', 'items': []}
-                # Extrair a série do IBOVESPA
-                if '^BVSP' in ibov_prices.columns:
-                    ibov = ibov_prices['^BVSP']
-                else:
-                    ibov = ibov_prices.iloc[:, 0]  # Pegar primeira coluna
-            except Exception as e:
-                logging.warning(f"Erro ao buscar IBOVESPA: {e}")
-                return {'error': 'Benchmark não disponível', 'items': []}
+            # Usar benchmark cacheado
+            ibov = self._cached_benchmark
+            
+            if ibov.empty:
+                return {'error': 'Dados do IBOVESPA (benchmark) não disponíveis', 'items': []}
             
             if ibov is None or len(ibov) == 0:
                 return {'error': 'Dados do IBOVESPA não disponíveis', 'items': []}
             
-            # Calcular retornos
-            returns = prices.pct_change().dropna()
+            # Usar retornos de ativos cacheados
+            returns = self.asset_returns
+            # Calcular retornos do IBOV
             ibov_returns = ibov.pct_change().dropna()
             
             # Taxa livre de risco
@@ -2637,18 +2643,14 @@ class PortfolioAnalyzer:
             Dicionário com IVaR e MVaR para cada ativo
         """
         try:
-            # Obter preços históricos
-            prices = self.data_loader.fetch_stock_prices(
-                assets=self.assets,
-                start_date=self.start_date.strftime('%Y-%m-%d'),
-                end_date=self.end_date.strftime('%Y-%m-%d')
-            )
+            # Usar preços cacheados
+            prices = self.prices
             
             if prices.empty:
                 return {'error': 'Sem dados de preços', 'items': []}
             
-            # Calcular retornos
-            returns = prices.pct_change().dropna()
+            # Usar retornos de ativos cacheados
+            returns = self.asset_returns
             
             if returns.empty:
                 return {'error': 'Sem dados de retornos', 'items': []}

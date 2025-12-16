@@ -479,7 +479,9 @@ class YFinanceProvider(DataProvider):
     def __init__(self):
         """Initialize YFinanceProvider with default configuration."""
         super().__init__()
-        self.cache = CacheManager(enabled=settings.ENABLE_CACHE)
+        self.cache = CacheManager(enabled=settings.ENABLE_CACHE,
+                                  redis_host=settings.REDIS_HOST,
+                                  redis_port=settings.REDIS_PORT)
         self.timeout = settings.DATA_PROVIDER_TIMEOUT
 
     def _get_cache_key(self, assets: List[str], start_date: str, end_date: str) -> str:
@@ -695,7 +697,9 @@ class FinnhubProvider(DataProvider):
             raise ValueError("FINNHUB_API_KEY is required for FinnhubProvider")
             
         self.api_key = config.FINNHUB_API_KEY
-        self.cache = CacheManager(enabled=config.ENABLE_CACHE)
+        self.cache = CacheManager(enabled=config.ENABLE_CACHE,
+                                  redis_host=config.REDIS_HOST,
+                                  redis_port=config.REDIS_PORT)
         self.max_retries = config.DATA_PROVIDER_MAX_RETRIES
         self.backoff_factor = config.DATA_PROVIDER_BACKOFF_FACTOR
         self.timeout = config.DATA_PROVIDER_TIMEOUT
@@ -851,7 +855,9 @@ class AlphaVantageProvider(DataProvider):
             raise ValueError("ALPHA_VANTAGE_API_KEY is required for AlphaVantageProvider")
             
         self.api_key = config.ALPHA_VANTAGE_API_KEY
-        self.cache = CacheManager(enabled=config.ENABLE_CACHE)
+        self.cache = CacheManager(enabled=config.ENABLE_CACHE,
+                                  redis_host=config.REDIS_HOST,
+                                  redis_port=config.REDIS_PORT)
         self.base_url = 'https://www.alphavantage.co/query'
         self.timeout = config.DATA_PROVIDER_TIMEOUT
         self.max_retries = config.DATA_PROVIDER_MAX_RETRIES
