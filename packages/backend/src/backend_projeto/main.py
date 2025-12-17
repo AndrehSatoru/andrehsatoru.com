@@ -60,17 +60,36 @@ app = FastAPI(
     version="1.0.0",
 )
 
+import os
+from starlette.middleware.base import BaseHTTPMiddleware
+
 # CORS (condicional)
-origins = ["*"]
+if os.getenv("ENVIRONMENT") == "production":
+    origins = os.getenv("CORS_ORIGINS", "https://andrehsatoru.com").split(",")
+else:
+    origins = ["http://localhost:3000", "http://localhost:8080", "http://127.0.0.1:3000"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 logging.info(f"CORS habilitado para: {origins}")
+
+# Middleware de Segurança (Task 4.9)
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Middleware de compressão gzip
 app.add_middleware(GZipMiddleware, minimum_size=config.GZIP_MINIMUM_SIZE)

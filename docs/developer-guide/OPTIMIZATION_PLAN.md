@@ -903,16 +903,16 @@ eslint: {
 - [x] Implementar fallback de cache
 
 ### Fase 4 (Segurança - CRÍTICO)
-- [ ] **4.1** Gerar JWT_SECRET_KEY forte e remover valor padrão
-- [ ] **4.2** Remover/desabilitar usuário `testuser` em produção
-- [ ] **4.3** Configurar CORS com origens específicas
-- [ ] **4.4** Substituir pickle por JSON no cache
-- [ ] **4.5** Habilitar rate limiting em produção
-- [ ] **4.6** Adicionar senha no Redis
-- [ ] **4.7** Validar audience/issuer nos tokens JWT
-- [ ] **4.8** Usar hash para armazenar refresh tokens
-- [ ] **4.9** Adicionar headers de segurança (CSP, X-Frame-Options)
-- [ ] **4.10** Habilitar verificações TypeScript/ESLint
+- [x] **4.1** Gerar JWT_SECRET_KEY forte e remover valor padrão
+- [x] **4.2** Remover/desabilitar usuário `testuser` em produção
+- [x] **4.3** Configurar CORS com origens específicas
+- [x] **4.4** Substituir pickle por JSON no cache
+- [x] **4.5** Habilitar rate limiting em produção
+- [x] **4.6** Adicionar senha no Redis
+- [x] **4.7** Validar audience/issuer nos tokens JWT
+- [x] **4.8** Usar hash para armazenar refresh tokens
+- [x] **4.9** Adicionar headers de segurança (CSP, X-Frame-Options)
+- [x] **4.10** Habilitar verificações TypeScript/ESLint
 
 ---
 

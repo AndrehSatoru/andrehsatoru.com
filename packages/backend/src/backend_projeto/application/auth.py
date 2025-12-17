@@ -9,6 +9,8 @@ It handles:
 """
 from datetime import datetime, timedelta
 from typing import Optional
+import os
+import hashlib
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import redis # Import redis
@@ -57,6 +59,10 @@ ALGORITHM = settings.JWT_ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
+# JWT Issuer and Audience for validation
+JWT_ISSUER = "andrehsatoru.com"
+JWT_AUDIENCE = "andrehsatoru.com"
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verifies a plain-text password against a hashed password.
@@ -84,7 +90,7 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
-    Creates a new JWT access token.
+    Creates a new JWT access token with security claims (iss, aud).
 
     Args:
         data (dict): The payload to encode into the token (e.g., {"sub": username}).
@@ -99,17 +105,28 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    
+    # Add standard claims for security
+    to_encode.update({
+        "exp": expire,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
+        "iat": datetime.utcnow(),
+    })
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def _hash_token(token: str) -> str:
+    """Gera hash SHA-256 do token para armazenamento seguro."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
 def create_refresh_token(data: dict) -> str:
     """
-    Creates a new JWT refresh token and stores it in Redis.
+    Creates a new JWT refresh token and stores its hash in Redis.
 
-    The refresh token is stored in Redis with a time-to-live (TTL)
-    matching its expiration time, ensuring it can only be used once
-    and is automatically invalidated.
+    The refresh token hash is stored in Redis with a time-to-live (TTL)
+    matching its expiration time. Storing only the hash prevents
+    token leakage if Redis is compromised.
 
     Args:
         data (dict): The payload to encode into the token (e.g., {"sub": username}).
@@ -119,22 +136,29 @@ def create_refresh_token(data: dict) -> str:
     """
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire})
+    
+    to_encode.update({
+        "exp": expire,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
+        "iat": datetime.utcnow(),
+    })
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     
-    # Store refresh token in Redis with a TTL
-    # The key can be a combination of username and a hash of the token for uniqueness
+    # Store refresh token hash in Redis with a TTL
     username = data.get("sub")
     if username:
-        # Using the encoded_jwt itself as part of the key to ensure uniqueness per token
-        redis_key = f"refresh_token:{username}:{encoded_jwt}"
-        redis_client.setex(redis_key, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS), "true")
+        # Store hash instead of raw token for security
+        token_hash = _hash_token(encoded_jwt)
+        redis_key = f"refresh_token:{username}:{token_hash}"
+        redis_client.setex(redis_key, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS), "valid")
     
     return encoded_jwt
 
 def verify_token(token: str) -> Optional[str]:
     """
     Verifies a JWT token and extracts the username from its payload.
+    Validates signature, expiration, issuer, and audience.
 
     Args:
         token (str): The JWT token string.
@@ -143,7 +167,14 @@ def verify_token(token: str) -> Optional[str]:
         Optional[str]: The username if the token is valid, otherwise None.
     """
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token, 
+            SECRET_KEY, 
+            algorithms=[ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+            options={"require": ["exp", "sub", "iss", "aud"]}
+        )
         username: str = payload.get("sub")
         if username is None:
             return None
@@ -153,10 +184,7 @@ def verify_token(token: str) -> Optional[str]:
 
 def verify_refresh_token(token: str) -> Optional[str]:
     """
-    Verifies a JWT refresh token and checks its presence in Redis.
-
-    This function decodes the refresh token and then verifies if it exists
-    in the Redis store, ensuring it hasn't been revoked or expired.
+    Verifies a JWT refresh token and checks its hash presence in Redis.
 
     Args:
         token (str): The JWT refresh token string.
@@ -165,13 +193,21 @@ def verify_refresh_token(token: str) -> Optional[str]:
         Optional[str]: The username if the token is valid and present in Redis, otherwise None.
     """
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(
+            token, 
+            SECRET_KEY, 
+            algorithms=[ALGORITHM],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+            options={"require": ["exp", "sub", "iss", "aud"]}
+        )
         username: str = payload.get("sub")
         if username is None:
             return None
         
-        # Check if refresh token exists in Redis
-        redis_key = f"refresh_token:{username}:{token}"
+        # Check if refresh token hash exists in Redis
+        token_hash = _hash_token(token)
+        redis_key = f"refresh_token:{username}:{token_hash}"
         if not redis_client.exists(redis_key):
             return None # Token not found or expired in Redis
             
@@ -203,10 +239,14 @@ class User:
         self.disabled: bool = disabled
 
 # For demonstration purposes, create a dummy user and database
-dummy_user_password = get_password_hash("testpass")
-dummy_users_db = {
-    "testuser": User("testuser", "test@example.com", dummy_user_password),
-}
+# Only create test user in development environment
+if os.getenv("ENVIRONMENT", "development") == "development":
+    dummy_user_password = get_password_hash("testpass")
+    dummy_users_db = {
+        "testuser": User("testuser", "test@example.com", dummy_user_password),
+    }
+else:
+    dummy_users_db = {}
 
 def get_user(username: str) -> Optional[User]:
     """

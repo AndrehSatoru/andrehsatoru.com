@@ -2,7 +2,7 @@ import logging
 import hashlib
 import json
 import redis
-import pickle
+# pickle import removed for security
 from datetime import timedelta
 from typing import List, Optional, Any
 import pandas as pd
@@ -30,7 +30,7 @@ class CacheManager:
                 port=redis_port, 
                 db=0, 
                 socket_connect_timeout=1,
-                decode_responses=False # Mantendo bytes para pickle/json
+                decode_responses=True # Alterado para True para suportar JSON/strings
             )
             self.redis_client.ping()
             logging.info(f"CacheManager connected to Redis at {redis_host}:{redis_port}")
@@ -55,11 +55,15 @@ class CacheManager:
                 cached_data = self.redis_client.get(key)
                 if cached_data:
                     logging.info(f"[CACHE] HIT (Redis): Carregando '{key}'")
-                    # Tentar carregar como JSON primeiro (novo formato), depois pickle (legado)
                     try:
-                        return pickle.loads(cached_data)
-                    except:
-                        # Se falhar pickle, pode ser outro formato no futuro
+                        # Tentar carregar como JSON (seguro)
+                        data = json.loads(cached_data)
+                        # Converter lista/dict de volta para DataFrame
+                        # O formato esperado é 'split' do pandas: dict(index=[], columns=[], data=[])
+                        return pd.DataFrame(data['data'], index=pd.to_datetime(data['index']), columns=data['columns'])
+                    except (json.JSONDecodeError, KeyError, TypeError) as e:
+                        logging.warning(f"[CACHE] Aviso: Falha ao decodificar JSON para '{key}': {e}")
+                        # Dados antigos ou inválidos, ignorar
                         pass
             except Exception as e:
                 logging.warning(f"[CACHE] ERRO (Redis): Falha ao ler '{key}': {e}")
@@ -87,8 +91,15 @@ class CacheManager:
         # 2. Salvar no Redis
         if self.redis_client:
             try:
-                serialized_df = pickle.dumps(df)
-                self.redis_client.setex(key, ttl_seconds, serialized_df)
+                # Converter para JSON usando formato 'split' que preserva índice e colunas
+                # default=str para converter datas/timestamps para string
+                data = df.to_dict(orient='split')
+                # Converter datas no índice para string ISO
+                if isinstance(df.index, pd.DatetimeIndex):
+                    data['index'] = [d.isoformat() for d in df.index]
+                
+                serialized = json.dumps(data, default=str)
+                self.redis_client.setex(key, ttl_seconds, serialized)
                 logging.info(f"[CACHE] WRITE (Redis): Salvando '{key}' com TTL {ttl_seconds}s")
             except Exception as e:
                 logging.error(f"[CACHE] ERRO (Redis): Falha ao salvar '{key}': {e}")

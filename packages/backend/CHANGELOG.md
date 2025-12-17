@@ -1,5 +1,18 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.9.5] - 2025-12-17
+
+### 🔒 Security (Optimization Plan - Phase 4)
+
+#### Critical Updates
+- 🔑 **Credentials**: Removed hardcoded test credentials and enforced secure environment variables (`JWT_SECRET_KEY`, `REDIS_PASSWORD`) in `docker-compose.yml` and `.env`.
+- 🌐 **CORS**: Configured strict CORS policies limiting origins to production domains and local development ports only.
+- 🛡️ **Headers**: Added `SecurityHeadersMiddleware` to set `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, etc.
+- 💾 **Cache Security**: Replaced `pickle` serialization with `JSON` in Redis cache to prevent RCE vulnerabilities.
+- 🚦 **Rate Limiting**: Enabled rate limiting by default in production (60 req/min) to prevent abuse.
+- 🆔 **JWT Validation**: Added strict validation for `issuer` and `audience` claims in tokens.
+- 🔐 **Refresh Tokens**: Now storing only SHA-256 hashes of refresh tokens in Redis instead of raw tokens.
+
 ## [1.9.4] - 2025-12-17
 
 ### 🚀 Performance (Optimization Plan - Phase 3)

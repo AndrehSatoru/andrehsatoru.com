@@ -53,8 +53,9 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = 'text'
 
     # Rate Limiting
-    RATE_LIMIT_ENABLED: bool = False
-    RATE_LIMIT_REQUESTS: int = 100
+    # Rate limiting habilitado por padrão em produção ou se env var RATE_LIMIT_ENABLED for true
+    RATE_LIMIT_ENABLED: bool = os.getenv("ENVIRONMENT") == "production" or os.getenv("RATE_LIMIT_ENABLED", "false").lower() == "true"
+    RATE_LIMIT_REQUESTS: int = 60
     RATE_LIMIT_WINDOW_SECONDS: int = 60
     USE_REDIS_RATE_LIMITER: bool = False
 
