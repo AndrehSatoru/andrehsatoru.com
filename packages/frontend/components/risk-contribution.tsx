@@ -76,7 +76,7 @@ export function RiskContribution() {
               }}
               formatter={(value: number) => [`${value.toFixed(1)}%`, "Contribuição"]}
             />
-            <Bar dataKey="contribution" radius={[0, 4, 4, 0]}>
+            <Bar dataKey="contribution">
               {riskContributionData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill="hsl(var(--chart-1))" />
               ))}

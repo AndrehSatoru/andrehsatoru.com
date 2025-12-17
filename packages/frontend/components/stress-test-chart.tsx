@@ -64,7 +64,7 @@ export function StressTestChart() {
               labelStyle={{ color: "hsl(var(--popover-foreground))" }}
               formatter={(value: number) => [`${value.toFixed(2)}%`, "Impacto"]}
             />
-            <Bar dataKey="impact" radius={[0, 4, 4, 0]} maxBarSize={30}>
+            <Bar dataKey="impact" maxBarSize={30}>
               {stressScenarios.map((entry: any, index: number) => (
                 <Cell
                   key={`cell-${index}`}
