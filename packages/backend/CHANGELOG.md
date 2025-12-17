@@ -1,5 +1,11 @@
 # Histórico de Mudanças - API de Análise de Investimentos
 
+## [1.9.6] - 2025-12-17
+
+### 🐳 Infrastructure
+- 🔧 **Local Nginx Fix**: Disabled SSL/HTTPS requirements for local development environment to prevent startup loops.
+- 📦 **Config Mounting**: Updated `docker-compose.yml` to mount local `nginx/default.conf` directly, bypassing image build issues.
+
 ## [1.9.5] - 2025-12-17
 
 ### 🔒 Security (Optimization Plan - Phase 4)
