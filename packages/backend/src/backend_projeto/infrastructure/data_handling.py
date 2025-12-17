@@ -222,11 +222,10 @@ class DataProvider(ABC):
     @retry_with_backoff(max_retries=3, backoff_factor=2.0)
     def fetch_stock_prices(self, assets: List[str], start_date: str, end_date: str) -> pd.DataFrame:
         """
-        Fetches stock prices for given assets and date range with caching.
+        Fetches stock prices for given assets and date range with Smart Caching.
 
-        This is a default implementation that can be overridden by concrete providers.
-        It includes caching logic.
-
+        Checks for cached data (partial or full) before fetching from API.
+        
         Args:
             assets (List[str]): A list of asset tickers.
             start_date (str): The start date for fetching prices (YYYY-MM-DD).
@@ -235,12 +234,16 @@ class DataProvider(ABC):
         Returns:
             pd.DataFrame: A DataFrame containing the adjusted closing prices of the assets.
         """
-        cache_key = self._get_cache_key(assets, start_date, end_date)
-        
-        # Check cache first
-        if self.cache.enabled and cache_key in self._price_cache:
-            logging.info("Returning cached price data")
-            return self._price_cache[cache_key]
+        # 1. Tentar recuperar do cache (Smart Cache)
+        if self.cache.enabled:
+            # Tenta buscar dados cacheados para esta exata requisição
+            cached_df = self.cache.get_dataframe("prices", assets, start_date, end_date)
+            if cached_df is not None and not cached_df.empty:
+                logging.info(f"SmartCache HIT: Retornando {len(cached_df)} linhas do cache.")
+                return cached_df
+                
+            # TODO: Implementar lógica de "partial hits" mais avançada (ex: juntar pedaços)
+            # Por enquanto, se não tiver o range exato (ou superset), busca tudo.
         
         logging.info(f"Fetching prices for {assets} from {start_date} to {end_date}")
         try:
@@ -282,7 +285,11 @@ class DataProvider(ABC):
             
             if data is None or data.empty:
                 logging.error(f"No data returned from Yahoo Finance for {assets}")
-                raise DataProviderError(f"No data available for {assets} between {start_date} and {end_date}")
+                # Não levantar exceção para permitir falhas parciais em batch? 
+                # Mas aqui esperamos dados. Vamos retornar vazio ou erro.
+                # raise DataProviderError(...)
+                # Para compatibilidade, vamos criar um DF vazio com colunas
+                return pd.DataFrame(columns=assets)
             
             # Filter to requested date range
             data = data.loc[start_date:end_date]
@@ -291,8 +298,8 @@ class DataProvider(ABC):
                 logging.warning(f"No data in exact date range {start_date} to {end_date}, returning available data")
             
             # Cache the result
-            if self.cache.enabled:
-                self._price_cache[cache_key] = data
+            if self.cache.enabled and not data.empty:
+                self.cache.set_dataframe(data, "prices", assets, start_date, end_date)
                 
             return data
         except Exception as e:

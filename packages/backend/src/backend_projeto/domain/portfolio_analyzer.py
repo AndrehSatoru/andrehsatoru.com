@@ -11,6 +11,7 @@ import math
 
 import numpy as np
 import pandas as pd
+from scipy.optimize import minimize
 
 from backend_projeto.infrastructure.utils.config import Settings, settings
 from backend_projeto.infrastructure.data_handling import YFinanceProvider
@@ -220,6 +221,9 @@ class PortfolioAnalyzer:
         Returns:
             Série com o valor do portfólio por data
         """
+        if self.positions is None:
+            self.positions = self._calculate_positions()
+            
         # Obter preços históricos para todos os ativos
         prices = self.prices # Use cached prices
         
@@ -2185,19 +2189,20 @@ class PortfolioAnalyzer:
 
     def _generate_markowitz_optimization(self) -> dict:
         """
-        Gera sugestão de alocação ótima usando Markowitz.
+        Gera a fronteira eficiente e portfólios ótimos usando otimização convexa (scipy.optimize).
+        
+        Substitui a simulação de Monte Carlo por cálculo exato (SLSQP).
         
         Returns:
-            Dicionário com pesos ótimos para diferentes objetivos
+            Dicionário com portfólios otimizados e pontos da fronteira.
         """
         try:
             # Usar preços cacheados
             prices = self.prices
+            if prices.empty:
+                return {'error': 'Sem dados de preços', 'portfolios': []}
             
-            if prices.empty or len(self.assets) < 2:
-                return {'error': 'Dados insuficientes para otimização', 'portfolios': []}
-            
-            # Calcular retornos diários
+            # Usar retornos de ativos cacheados
             returns = self.asset_returns
             
             if returns.empty or len(returns) < 20:
@@ -2219,45 +2224,87 @@ class PortfolioAnalyzer:
             except:
                 rf = 0.12  # 12% fallback
             
-            # Simulação de portfolios
-            n_portfolios = 5000
-            results = []
+            # Funções de utilidade para otimização
+            def get_ret_vol_sharpe(weights):
+                weights = np.array(weights)
+                ret = np.sum(mean_returns.values * weights)
+                vol = np.sqrt(np.dot(weights.T, np.dot(cov_matrix.values, weights)))
+                sharpe = (ret - rf) / vol if vol > 0 else 0
+                return np.array([ret, vol, sharpe])
             
-            np.random.seed(42)
-            for _ in range(n_portfolios):
-                # Pesos aleatórios (long only)
-                weights = np.random.random(n_assets)
-                weights /= weights.sum()
+            def neg_sharpe(weights):
+                return -get_ret_vol_sharpe(weights)[2]
+            
+            def minimize_volatility(weights):
+                return get_ret_vol_sharpe(weights)[1]
+            
+            # Restrições: soma dos pesos = 1
+            constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+            # Limites: 0 <= peso <= 1 (Long only)
+            bounds = tuple((0, 1) for _ in range(n_assets))
+            
+            # Chute inicial (pesos iguais)
+            init_guess = n_assets * [1. / n_assets,]
+            
+            # 1. Encontrar Máximo Sharpe Ratio
+            opt_sharpe = minimize(neg_sharpe, init_guess, method='SLSQP', bounds=bounds, constraints=constraints)
+            max_sharpe_weights = opt_sharpe.x
+            max_sharpe_stats = get_ret_vol_sharpe(max_sharpe_weights)
+            
+            # 2. Encontrar Mínima Volatilidade
+            opt_vol = minimize(minimize_volatility, init_guess, method='SLSQP', bounds=bounds, constraints=constraints)
+            min_vol_weights = opt_vol.x
+            min_vol_stats = get_ret_vol_sharpe(min_vol_weights)
+            
+            # 3. Encontrar Máximo Retorno (sujeito a vol aceitável ou apenas max return possível)
+            # Para "Máximo Retorno", basta alocar 100% no ativo de maior retorno
+            # Mas vamos usar a otimização para garantir consistência
+            def neg_return(weights):
+                return -get_ret_vol_sharpe(weights)[0]
                 
-                # Retorno e volatilidade
-                port_return = np.sum(mean_returns.values * weights)
-                port_vol = np.sqrt(weights @ cov_matrix.values @ weights)
-                sharpe = (port_return - rf) / port_vol if port_vol > 0 else 0
+            opt_ret = minimize(neg_return, init_guess, method='SLSQP', bounds=bounds, constraints=constraints)
+            max_ret_weights = opt_ret.x
+            max_ret_stats = get_ret_vol_sharpe(max_ret_weights)
+
+            # Preparar estruturas de resposta
+            def format_portfolio(weights, stats, name):
+                weights_dict = {}
+                for i, asset in enumerate(self.assets):
+                    weights_dict[asset.replace('.SA', '')] = round(weights[i] * 100, 1)
+                return {
+                    'name': name,
+                    'weights': weights_dict,
+                    'expected_return': round(stats[0] * 100, 2),
+                    'volatility': round(stats[1] * 100, 2),
+                    'sharpe_ratio': round(stats[2], 3)
+                }
+
+            optimal_portfolios = [
+                format_portfolio(max_sharpe_weights, max_sharpe_stats, 'Máximo Sharpe'),
+                format_portfolio(min_vol_weights, min_vol_stats, 'Mínima Volatilidade'),
+                format_portfolio(max_ret_weights, max_ret_stats, 'Máximo Retorno')
+            ]
+            
+            # 4. Gerar Fronteira Eficiente
+            # Variar o retorno alvo entre min_vol e max_ret e minimizar volatilidade
+            frontier = []
+            target_returns = np.linspace(min_vol_stats[0], max_ret_stats[0], 20)
+            
+            for target in target_returns:
+                constraints_frontier = (
+                    {'type': 'eq', 'fun': lambda x: np.sum(x) - 1},
+                    {'type': 'eq', 'fun': lambda x: get_ret_vol_sharpe(x)[0] - target}
+                )
                 
-                results.append({
-                    'weights': weights,
-                    'return': port_return,
-                    'volatility': port_vol,
-                    'sharpe': sharpe
-                })
-            
-            # Encontrar portfólios ótimos
-            results_sorted_sharpe = sorted(results, key=lambda x: x['sharpe'], reverse=True)
-            results_sorted_vol = sorted(results, key=lambda x: x['volatility'])
-            results_sorted_ret = sorted(results, key=lambda x: x['return'], reverse=True)
-            
-            # Max Sharpe
-            max_sharpe = results_sorted_sharpe[0]
-            # Min Volatility
-            min_vol = results_sorted_vol[0]
-            # Max Return (com vol < 1.5x min vol)
-            max_ret = None
-            for r in results_sorted_ret:
-                if r['volatility'] <= min_vol['volatility'] * 1.5:
-                    max_ret = r
-                    break
-            if max_ret is None:
-                max_ret = results_sorted_ret[0]
+                result = minimize(minimize_volatility, init_guess, method='SLSQP', bounds=bounds, constraints=constraints_frontier)
+                
+                if result.success:
+                    stats = get_ret_vol_sharpe(result.x)
+                    frontier.append({
+                        'return': round(stats[0] * 100, 2),
+                        'volatility': round(stats[1] * 100, 2),
+                        'sharpe': round(stats[2], 3)
+                    })
             
             # Pesos atuais
             current_weights = {}
@@ -2274,50 +2321,23 @@ class PortfolioAnalyzer:
                         current_weights[asset] = 0
             
             current_w = np.array([current_weights.get(a, 0) for a in self.assets])
-            current_w = current_w / current_w.sum() if current_w.sum() > 0 else np.ones(n_assets) / n_assets
-            current_return = np.sum(mean_returns.values * current_w)
-            current_vol = np.sqrt(current_w @ cov_matrix.values @ current_w)
-            current_sharpe = (current_return - rf) / current_vol if current_vol > 0 else 0
-            
-            def format_portfolio(opt_result, name):
-                weights_dict = {}
-                for i, asset in enumerate(self.assets):
-                    weights_dict[asset.replace('.SA', '')] = round(opt_result['weights'][i] * 100, 1)
-                return {
-                    'name': name,
-                    'weights': weights_dict,
-                    'expected_return': round(opt_result['return'] * 100, 2),
-                    'volatility': round(opt_result['volatility'] * 100, 2),
-                    'sharpe_ratio': round(opt_result['sharpe'], 3)
-                }
-            
-            # Fronteira eficiente (10 pontos)
-            frontier = []
-            vol_range = np.linspace(min_vol['volatility'], max(r['volatility'] for r in results) * 0.8, 10)
-            for target_vol in vol_range:
-                # Encontrar portfolio com maior retorno para essa volatilidade
-                candidates = [r for r in results if abs(r['volatility'] - target_vol) < 0.02]
-                if candidates:
-                    best = max(candidates, key=lambda x: x['return'])
-                    frontier.append({
-                        'return': round(best['return'] * 100, 2),
-                        'volatility': round(best['volatility'] * 100, 2),
-                        'sharpe': round(best['sharpe'], 3)
-                    })
+            # Normalizar se soma != 1 (pode acontecer se tiver caixa)
+            if current_w.sum() > 0:
+                 current_w_norm = current_w / current_w.sum()
+            else:
+                 current_w_norm = np.ones(n_assets) / n_assets
+
+            current_stats = get_ret_vol_sharpe(current_w_norm)
             
             return {
                 'current_portfolio': {
                     'name': 'Portfólio Atual',
                     'weights': {a.replace('.SA', ''): round(current_weights.get(a, 0) * 100, 1) for a in self.assets},
-                    'expected_return': round(current_return * 100, 2),
-                    'volatility': round(current_vol * 100, 2),
-                    'sharpe_ratio': round(current_sharpe, 3)
+                    'expected_return': round(current_stats[0] * 100, 2),
+                    'volatility': round(current_stats[1] * 100, 2),
+                    'sharpe_ratio': round(current_stats[2], 3)
                 },
-                'optimal_portfolios': [
-                    format_portfolio(max_sharpe, 'Máximo Sharpe'),
-                    format_portfolio(min_vol, 'Mínima Volatilidade'),
-                    format_portfolio(max_ret, 'Máximo Retorno')
-                ],
+                'optimal_portfolios': optimal_portfolios,
                 'frontier': frontier,
                 'risk_free_rate': round(rf * 100, 2)
             }

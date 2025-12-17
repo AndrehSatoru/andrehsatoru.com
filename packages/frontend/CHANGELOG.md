@@ -1,5 +1,16 @@
 # Histórico de Mudanças - Frontend
 
+## [1.9.2] - 2025-12-17
+
+### 🚀 Performance (Optimization Plan - Phase 3)
+
+#### Modernização da Stack
+- ⚡ **React Query**: Introduced `@tanstack/react-query` for efficient server state management.
+  - **Caching**: Automatic caching of API responses (5 min stale time).
+  - **Deduplication**: Prevents multiple identical requests.
+  - **Background Updates**: Smart refetching logic.
+- 🧹 **Cleanup**: Removed 7 unused dependencies (`vaul`, `embla-carousel`, `input-otp`, etc.) reducing bundle size.
+
 ## [1.9.1] - 2025-12-16
 
 ### 🐳 Infrastructure

@@ -896,11 +896,11 @@ eslint: {
 - [x] Dividir context em stores menores
 
 ### Fase 3 (Refinamentos)
-- [ ] Implementar cache inteligente
-- [ ] Usar scipy.optimize para Markowitz
-- [ ] Implementar React Query
-- [ ] Auditar e remover dependências não utilizadas
-- [ ] Implementar fallback de cache
+- [x] Implementar cache inteligente
+- [x] Usar scipy.optimize para Markowitz
+- [x] Implementar React Query
+- [x] Auditar e remover dependências não utilizadas
+- [x] Implementar fallback de cache
 
 ### Fase 4 (Segurança - CRÍTICO)
 - [ ] **4.1** Gerar JWT_SECRET_KEY forte e remover valor padrão

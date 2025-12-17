@@ -4,8 +4,7 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 // import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
-import { PeriodProvider } from "@/lib/period-context"
-import { DashboardDataProvider } from "@/lib/dashboard-data-context"
+import { Providers } from "@/app/providers"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
@@ -26,9 +25,7 @@ export default function RootLayout({
     <html lang="pt-BR" className="antialiased">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>
-          <DashboardDataProvider>
-            <PeriodProvider>{children}</PeriodProvider>
-          </DashboardDataProvider>
+          <Providers>{children}</Providers>
         </Suspense>
       </body>
     </html>
