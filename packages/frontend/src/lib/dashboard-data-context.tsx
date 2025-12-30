@@ -55,6 +55,7 @@ interface PortfolioTimeSeriesData {
   monthly_returns: any[];
   allocation_history: any[];
   rolling_annualized_returns: any[];
+  drawdown: any[];
 }
 interface AssetStatsData {
   asset_stats: any[];
@@ -217,6 +218,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
       monthly_returns: sanitizeResult(results?.monthly_returns) || null,
       allocation_history: sanitizeResult(results?.allocation_history) || null,
       rolling_annualized_returns: sanitizeResult(results?.rolling_annualized_returns) || null,
+      drawdown: sanitizeResult(results?.drawdown) || null,
     };
     if (Object.values(timeSeriesResults).some(val => val !== null)) setTimeSeries(timeSeriesResults); else setTimeSeries(null);
 
@@ -270,7 +272,7 @@ export function useDashboardData() {
   const famaFrench = useFamaFrenchStore((state) => state.famaFrench);
   const markowitz = useMarkowitzStore((state) => state.markowitz);
 
-  const analysisResult = {
+  const analysisResult: any = {
     desempenho: performance,
     alocacao: allocation,
     ...risk,
@@ -279,11 +281,12 @@ export function useDashboardData() {
     monthly_returns: timeSeries?.monthly_returns,
     allocation_history: timeSeries?.allocation_history,
     rolling_annualized_returns: timeSeries?.rolling_annualized_returns,
+    drawdown: timeSeries?.drawdown,
     asset_stats: assetStats?.asset_stats,
     returns_distribution: assetStats?.returns_distribution,
     metadados: assetStats?.metadados,
-    fama_french: famaFrench,
-    markowitz_optimization: markowitz,
+    fama_french: famaFrench?.fama_french,
+    markowitz_optimization: markowitz?.markowitz_optimization,
   };
 
   return {

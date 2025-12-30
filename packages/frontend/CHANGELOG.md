@@ -1,6 +1,37 @@
 # Histórico de Mudanças - Frontend
 
+## [1.10.0] - 2025-12-29
+
+### 🎨 Design System (Geometric STEM)
+
+#### Visual Overhaul
+- ✨ **Aesthetic**: Implemented "Geometric STEM" design language with a "Portfolio Canvas" concept.
+- 📐 **Shape Language**: Standardized on `rounded-xl` and `rounded-full` (capsule) shapes for a modern, tactile feel.
+- 🎨 **Color Palette**: Updated to a vibrant, high-contrast palette:
+  - **Primary**: Vivid Blue (`#2563eb`)
+  - **Success**: Emerald Green (`#10b981`)
+  - **Error**: Rose Red (`#f43f5e`)
+  - **Background**: Subtle "Graph Paper" radial dot pattern.
+- 🌙 **Dark Mode**: Optimized with deep slate backgrounds (`#020617`) and high-visibility accents.
+
+#### UI Components
+- 🧱 **Cards**: "Floating" effect with thicker borders (`border-2`) and smooth hover lifts (`hover:-translate-y-0.5`).
+- 🔘 **Buttons & Badges**: Updated to capsule shapes (`rounded-full`) with tactile `active:scale-95` feedback.
+- 📝 **Inputs**: Enhanced focus states with prominent rings (`ring-4`) for better accessibility and visual feedback.
+- 🎚️ **Interactive Slider**: Custom slider component with floating tooltip and smooth animations.
+- 📌 **Floating Header**: Redesigned header as a fixed, glassmorphic capsule centered at the top.
+
+#### Data Visualization
+- 📊 **High-Fidelity Charts**: 
+  - **AllocationChart**: Modern donut style with rounded segments and entrance animations.
+  - **PerformanceChart**: Thicker strokes, gradient fills, and simplified grids.
+  - **VolatilityChart**: Vibrant colors and cleaner axes.
+- 🎬 **Animations**: Integrated `framer-motion` for smooth entrance transitions and interactions.
+- ⚡ **Data-Refresh UX**: Implemented "pop" animations for key metrics (`RiskMetrics`, `MetricsGrid`) when data updates.
+- 📈 **Returns Distribution**: Enhanced with dynamic binning, normal curve overlay, and improved styling.
+
 ## [1.9.2] - 2025-12-17
+...
 
 ### 🚀 Performance (Optimization Plan - Phase 3)
 

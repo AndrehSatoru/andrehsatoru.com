@@ -6,3 +6,5 @@ portfolio_analysis_output/
 .pytest_cache/
 generated_dashboards/
 openapi.json
+generated_plots/
+debug_prices.txt

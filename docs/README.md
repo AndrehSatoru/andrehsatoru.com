@@ -40,6 +40,13 @@ Para engenheiros de DevOps e administradores de sistema.
 
 ## ✨ Novidades Recentes
 
+### 🎨 Design System "Geometric STEM" (v1.10.0 - Dez 2025)
+- **Visual Overhaul**: Nova identidade visual com conceito "Portfolio Canvas"
+- **Paleta Vibrante**: Cores de alto contraste (Vivid Blue, Emerald Green, Rose Red)
+- **UI Moderna**: Componentes arredondados (`rounded-xl`), cards flutuantes e animações suaves
+- **Gráficos High-Fidelity**: Visualização de dados aprimorada com animações de entrada
+- **UX Otimizada**: Slider interativo, header fixo glassmorphic e feedback tátil
+
 ### 📊 Correções de Gráficos e Performance (v0.8.0 - Dez 2025)
 - **Gráfico de Alocação corrigido**: Evolução percentual agora preenche corretamente de 0% a 100%
 - **Normalização robusta**: Dados convertidos para frações com soma exata = 1

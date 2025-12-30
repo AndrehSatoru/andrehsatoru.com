@@ -1,22 +1,20 @@
-# Documentação do Backend
+# Documentação da Arquitetura
 
-Este documento fornece uma visão detalhada da arquitetura, funcionalidades e configuração do backend da plataforma de análise de investimentos.
+Este documento fornece uma visão detalhada da arquitetura, funcionalidades e configuração da plataforma de análise de investimentos.
 
 ## 1. Visão Geral
 
-O backend é construído com **FastAPI**, um framework web Python moderno e de alta performance. Ele serve como o cérebro da plataforma, fornecendo uma API RESTful para o frontend e realizando todas as análises financeiras complexas.
+A plataforma é composta por um frontend moderno e um backend robusto de análise financeira.
 
-**Principais Tecnologias:**
+**Backend (API & Análise):**
+Construído com **FastAPI**, serve como o cérebro da plataforma, realizando análises financeiras complexas (Otimização de Portfólio, VaR, Monte Carlo) e fornecendo uma API RESTful.
+*   **Tecnologias:** FastAPI, Pydantic, Pandas, NumPy, SciPy, scikit-learn.
 
-*   **FastAPI:** Para a criação da API.
-*   **Pydantic:** Para validação de dados e gerenciamento de configurações.
-*   **Pandas, NumPy, SciPy:** Para manipulação e análise de dados.
-*   **scikit-learn:** Para modelos de machine learning.
-*   **yfinance:** Para obtenção de dados de mercado.
-*   **Pytest:** Para testes unitários e de integração.
-*   **Docker:** Para containerização e deploy.
+**Frontend (Interface & Visualização):**
+Uma Single-Page Application (SPA) construída com **Next.js** que oferece uma experiência de usuário interativa e rica em dados.
+*   **Tecnologias:** Next.js (App Router), TypeScript, Tailwind CSS, Framer Motion (animações), Recharts (gráficos), Shadcn/ui (componentes).
 
-## 2. Arquitetura
+## 2. Arquitetura do Backend
 
 A arquitetura do backend é modular e organizada da seguinte forma:
 

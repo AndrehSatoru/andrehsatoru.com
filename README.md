@@ -4,6 +4,14 @@ Uma plataforma full-stack para análise de risco, otimização de portfólio e a
 
 ## ✨ Novidades
 
+### 🎨 Versão 1.10.0 - Design System "Geometric STEM" (Dez 2025)
+
+- ✨ **Visual Overhaul**: Nova identidade visual com conceito "Portfolio Canvas"
+- 🎨 **Paleta Vibrante**: Cores de alto contraste e fundo "Graph Paper"
+- 📐 **UI Moderna**: Componentes arredondados, cards flutuantes e animações
+- 📊 **Gráficos High-Fidelity**: Visualizações aprimoradas com Framer Motion
+- 🚀 **Performance**: Stack modernizada com React Query
+
 ### 📊 Versão 0.8.0 - Correções de Gráficos (Dez 2025)
 
 - 📈 **Gráfico de Alocação corrigido**: Evolução percentual agora preenche de 0% a 100%
