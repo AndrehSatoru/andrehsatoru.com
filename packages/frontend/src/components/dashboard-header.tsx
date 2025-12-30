@@ -1,12 +1,76 @@
 "use client"
 
-import { TrendingUp, Calendar } from "lucide-react"
+import { useState } from "react"
+import { TrendingUp, Calendar, Download, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { usePeriod } from "@/lib/period-context"
+import html2canvas from "html2canvas"
+import jsPDF from "jspdf"
+import { toast } from "sonner"
 
 export function DashboardHeader() {
   const { period, setPeriod } = usePeriod()
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExport = async () => {
+    const dashboardElement = document.getElementById('dashboard-content')
+    if (!dashboardElement) {
+      toast.error("Erro ao encontrar conteúdo para exportar")
+      return
+    }
+
+    try {
+      setIsExporting(true)
+      toast.info("Gerando relatório PDF...", { duration: 2000 })
+
+      // Aguardar um pouco para garantir que renderizações pendentes terminem
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      const canvas = await html2canvas(dashboardElement, {
+        scale: 1.5, // Equilíbrio entre qualidade e tamanho
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#020617', // Fundo escuro do tema
+        windowWidth: 1800, // Forçar largura desktop
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      })
+
+      const imgWidth = 210 // A4 width in mm
+      const pageHeight = 297 // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+
+      // Primeira página
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+
+      // Páginas subsequentes
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+
+      const fileName = `portfolio-report-${new Date().toISOString().split('T')[0]}.pdf`
+      pdf.save(fileName)
+      toast.success("Relatório exportado com sucesso!")
+
+    } catch (error) {
+      console.error("Export failed", error)
+      toast.error("Falha ao exportar relatório PDF")
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   return (
     <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-fit pointer-events-none">
@@ -39,8 +103,19 @@ export function DashboardHeader() {
             </SelectContent>
           </Select>
 
-          <Button variant="ghost" size="sm" className="rounded-full hover:bg-secondary/80">
-            Exportar
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="rounded-full hover:bg-secondary/80 gap-2"
+            onClick={handleExport}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {isExporting ? "Gerando..." : "Exportar"}
           </Button>
         </div>
       </header>

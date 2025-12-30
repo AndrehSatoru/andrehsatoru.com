@@ -57,7 +57,7 @@ function DashboardPage() {
     <div className="min-h-screen bg-background relative selection:bg-primary/20">
       <DashboardHeader />
 
-      <main className="max-w-[1800px] mx-auto px-6 pt-32 pb-16 space-y-8 2xl:px-8">
+      <main id="dashboard-content" className="max-w-[1800px] mx-auto px-6 pt-32 pb-16 space-y-8 2xl:px-8">
         <div className="flex justify-end">
           <Link href="/enviar" className="rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all active:scale-95">
             Enviar Operações

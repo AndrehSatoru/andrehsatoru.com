@@ -29,6 +29,7 @@
 - 🎬 **Animations**: Integrated `framer-motion` for smooth entrance transitions and interactions.
 - ⚡ **Data-Refresh UX**: Implemented "pop" animations for key metrics (`RiskMetrics`, `MetricsGrid`) when data updates.
 - 📈 **Returns Distribution**: Enhanced with dynamic binning, normal curve overlay, and improved styling.
+- 📄 **PDF Export**: Implemented "Exportar Relatório" button to generate a multi-page PDF of the complete dashboard using `html2canvas` and `jsPDF`.
 
 ## [1.9.2] - 2025-12-17
 ...

@@ -1,9 +1,9 @@
 "use client"
 
-import { useAnimation, AnimationControls } from "framer-motion"
+import { useAnimation } from "framer-motion"
 import { useEffect, useRef } from "react"
 
-export function useRefreshAnimation(value: any, duration = 0.3): AnimationControls {
+export function useRefreshAnimation(value: any, duration = 0.3): ReturnType<typeof useAnimation> {
   const controls = useAnimation()
   const isFirstRender = useRef(true)
 

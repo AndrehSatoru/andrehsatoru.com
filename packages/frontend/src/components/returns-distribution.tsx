@@ -149,8 +149,8 @@ export function ReturnsDistribution() {
                     <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
                   </linearGradient>
                   <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={DASHBOARD_COLORS.warning} stopOpacity={0.4} />
-                    <stop offset="100%" stopColor={DASHBOARD_COLORS.warning} stopOpacity={0.0} />
+                    <stop offset="0%" stopColor={DASHBOARD_COLORS.volatility} stopOpacity={0.4} />
+                    <stop offset="100%" stopColor={DASHBOARD_COLORS.volatility} stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 
@@ -229,7 +229,7 @@ export function ReturnsDistribution() {
                 <Line
                   type="monotone"
                   dataKey="normalCurve"
-                  stroke={DASHBOARD_COLORS.warning}
+                  stroke={DASHBOARD_COLORS.volatility}
                   strokeWidth={2}
                   dot={false}
                   activeDot={false}

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, UseQueryOptions, UseMutationOptions, QueryClient } from '@tanstack/react-query'
-import { apiClient, ApiError } from './backend-api'
+import { apiClient } from './backend-api'
+import { ApiError } from './api-error'
 
 // Create a client
 export const queryClient = new QueryClient({
@@ -14,15 +15,15 @@ export const queryClient = new QueryClient({
 })
 
 // Types
-export type PortfolioAnalysisResponse = Awaited<ReturnType<typeof apiClient.post>>
+export type PortfolioAnalysisResponse = any
 
 // Hooks
 
 export function useProcessarOperacoes(options?: UseMutationOptions<any, ApiError, any>) {
   return useMutation<any, ApiError, any>({
     mutationFn: async (data) => {
-      const response = await apiClient.post("/api/v1/processar_operacoes", data);
-      return response;
+      const response = await apiClient.axios.post("/api/v1/processar_operacoes", data);
+      return response.data;
     },
     ...options,
   });

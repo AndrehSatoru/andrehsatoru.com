@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { makeApi, Zodios, type ZodiosOptions } from "@zodios/core";
 import { endpoints, schemas } from 'shared-types';
 import { useAuthStore } from '../hooks/useAuthStore';
+import { ApiError } from './api-error';
 
 // Define the base URL and timeout from environment variables
 // Use INTERNAL_API_URL for server-side calls (API routes), NEXT_PUBLIC_API_URL for client-side
@@ -41,7 +42,7 @@ apiClient.axios.interceptors.request.use(
 apiClient.axios.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config;
+    const originalRequest = error.config as any;
 
     // Handle 401 Unauthorized errors
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
@@ -60,7 +61,7 @@ apiClient.axios.interceptors.response.use(
           const newAccessToken = refreshResponse.data.access_token;
           const newRefreshToken = refreshResponse.data.refresh_token || refreshToken; // Use new refresh token if provided
 
-          useAuthStore.getState().setTokens(newAccessToken, newRefreshToken); // Update tokens in store
+          useAuthStore.getState().login(newAccessToken, newRefreshToken); // Update tokens in store
 
           // Retry the original request with the new access token
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
@@ -83,7 +84,7 @@ apiClient.axios.interceptors.response.use(
     // Implement standardized error handling (Phase 4)
     const apiError: ApiError = {
       error: (error.response?.data as any)?.error || 'unknown_error',
-      message: (error.response?.data as any)?.message || error.message,
+      message: (error.response?.data as any)?.message || error.message || 'Unknown error',
       status_code: error.response?.status || 500,
       details: (error.response?.data as any)?.details,
       request_id: (error.response?.data as any)?.request_id,
@@ -96,16 +97,8 @@ apiClient.axios.interceptors.response.use(
   }
 );
 
-// Helper type for API errors (to be refined in Phase 4)
-export type ApiError = {
-  error: string;
-  message: string;
-  status_code: number;
-  details?: Record<string, any>;
-  request_id?: string;
-};
-
 // Export function to send operations
 export async function enviarOperacoes(data: any) {
-  return await apiClient.post("/api/v1/processar_operacoes", data);
+  const response = await apiClient.axios.post("/api/v1/processar_operacoes", data);
+  return response.data;
 }
